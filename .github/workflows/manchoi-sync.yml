@@ -1,0 +1,37 @@
+name: Sync Fork
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天凌晨自动检查
+  workflow_dispatch: # 支持手动运行
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # 必须拉取所有历史，否则无法进行 merge 操作
+          fetch-depth: 0
+
+      - name: Sync upstream
+        run: |
+          # 1. 设置身份信息（防止 git 报错）
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+
+          # 2. 添加官方仓库作为远程源
+          git remote add upstream https://github.com/haierkeys/obsidian-fast-note-sync.git
+          
+          
+          # 3. 获取官方更新
+          git fetch upstream
+          
+          # 4. 切换到你的 master 分支
+          git checkout master
+          
+          # 5. 将官方的 master 分支合并到你的 master
+          # --no-edit 表示自动生成提交信息，不弹出编辑器
+          git merge upstream/master --no-edit
+          
+          # 6. 推送回你的仓库
+          git push origin master
