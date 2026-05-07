@@ -1,6 +1,6 @@
 import { normalizePath } from "obsidian";
 
-import { hashContent, hashArrayBuffer, dump, configIsPathExcluded, configAddPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice } from "./helps";
+import { hashContent, hashArrayBuffer, dump, configIsPathExcluded, configAddPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist } from "./helps";
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
@@ -447,6 +447,7 @@ export const configAllPaths = async function (configDirs: string[], plugin: Fast
         }
     }
 
+    console.log(configDirs)
     for (const configDir of configDirs) {
         try {
             // 解析目录名称，用于判断是否为自定义目录
@@ -457,7 +458,18 @@ export const configAllPaths = async function (configDirs: string[], plugin: Fast
                 const rootItems = await adapter.list(normalizePath(configDir))
                 for (const file of rootItems.files) {
                     const fileName = file.split("/").pop() || ""
-                    if (fileName.endsWith(".json") && !CONFIG_ROOT_FILES_EXCLUDE.includes(fileName)) {
+                    if (fileName.endsWith(".json")) {
+                        // 1. 白名单最高优先级：命中则直接纳入，跳过所有后续排除规则
+                        // 1. Whitelist has highest priority: if matched, include unconditionally
+                        if (isInWhitelist(file, plugin)) {
+                            paths.push(file)
+                            continue
+                        }
+                        // 2. 硬编码排除（如 workspace.json）
+                        // 2. Hard exclude (e.g. workspace.json)
+                        if (CONFIG_ROOT_FILES_EXCLUDE.includes(fileName)) continue
+                        // 3. 用户自定义排除规则
+                        // 3. User-defined exclude rules
                         if (isExcluded(file)) continue
                         paths.push(file)
                     }

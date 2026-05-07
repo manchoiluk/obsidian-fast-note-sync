@@ -1,6 +1,6 @@
 import { normalizePath, Plugin } from "obsidian";
 
-import { dump, getFileName, getDirName, getDirNameOrEmpty, configAddPathExcluded, configIsPathExcluded, isPathInConfigSyncDirs, getConfigSyncCustomDirs } from "./helps";
+import { dump, getFileName, getDirName, getDirNameOrEmpty, configAddPathExcluded, configIsPathExcluded, isPathInConfigSyncDirs, getConfigSyncCustomDirs, isInWhitelist } from "./helps";
 import { CONFIG_PLUGIN_EXTS_TO_WATCH, CONFIG_ROOT_FILES_EXCLUDE, CONFIG_THEME_EXTS_TO_WATCH, configModify, configDelete, configAllPaths } from "./config_operator";
 import type FastSync from "../main";
 
@@ -70,28 +70,35 @@ export class ConfigManager {
     if (!path.startsWith(configDir + "/")) {
       shouldCheck = true
     } else {
-      // 核心配置目录内的路径，按照原有精细化规则分发
-      const relativePathInConfig = path.replace(configDir + "/", "")
-      const parts = relativePathInConfig.split("/")
-      const topDir = parts[0]
-
-      if (parts.length === 1) {
-        // 根配置：同步所有 JSON 文件，排除指定的名单
-        if (fileName.endsWith(".json") && !this.rootFilesExclude.includes(fileName)) shouldCheck = true
-      } else if (topDir === "plugins" || topDir === "themes") {
-        const nameDir = getDirNameOrEmpty(parts[1])
-        // 插件或主题
-        if (parts.length === 2 && nameDir != "" && fileName == "") {
-          // 目录变动
-          shouldCheck = true
-        } else if (parts.length === 3 && nameDir != "" && fileName != "") {
-          // 受监控文件变动
-          const isPluginFile = topDir === "plugins" && this.pluginExtsToWatch.some(ext => fileName.endsWith(ext))
-          const isThemeFile = topDir === "themes" && this.themeExtsToWatch.some(ext => fileName.endsWith(ext))
-          if (isPluginFile || isThemeFile) shouldCheck = true
-        }
-      } else if (topDir === "snippets" && parts.length === 2 && fileName.endsWith(".css")) {
+      // 白名单最高优先级：命中则直接放行，不受任何文件类型/目录结构限制
+      // Whitelist has highest priority: bypass all type/structure filtering if matched
+      if (isInWhitelist(path, this.plugin)) {
         shouldCheck = true
+      } else {
+        // 核心配置目录内的路径，按照原有精细化规则分发
+        const relativePathInConfig = path.replace(configDir + "/", "")
+        const parts = relativePathInConfig.split("/")
+        const topDir = parts[0]
+
+        if (parts.length === 1) {
+          // 根配置：仅同步 JSON，且不在硬编码排除名单内
+          // Root config: only sync JSON files not in the hard exclude list
+          if (fileName.endsWith(".json") && !this.rootFilesExclude.includes(fileName)) shouldCheck = true
+        } else if (topDir === "plugins" || topDir === "themes") {
+          const nameDir = getDirNameOrEmpty(parts[1])
+          // 插件或主题
+          if (parts.length === 2 && nameDir != "" && fileName == "") {
+            // 目录变动
+            shouldCheck = true
+          } else if (parts.length === 3 && nameDir != "" && fileName != "") {
+            // 受监控文件变动
+            const isPluginFile = topDir === "plugins" && this.pluginExtsToWatch.some(ext => fileName.endsWith(ext))
+            const isThemeFile = topDir === "themes" && this.themeExtsToWatch.some(ext => fileName.endsWith(ext))
+            if (isPluginFile || isThemeFile) shouldCheck = true
+          }
+        } else if (topDir === "snippets" && parts.length === 2 && fileName.endsWith(".css")) {
+          shouldCheck = true
+        }
       }
     }
 

@@ -222,6 +222,20 @@ export const isPathExcluded = function (path: string, plugin: FastSync): boolean
 const CONFIG_EXCLUDE_SET = new Set<string>()
 
 /**
+ * 检查路径是否显式命中白名单（共享设置 syncExcludeWhitelist）
+ * Check if a path explicitly hits the whitelist (shared setting syncExcludeWhitelist)
+ * 返回 true 表示该路径已被用户主动加入白名单，应跳过所有后续排除规则
+ * Returns true if the path is explicitly in the whitelist and should bypass all exclude rules
+ */
+export const isInWhitelist = function (path: string, plugin: FastSync): boolean {
+  const { syncExcludeWhitelist } = plugin.settings
+  if (!syncExcludeWhitelist) return false
+  const normalizedPath = path.replace(/\\/g, "/")
+  const whitelist = parseRules(syncExcludeWhitelist)
+  return whitelist.some((rule) => isPathMatch(normalizedPath, rule.pattern, rule.caseSensitive))
+}
+
+/**
  * 检查配置文件路径是否被排除
  */
 export const configIsPathExcluded = function (relativePath: string, plugin: FastSync): boolean {
