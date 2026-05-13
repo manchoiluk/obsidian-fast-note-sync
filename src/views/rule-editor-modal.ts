@@ -15,7 +15,7 @@ export class RuleEditorModal extends Modal {
     addButtonText?: string,
     inputPlaceholder?: string,
     usePathSuggest: boolean = false,
-    pathSuggestOptions: any = {}
+    pathSuggestOptions: unknown = {}
   ) {
     super(app);
     this.titleEl.setText(title);
@@ -40,8 +40,8 @@ export class RuleEditorModal extends Modal {
     this.editor.render();
 
     // 延迟处理以抵消 Obsidian Modal 默认的自动聚焦行为
-    setTimeout(() => {
-      const activeEl = document.activeElement;
+    window.setTimeout(() => {
+      const activeEl = activeDocument.activeElement;
       if ((activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) && this.contentEl.contains(activeEl)) {
         (activeEl as HTMLElement).blur();
       }

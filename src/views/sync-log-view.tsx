@@ -59,8 +59,8 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     const [logs, setLogs] = React.useState<SyncLog[]>([]);
     const [isConnected, setIsConnected] = React.useState<boolean>(plugin.websocket.isConnected());
     const [hasUpgrade, setHasUpgrade] = React.useState<boolean>(
-        plugin.localStorageManager.getMetadata("pluginVersionIsNew") ||
-        plugin.localStorageManager.getMetadata("serverVersionIsNew")
+        !!(plugin.localStorageManager.getMetadata("pluginVersionIsNew") ||
+        plugin.localStorageManager.getMetadata("serverVersionIsNew"))
     );
     const [showUpgradeBadge, setShowUpgradeBadge] = React.useState<boolean>(plugin.settings.showUpgradeBadge);
 
@@ -75,20 +75,20 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         const handleSettingsChange = () => {
             setShowUpgradeBadge(plugin.settings.showUpgradeBadge);
         };
-        (plugin.app.workspace as any).on('fns:settings-change', handleSettingsChange);
+        (plugin.app.workspace as unknown as { on: (name: string, cb: () => void) => void }).on('fns:settings-change', handleSettingsChange);
         return () => {
-            (plugin.app.workspace as any).off('fns:settings-change', handleSettingsChange);
+            (plugin.app.workspace as unknown as { off: (name: string, cb: () => void) => void }).off('fns:settings-change', handleSettingsChange);
         };
     }, [plugin]);
 
     const scrollRef = React.useRef<HTMLDivElement>(null);
-    const throttleTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const throttleTimerRef = React.useRef<any>(null);
     const pendingLogsRef = React.useRef<SyncLog[] | null>(null);
 
     React.useEffect(() => {
         const checkUpgrade = () => {
-            const hasNew = plugin.localStorageManager.getMetadata("pluginVersionIsNew") ||
-                plugin.localStorageManager.getMetadata("serverVersionIsNew");
+            const hasNew = !!(plugin.localStorageManager.getMetadata("pluginVersionIsNew") ||
+                plugin.localStorageManager.getMetadata("serverVersionIsNew"));
             setHasUpgrade(hasNew);
         };
         checkUpgrade();
@@ -104,7 +104,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
             pendingLogsRef.current = newLogs;
 
             if (!throttleTimerRef.current) {
-                throttleTimerRef.current = setTimeout(() => {
+                throttleTimerRef.current = window.setTimeout(() => {
                     if (pendingLogsRef.current) {
                         setLogs(pendingLogsRef.current);
                         pendingLogsRef.current = null;
@@ -192,14 +192,14 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         const menu = new Menu();
 
         // 类别筛选子菜单
-        menu.addItem((item: any) => {
+        menu.addItem((item: { setTitle: (t: string) => any, setIcon: (i: string) => any, setSection: (s: string) => any, setSubmenu: () => any }) => {
             item.setTitle($("ui.log.filter_category"))
                 .setIcon("layers")
                 .setSection("category");
             
             const subMenu = item.setSubmenu();
             categories.forEach(cat => {
-                subMenu.addItem((subItem: any) => {
+                subMenu.addItem((subItem: { setTitle: (t: string) => any, setChecked: (c: boolean) => any, onClick: (cb: () => void) => any, setIcon: (i: string) => any }) => {
                     subItem.setTitle(cat.label)
                         .setChecked(categoryFilter === cat.id)
                         .onClick(() => setCategoryFilter(cat.id));
@@ -212,14 +212,14 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         });
 
         // 类型筛选子菜单
-        menu.addItem((item: any) => {
+        menu.addItem((item: { setTitle: (t: string) => any, setIcon: (i: string) => any, setSection: (s: string) => any, setSubmenu: () => any }) => {
             item.setTitle($("ui.log.filter_type"))
                 .setIcon("arrow-up-down")
                 .setSection("type");
             
             const subMenu = item.setSubmenu();
             types.forEach(t => {
-                subMenu.addItem((subItem: any) => {
+                subMenu.addItem((subItem: { setTitle: (t: string) => any, setChecked: (c: boolean) => any, onClick: (cb: () => void) => any, setIcon: (i: string) => any }) => {
                     subItem.setTitle(t.label)
                         .setChecked(typeFilter === t.id)
                         .onClick(() => setTypeFilter(t.id));
@@ -232,7 +232,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         });
 
         menu.addSeparator();
-        menu.addItem((item: any) => {
+        menu.addItem((item: { setTitle: (t: string) => any, setIcon: (i: string) => any, onClick: (cb: () => void) => any }) => {
             item.setTitle($("ui.button.reset"))
                 .setIcon("rotate-ccw")
                 .onClick(() => {
@@ -265,9 +265,9 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         onClick={() => {
-                            (plugin.app as any).setting.open();
-                            (plugin.app as any).setting.openTabById(plugin.manifest.id);
-                        }}
+                        (plugin.app as unknown as { setting: { open: () => void, openTabById: (id: string) => void } }).setting.open();
+                        (plugin.app as unknown as { setting: { open: () => void, openTabById: (id: string) => void } }).setting.openTabById(plugin.manifest.id);
+                    }}
                         className="fns-sync-log-clear-btn clickable-icon"
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
                         title={$("ui.menu.settings")}

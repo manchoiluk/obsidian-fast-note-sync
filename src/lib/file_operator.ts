@@ -354,7 +354,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       // Resume upload: read checkpoint from localStorage for the last interrupted upload
       let startChunkIndex = 0
       try {
-        const cpRaw = localStorage.getItem(checkpointKey)
+        const cpRaw = plugin.app.loadLocalStorage(checkpointKey)
         if (cpRaw) {
           const cp = JSON.parse(cpRaw)
           if (cp.sessionId === data.sessionId &&
@@ -429,7 +429,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
             // Update resume checkpoint after successful send (not the last chunk)
             if (!isLastChunk) {
               try {
-                localStorage.setItem(checkpointKey, JSON.stringify({
+                plugin.app.saveLocalStorage(checkpointKey, JSON.stringify({
                   sessionId: data.sessionId,
                   lastChunkIndex: i,
                   contentHash: contentHash,
@@ -456,7 +456,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
         if (cancelled) {
           // 取消时清除 checkpoint，避免使用已失效的会话
           // Clear checkpoint on cancel to avoid stale session reuse
-          try { localStorage.removeItem(checkpointKey) } catch (e) { /* ignore */ }
+          try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
           plugin.concurrencyManager.releaseSlot(data.path)
           return;
         }
@@ -479,10 +479,10 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
           return;
         }
 
-        setTimeout(async () => {
+        window.setTimeout(async () => {
           try {
             const apiService = new HttpApiService(plugin);
-            const res = await apiService.getFileInfo(file.path);
+            const res = await apiService.getFileInfo(file.path) as any;
 
             if (res && res.status && res.data) {
               const serverInfo = res.data;
@@ -511,7 +511,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       dump(`Upload process error for ${data.path}`, e);
       // 异常退出时清除 checkpoint，避免下次用无效的 sessionId 继续
       // Clear checkpoint on exception to avoid resuming with an invalid session
-      try { localStorage.removeItem(checkpointKey) } catch (e2) { /* ignore */ }
+      try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
       plugin.concurrencyManager.releaseSlot(data.path);
     } finally {
       // 任务结束（完成或取消/失败），移除活跃标记
@@ -654,7 +654,7 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
         }
       } finally {
         // 延时 500ms 清理
-        setTimeout(() => {
+        window.setTimeout(() => {
           plugin.removeIgnoredFile(normalizedPath)
           plugin.lastSyncPathDeleted.delete(normalizedPath)
         }, 500);
@@ -716,7 +716,7 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
           plugin.localStorageManager.setMetadata("lastFileSyncTime", data.lastTime)
         }
       } finally {
-        setTimeout(() => {
+        window.setTimeout(() => {
           plugin.removeIgnoredFile(normalizedPath)
         }, 500);
       }
@@ -818,7 +818,7 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
 /**
  * 接收文件同步结束通知
  */
-export const receiveFileSyncEnd = async function (data: any, plugin: FastSync) {
+export const receiveFileSyncEnd = async function (data: unknown, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   dump(`Receive file sync end:`, data)
 
@@ -855,7 +855,7 @@ export const checkAndUploadAttachments = async function (plugin: FastSync) {
 
     checkedCount++;
     try {
-      const res = await apiService.getFileInfo(file.path);
+      const res = await apiService.getFileInfo(file.path) as any;
 
       // 如果服务端返回状态为 false，或者没有数据，说明服务端不存在
       if (!res || !res.status || !res.data) {
@@ -929,7 +929,7 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
 /**
  * 接收服务端文件重命名通知
  */
-export const receiveFileSyncRename = async function (data: any, plugin: FastSync) {
+export const receiveFileSyncRename = async function (data: { oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string }, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
@@ -966,14 +966,14 @@ export const receiveFileSyncRename = async function (data: any, plugin: FastSync
               dump(`Skip renamed binary mtime rewrite for large attachment (${describeBinarySyncLimit()} limit): ${normalizedNewPath}`, renamedFile.stat.size)
             } else {
               const content = await plugin.app.vault.readBinary(renamedFile)
-              await plugin.app.vault.modifyBinary(renamedFile, content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
+              await plugin.app.vault.modifyBinary(renamedFile, content, { ...((data.ctime ?? 0) > 0 && { ctime: data.ctime }), ...((data.mtime ?? 0) > 0 && { mtime: data.mtime }) })
             }
           }
         }
 
         plugin.fileHashManager.removeFileHash(data.oldPath)
         const renamedFile = plugin.app.vault.getFileByPath(normalizedNewPath)
-        plugin.fileHashManager.setFileHash(data.path, data.contentHash, renamedFile instanceof TFile ? renamedFile.stat.mtime : 0, renamedFile instanceof TFile ? renamedFile.stat.size : 0)
+        plugin.fileHashManager.setFileHash(data.path, data.contentHash || "", renamedFile instanceof TFile ? renamedFile.stat.mtime : 0, renamedFile instanceof TFile ? renamedFile.stat.size : 0)
 
         // 更新同步时间
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFileSyncTime"))) {
@@ -1093,7 +1093,7 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
           await plugin.app.vault.createBinary(normalizedPath, completeFile.buffer, { ...(session.ctime > 0 && { ctime: session.ctime }), ...(session.mtime > 0 && { mtime: session.mtime }) })
         }
       } finally {
-        setTimeout(() => {
+        window.setTimeout(() => {
           plugin.removeIgnoredFile(normalizedPath)
         }, 500);
       }
@@ -1174,7 +1174,7 @@ export const receiveFileUploadAck = function (data: { lastTime?: number; path?: 
   // Upload complete, clear resume checkpoint
   if (data.pathHash) {
     const vaultName = plugin.app.vault.getName()
-    try { localStorage.removeItem(`fns-${vaultName}-uploadSession-${data.pathHash}`) } catch (e) { /* ignore */ }
+    try { plugin.app.saveLocalStorage(`fns-${vaultName}-uploadSession-${data.pathHash}`, null) } catch { /* ignore */ }
   }
   if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFileSyncTime"))) {
     plugin.localStorageManager.setMetadata("lastFileSyncTime", data.lastTime)

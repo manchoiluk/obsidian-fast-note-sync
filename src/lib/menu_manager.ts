@@ -372,20 +372,20 @@ export class MenuManager {
   refreshUpgradeBadge() {
     // 1. 实时校验插件版本，如果已手动更新则清除红点标记 (Validate plugin version; clear badge if manually updated)
     const pluginCurrent = this.plugin.manifest.version;
-    const pluginLatest = this.plugin.localStorageManager.getMetadata("pluginVersionNewName");
+    const pluginLatest = this.plugin.localStorageManager.getMetadata("pluginVersionNewName") as string;
     if (pluginLatest && !isVersionNew(pluginCurrent, pluginLatest)) {
       this.plugin.localStorageManager.setMetadata("pluginVersionIsNew", false);
     }
 
     // 2. 实时校验服务端版本，如果缓存的版本已达到最新则清除红点标记 (Validate server version; clear badge if cached version matches latest)
-    const serverCurrent = this.plugin.localStorageManager.getMetadata("serverVersion");
-    const serverLatest = this.plugin.localStorageManager.getMetadata("serverVersionNewName");
+    const serverCurrent = this.plugin.localStorageManager.getMetadata("serverVersion") as string;
+    const serverLatest = this.plugin.localStorageManager.getMetadata("serverVersionNewName") as string;
     if (serverCurrent && serverLatest && !isVersionNew(serverCurrent, serverLatest)) {
       this.plugin.localStorageManager.setMetadata("serverVersionIsNew", false);
     }
 
-    const pluginNew = this.plugin.localStorageManager.getMetadata("pluginVersionIsNew");
-    const serverNew = this.plugin.localStorageManager.getMetadata("serverVersionIsNew");
+    const pluginNew = !!this.plugin.localStorageManager.getMetadata("pluginVersionIsNew");
+    const serverNew = !!this.plugin.localStorageManager.getMetadata("serverVersionIsNew");
     const hasNew = (pluginNew || serverNew);
 
     const show = hasNew ? "block" : "none";

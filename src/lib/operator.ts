@@ -13,7 +13,7 @@ import { $ } from "../i18n/lang";
 
 
 export const startupSync = (plugin: FastSync): void => {
-  void handleSync(plugin, plugin.localStorageManager.getMetadata("isInitSync"));
+  void handleSync(plugin, plugin.localStorageManager.getMetadata("isInitSync") as boolean);
 };
 export const startupFullSync = async (plugin: FastSync) => {
   void handleSync(plugin, false);
@@ -44,7 +44,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: ReturnType<ty
   // Safety timeout: if sync exceeds 60s, force completion and re-enable watch to prevent permanent send blockage
   const SYNC_TIMEOUT_MS = 60000;
   if (syncStartTime && Date.now() - syncStartTime > SYNC_TIMEOUT_MS) {
-    if (intervalId) clearInterval(intervalId);
+    if (intervalId) window.clearInterval(intervalId);
     dump(`Sync completion timeout after ${SYNC_TIMEOUT_MS}ms, force enabling watch. Tasks: note=${JSON.stringify(plugin.noteSyncTasks)}, file=${JSON.stringify(plugin.fileSyncTasks)}, folder=${JSON.stringify(plugin.folderSyncTasks)}, config=${JSON.stringify(plugin.configSyncTasks)}`)
     plugin.enableWatch();
     plugin.syncTypeCompleteCount = 0;
@@ -56,7 +56,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: ReturnType<ty
     plugin.totalChunksToUpload = 0;
     plugin.uploadedChunksCount = 0;
     plugin.updateStatusBar($("ui.status.completed"));
-    setTimeout(() => plugin.updateStatusBar(""), 3000);
+    window.setTimeout(() => plugin.updateStatusBar(""), 3000);
     return;
   }
 
@@ -137,7 +137,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: ReturnType<ty
   const isProgressComplete = overallPercentage >= 100 && bufferCleared && allDownloadsComplete && !plugin.isSyncRequesting;
 
   if (((allSyncDone && allChunksCompleted && allDownloadsComplete && bufferCleared) || isProgressComplete) && !plugin.isSyncRequesting) {
-    if (intervalId) clearInterval(intervalId);
+    if (intervalId) window.clearInterval(intervalId);
 
     plugin.enableWatch();
     plugin.syncTypeCompleteCount = 0;
@@ -167,7 +167,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: ReturnType<ty
     // Refresh share indicator state after sync completion
     plugin.shareIndicatorManager?.syncWithServer();
 
-    setTimeout(() => plugin.updateStatusBar(""), 3000);
+    window.setTimeout(() => plugin.updateStatusBar(""), 3000);
   } else {
     // --- 强制完成逻辑与 90% 补偿 ---
     const allEndReceived = (!plugin.settings.syncEnabled || (plugin.noteSyncEnd && plugin.folderSyncEnd && (plugin.settings.cloudPreviewEnabled || plugin.fileSyncEnd))) &&
@@ -201,47 +201,47 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: ReturnType<ty
  * 消息接收调度
  */
 
-type ReceiveOperator = (data: any, plugin: FastSync) => void | Promise<void>;
+type ReceiveOperator = (data: unknown, plugin: FastSync) => void | Promise<void>;
 export const receiveOperators: Map<string, ReceiveOperator> = new Map([
-  ["NoteSyncModify", receiveNoteSyncModify],
-  ["NoteSyncNeedPush", receiveNoteUpload],
-  ["NoteSyncMtime", receiveNoteSyncMtime],
-  ["NoteSyncDelete", receiveNoteSyncDelete],
-  ["NoteSyncRename", receiveNoteSyncRename],
-  ["NoteModifyAck", (data, plugin) => receiveNoteModifyAck(data, plugin)],
-  ["NoteRenameAck", (data, plugin) => receiveNoteRenameAck(data, plugin)],
-  ["NoteDeleteAck", (data, plugin) => receiveNoteDeleteAck(data, plugin)],
+  ["NoteSyncModify", receiveNoteSyncModify as ReceiveOperator],
+  ["NoteSyncNeedPush", receiveNoteUpload as ReceiveOperator],
+  ["NoteSyncMtime", receiveNoteSyncMtime as ReceiveOperator],
+  ["NoteSyncDelete", receiveNoteSyncDelete as ReceiveOperator],
+  ["NoteSyncRename", receiveNoteSyncRename as ReceiveOperator],
+  ["NoteModifyAck", (data, plugin) => receiveNoteModifyAck(data as any, plugin)],
+  ["NoteRenameAck", (data, plugin) => receiveNoteRenameAck(data as any, plugin)],
+  ["NoteDeleteAck", (data, plugin) => receiveNoteDeleteAck(data as any, plugin)],
   ["NoteSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "note")],
-  ["FileUpload", receiveFileUpload],
-  ["FileSyncUpdate", receiveFileSyncUpdate],
-  ["FileSyncChunkDownload", receiveFileSyncChunkDownload],
-  ["FileSyncDelete", receiveFileSyncDelete],
-  ["FileSyncRename", receiveFileSyncRename],
-  ["FileSyncMtime", receiveFileSyncMtime],
+  ["FileUpload", receiveFileUpload as ReceiveOperator],
+  ["FileSyncUpdate", receiveFileSyncUpdate as ReceiveOperator],
+  ["FileSyncChunkDownload", receiveFileSyncChunkDownload as ReceiveOperator],
+  ["FileSyncDelete", receiveFileSyncDelete as ReceiveOperator],
+  ["FileSyncRename", receiveFileSyncRename as ReceiveOperator],
+  ["FileSyncMtime", receiveFileSyncMtime as ReceiveOperator],
   ["FileSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "file")],
-  ["FileRenameAck", receiveFileRenameAck],
-  ["FileUploadAck", receiveFileUploadAck],
-  ["FileDeleteAck", (data, plugin) => receiveFileDeleteAck(data, plugin)],
-  ["SettingSyncModify", receiveConfigSyncModify],
-  ["SettingSyncNeedUpload", receiveConfigUpload],
-  ["SettingSyncMtime", receiveConfigSyncMtime],
-  ["SettingSyncDelete", receiveConfigSyncDelete],
+  ["FileRenameAck", receiveFileRenameAck as ReceiveOperator],
+  ["FileUploadAck", receiveFileUploadAck as ReceiveOperator],
+  ["FileDeleteAck", (data, plugin) => receiveFileDeleteAck(data as any, plugin)],
+  ["SettingSyncModify", receiveConfigSyncModify as ReceiveOperator],
+  ["SettingSyncNeedUpload", receiveConfigUpload as ReceiveOperator],
+  ["SettingSyncMtime", receiveConfigSyncMtime as ReceiveOperator],
+  ["SettingSyncDelete", receiveConfigSyncDelete as ReceiveOperator],
   ["SettingSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "config")],
-  ["SettingSyncClear", receiveConfigSyncClear],
-  ["SettingModifyAck", receiveConfigModifyAck],
-  ["SettingDeleteAck", receiveConfigDeleteAck],
-  ["FolderSyncModify", receiveFolderSyncModify],
-  ["FolderSyncDelete", receiveFolderSyncDelete],
-  ["FolderSyncRename", receiveFolderSyncRename],
+  ["SettingSyncClear", receiveConfigSyncClear as ReceiveOperator],
+  ["SettingModifyAck", receiveConfigModifyAck as ReceiveOperator],
+  ["SettingDeleteAck", receiveConfigDeleteAck as ReceiveOperator],
+  ["FolderSyncModify", receiveFolderSyncModify as ReceiveOperator],
+  ["FolderSyncDelete", receiveFolderSyncDelete as ReceiveOperator],
+  ["FolderSyncRename", receiveFolderSyncRename as ReceiveOperator],
   ["FolderSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "folder")],
-  ["ShareSyncRefresh", receiveShareSyncRefresh],
+  ["ShareSyncRefresh", receiveShareSyncRefresh as ReceiveOperator],
 ]);
 
 /**
  * 收到分享状态变更通知，全量刷新分享路径
  * Received share state change notification, full refresh share paths
  */
-function receiveShareSyncRefresh(_data: any, plugin: FastSync): void {
+function receiveShareSyncRefresh(_data: unknown, plugin: FastSync): void {
   dump("Receive ShareSyncRefresh, triggering share indicator sync");
   plugin.shareIndicatorManager?.syncWithServer();
 }
@@ -249,7 +249,7 @@ function receiveShareSyncRefresh(_data: any, plugin: FastSync): void {
 /**
  * 统一处理 SyncEnd 消息的装饰器
  */
-async function receiveSyncEndWrapper(data: any, plugin: FastSync, type: "note" | "file" | "config" | "folder") {
+async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "note" | "file" | "config" | "folder") {
   const syncData = data as SyncEndData;
   dump(`Receive ${type} sync end (wrapper):`, syncData.context, syncData);
 
@@ -312,7 +312,7 @@ async function receiveSyncEndWrapper(data: any, plugin: FastSync, type: "note" |
 /**
  * 统一分发子任务消息
  */
-async function processSyncMessages(messages: any[], plugin: FastSync) {
+async function processSyncMessages(messages: { action: string, data: unknown }[], plugin: FastSync) {
   for (const msg of messages) {
     const handler = receiveOperators.get(msg.action);
     if (handler) {
@@ -743,8 +743,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
   // 启动进度检测循环,每 100ms 检测一次(更频繁以获得更平滑的进度更新)
   // 同时记录开始时间，用于超时保底
   const syncStartTime = Date.now();
-  const progressCheckInterval = setInterval(() => {
-    checkSyncCompletion(plugin, progressCheckInterval, syncStartTime);
+  const progressCheckInterval = window.setInterval(() => {
+    checkSyncCompletion(plugin, progressCheckInterval as any, syncStartTime);
   }, 100);
   } finally {
     // 确保 isSyncing 在所有退出路径（正常完成、early return、异常）下都被重置
@@ -807,8 +807,8 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
     // Step 2: Wait for folderSyncDone (FolderSyncEnd received and all folder tasks completed)
     // Fallback timeout: continue after 10s regardless, to avoid hanging on network errors
     await new Promise<void>((resolve) => {
-      const timeout = setTimeout(resolve, 10000)
-      const checkInterval = setInterval(() => {
+      const timeout = window.setTimeout(resolve, 10000)
+      const checkInterval = window.setInterval(() => {
         if (!plugin.websocket?.isAuth) {
           clearInterval(checkInterval)
           clearTimeout(timeout)

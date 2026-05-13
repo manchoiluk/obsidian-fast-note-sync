@@ -106,7 +106,7 @@ export const folderRename = async function (folder: TFolder, oldPath: string, pl
 /**
  * 接收服务端文件夹修改通知
  */
-export const receiveFolderSyncModify = async function (data: any, plugin: FastSync) {
+export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isPathExcluded(data.path, plugin)) {
         plugin.folderSyncTasks.completed++
@@ -132,7 +132,7 @@ export const receiveFolderSyncModify = async function (data: any, plugin: FastSy
                 }
                 plugin.folderSnapshotManager.setFolderMtime(normalizedPath, data.mtime || Date.now())
             } finally {
-                setTimeout(() => {
+                window.setTimeout(() => {
                     plugin.removeIgnoredFile(normalizedPath)
                 }, 500);
             }
@@ -152,7 +152,7 @@ export const receiveFolderSyncModify = async function (data: any, plugin: FastSy
 /**
  * 接收服务端文件夹删除通知
  */
-export const receiveFolderSyncDelete = async function (data: any, plugin: FastSync) {
+export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isPathExcluded(data.path, plugin)) {
         plugin.folderSyncTasks.completed++
@@ -175,7 +175,7 @@ export const receiveFolderSyncDelete = async function (data: any, plugin: FastSy
                     await plugin.app.vault.delete(folder, true)
                     plugin.folderSnapshotManager.removeFolder(normalizedPath)
                 } finally {
-                    setTimeout(() => {
+                    window.setTimeout(() => {
                         plugin.removeIgnoredFile(normalizedPath)
                         plugin.lastSyncPathDeleted.delete(normalizedPath)
                     }, 500);
@@ -229,7 +229,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
                     plugin.folderSnapshotManager.removeFolder(normalizedOldPath)
                     plugin.folderSnapshotManager.setFolderMtime(normalizedNewPath, data.mtime || Date.now())
                 } finally {
-                    setTimeout(() => {
+                    window.setTimeout(() => {
                         plugin.removeIgnoredFile(normalizedNewPath)
                         plugin.removeIgnoredFile(normalizedOldPath)
                         plugin.lastSyncPathRenamed.delete(normalizedNewPath)
@@ -262,7 +262,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
 /**
  * 接收文件夹同步结束通知
  */
-export const receiveFolderSyncEnd = async function (data: any, plugin: FastSync) {
+export const receiveFolderSyncEnd = async function (data: unknown, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     dump(`Receive folder end:`, data)
 

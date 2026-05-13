@@ -367,5 +367,6 @@
   "setting.general.mobile_toast_top_desc": "db35fd47a41f91e6fbcc572280a6fa47",
   "setting.general.mobile_toast_top_test": "db06c78d1e24cf708a14ce81c9b617ec",
   "setting.sync.binary_limit": "e1bf4d02a4e8921e17e1977c61af29b2",
-  "setting.sync.binary_limit_desc": "e39f7fd7aa4120b6bec6abbeb699eaa8"
+  "setting.sync.binary_limit_desc": "e39f7fd7aa4120b6bec6abbeb699eaa8",
+  "ui.share.not_shared_yet": "bc4c2a86d927d333f7715696ab931393"
 }

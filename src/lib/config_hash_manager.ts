@@ -127,7 +127,7 @@ export class ConfigHashManager {
             this.saveToStorage();
 
             notice.setMessage(`配置哈希映射初始化完成! 共处理 ${totalConfigs} 个配置`);
-            setTimeout(() => notice.hide(), 3000);
+            window.setTimeout(() => notice.hide(), 3000);
 
             dump(`ConfigHashManager: 构建完成,共 ${totalConfigs} 个配置`);
         } catch (error) {
@@ -205,7 +205,7 @@ export class ConfigHashManager {
      */
     private loadFromStorage(): boolean {
         try {
-            let data = localStorage.getItem(this.storageKey);
+            let data = this.plugin.app.loadLocalStorage(this.storageKey);
 
             // 迁移逻辑：如果新键无数据，尝试读取旧键
             if (!data) {
@@ -213,23 +213,23 @@ export class ConfigHashManager {
 
                 // 1. 尝试上一个格式: fast-note-sync-[Vault]-configHashMap
                 const prevKey1 = `fast-note-sync-${vaultName}-configHashMap`;
-                data = localStorage.getItem(prevKey1);
+                data = this.plugin.app.loadLocalStorage(prevKey1);
 
                 // 2. 尝试更早格式: fast-note-sync-[Vault]-config-hash-map
                 if (!data) {
                     const prevKey2 = `fast-note-sync-${vaultName}-config-hash-map`;
-                    data = localStorage.getItem(prevKey2);
+                    data = this.plugin.app.loadLocalStorage(prevKey2);
                 }
 
                 // 3. 尝试最原始格式: fast-note-sync-config-hash-map-[Vault]
                 if (!data) {
                     const oldKey = `fast-note-sync-config-hash-map-${vaultName}`;
-                    data = localStorage.getItem(oldKey);
+                    data = this.plugin.app.loadLocalStorage(oldKey);
                 }
 
                 if (data) {
                     dump("ConfigHashManager: 发现旧版配置哈希数据，执行迁移");
-                    localStorage.setItem(this.storageKey, data);
+                    this.plugin.app.saveLocalStorage(this.storageKey, data);
                 } else {
                     return false;
                 }
@@ -265,7 +265,7 @@ export class ConfigHashManager {
         try {
             const obj = Object.fromEntries(this.hashMap);
             const data = JSON.stringify(obj);
-            localStorage.setItem(this.storageKey, data);
+            this.plugin.app.saveLocalStorage(this.storageKey, data);
         } catch (error) {
             dump("ConfigHashManager: 保存到 localStorage 失败", error);
             showSyncNotice(`保存配置哈希映射失败: ${error.message}`);

@@ -27,7 +27,7 @@ class SimpleEventBus {
     });
   }
 
-  dispatch(eventName: string, data?: any) {
+  dispatch(eventName: string, data?: unknown) {
     if (!this.listeners[eventName]) return;
     this.listeners[eventName].forEach(listener => listener(data));
   }
@@ -42,6 +42,11 @@ class SimpleEventBus {
  * 嵌入元素预览处理器
  * 处理本地不存在但云端存在的附件预览
  */
+interface PDFDocumentProxy {
+  numPages: number;
+  getPage(pageNumber: number): Promise<any>;
+}
+
 export class FileCloudPreview {
   public static IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".wximage"];
   public static VIDEO_EXTS = [".mp4", ".webm", ".ogg", ".mov", ".avi"];
@@ -356,7 +361,7 @@ export class FileCloudPreview {
 
     // --- 3. Viewer Logic (PDF.js) ---
     // State
-    let pdfDoc: any = null;
+    let pdfDoc: PDFDocumentProxy | null = null;
     let currentScale = 1.0;
     let isRendering = false;
 
@@ -417,7 +422,7 @@ export class FileCloudPreview {
       }
     });
 
-    eventBus.on("pagechange", (data: any) => {
+    eventBus.on("pagechange", (data: { pageNumber: number }) => {
       const pageNum = data.pageNumber;
       if (pageNum >= 1 && pageNum <= (pdfDoc?.numPages || 1)) {
         const targetPage = viewerEl.querySelector(`.pdf-page-wrapper[data-page-number="${pageNum}"]`);
@@ -465,10 +470,10 @@ export class FileCloudPreview {
         pdfDoc = await loadingTask.promise;
 
         loadingText.remove();
-        pageCountEl.setText(` / ${pdfDoc.numPages}`);
-        pageInput.max = pdfDoc.numPages;
+        pageCountEl.setText(` / ${pdfDoc!.numPages}`);
+        pageInput.max = pdfDoc!.numPages.toString();
 
-        const firstPage = await pdfDoc.getPage(1);
+        const firstPage = await pdfDoc!.getPage(1);
         const viewport = firstPage.getViewport({ scale: 1 });
 
         const containerWidth = viewerContainer.clientWidth - 40; // padding
@@ -481,18 +486,18 @@ export class FileCloudPreview {
         eventBus.on("sidebarviewchanged", async () => {
           if (!sidebarContainer.hasClass("fns-hidden") && thumbnailViewEl.children.length === 0) {
             // Render thumbnails
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-              const page = await pdfDoc.getPage(i);
-              const viewport = page.getViewport({ scale: 0.2 });
+            for (let i = 1; i <= pdfDoc!.numPages; i++) {
+              const page = await pdfDoc!.getPage(i);
+              const thumbViewport = page.getViewport({ scale: 0.2 });
 
               const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail fns-pdf-thumbnail");
               thumbContainer.onclick = () => eventBus.dispatch("pagechange", { pageNumber: i });
 
               const canvas = thumbContainer.createEl("canvas");
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
+              canvas.height = thumbViewport.height;
+              canvas.width = thumbViewport.width;
 
-              await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+              await page.render({ canvasContext: canvas.getContext("2d"), viewport: thumbViewport }).promise;
             }
           }
         });
@@ -627,4 +632,3 @@ export class FileCloudPreview {
     return lastDot === -1 ? "" : filePath.substring(lastDot).toLowerCase();
   }
 }
-

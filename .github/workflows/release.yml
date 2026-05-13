@@ -143,6 +143,7 @@ jobs:
             main.js
             manifest.json
             styles.css
+            changelog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -210,7 +211,7 @@ jobs:
           echo "::endgroup::"
 
           # 准备上传列表
-          FILES=("${ZIP_FILE}" "main.js" "manifest.json" "styles.css")
+          FILES=("${ZIP_FILE}" "main.js" "manifest.json" "styles.css" "changelog.txt")
 
           for FILE_NAME in "${FILES[@]}"; do
             (
@@ -276,5 +277,4 @@ jobs:
           done
           wait
           echo "🎉 All assets uploaded to CNB Release!"
-
 

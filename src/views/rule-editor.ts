@@ -15,8 +15,8 @@ export class RuleEditor {
   private inputPlaceholder: string;
   private component: Component;
   private usePathSuggest: boolean;
-  private pathSuggestOptions: any;
-  private saveTimer: any = null;
+  private pathSuggestOptions: unknown;
+  private saveTimer: number | null = null;
   private lastSavedJson: string = "";
 
   constructor(
@@ -30,7 +30,7 @@ export class RuleEditor {
     addButtonText?: string,
     inputPlaceholder?: string,
     usePathSuggest: boolean = false,
-    pathSuggestOptions: any = {}
+    pathSuggestOptions: unknown = {}
   ) {
     this.containerEl = containerEl;
     this.app = app;
@@ -107,7 +107,7 @@ export class RuleEditor {
         inputEl.addEventListener("focus", () => {
           updateHeight(inputEl, true);
           if (Platform.isMobile) {
-            setTimeout(() => {
+            window.setTimeout(() => {
               inputEl.scrollIntoView({ behavior: "smooth", block: "center" });
             }, 300);
           }
@@ -122,7 +122,7 @@ export class RuleEditor {
         inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
           if (e.key === "Enter") {
             // 如果建议菜单没打开，才执行失去焦点逻辑 / Only execute blur logic if the suggestion menu is not open
-            const suggestContainer = document.querySelector(".suggestion-container");
+            const suggestContainer = activeDocument.querySelector(".suggestion-container");
             const isSuggestVisible = suggestContainer && (suggestContainer as HTMLElement).style.display !== "none";
             
             if (!isSuggestVisible) {
@@ -133,14 +133,14 @@ export class RuleEditor {
         });
 
         // 初始高度调整 / Initial height adjustment
-        setTimeout(() => updateHeight(inputEl, false), 50);
+        window.setTimeout(() => updateHeight(inputEl, false), 50);
 
         if (this.usePathSuggest) {
           new PathSuggest(this.app, inputEl, (val) => {
             this.rules[index].pattern = val;
             updateHeight(inputEl, true);
             this.save(true); // 补全选择后立即保存比较好 / Better to save immediately after completion selection
-          }, this.pathSuggestOptions);
+          }, this.pathSuggestOptions as any);
         }
 
         // 大小写敏感开关 (Aa) / Case sensitive toggle (Aa)
@@ -184,7 +184,7 @@ export class RuleEditor {
 
     // 确保打开时不自动聚焦输入框，防止移动端键盘弹出 / Ensure no auto-focus on opening to prevent mobile keyboard from popping up
     const preventAutoFocus = () => {
-      const activeEl = document.activeElement;
+      const activeEl = activeDocument.activeElement;
       if ((activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement) && containerEl.contains(activeEl)) {
         (activeEl as HTMLElement).blur();
       }
@@ -192,8 +192,8 @@ export class RuleEditor {
     
     preventAutoFocus();
     // 延迟执行一次，捕获某些组件初始化后的自动聚焦行为 / Execute once with delay to catch auto-focus behavior after some components initialize
-    setTimeout(preventAutoFocus, 50);
-    setTimeout(preventAutoFocus, 150);
+    window.setTimeout(preventAutoFocus, 50);
+    window.setTimeout(preventAutoFocus, 150);
   }
 
   private save(immediate: boolean = false) {
@@ -206,7 +206,7 @@ export class RuleEditor {
     }
 
     if (this.saveTimer) {
-      clearTimeout(this.saveTimer);
+      window.clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
 
@@ -219,7 +219,7 @@ export class RuleEditor {
     if (immediate) {
       performSave();
     } else {
-      this.saveTimer = setTimeout(performSave, 2000); // 延时 2s 保存
+      this.saveTimer = window.setTimeout(performSave, 2000); // 延时 2s 保存
     }
   }
   

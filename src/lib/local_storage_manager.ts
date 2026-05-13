@@ -1,5 +1,5 @@
-import { configModify } from "./config_operator";
 import { hashContent, dump, SyncRule } from "./helps";
+import { configModify } from "./config_operator";
 import type FastSync from "../main";
 
 
@@ -21,14 +21,12 @@ export class LocalStorageManager {
      * 底层读原子操作
      */
     private read(key: string): string | null {
-        return localStorage.getItem(key);
+        return this.plugin.app.loadLocalStorage(key);
     }
+    
 
-    /**
-     * 底层写原子操作
-     */
-    private write(key: string, value: string): void {
-        localStorage.setItem(key, value);
+    private write(key: string, value: string | null): void {
+        this.plugin.app.saveLocalStorage(key, value);
     }
 
     private getInternalKey(field: string): string {
@@ -37,7 +35,7 @@ export class LocalStorageManager {
         return `fns-${vaultName}-${field}`;
     }
 
-    getMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken'): any {
+    getMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken'): unknown {
         const newKey = this.getInternalKey(field);
         let value = this.read(newKey);
 
@@ -72,7 +70,7 @@ export class LocalStorageManager {
     /**
      * 设置元数据项
      */
-    setMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken', value: any): void {
+    setMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken', value: unknown): void {
         this.write(this.getInternalKey(field), String(value));
     }
 
@@ -83,7 +81,7 @@ export class LocalStorageManager {
         const value = this.getMetadata('internalExcludes');
         if (!value) return [];
         try {
-            return JSON.parse(value);
+            return JSON.parse(value as string);
         } catch (e) {
             dump("[LocalStorageManager] Failed to parse internalExcludes:", e);
             return [];
@@ -133,7 +131,8 @@ export class LocalStorageManager {
      * Clear persisted pending data from localStorage
      */
     clearPending(field: 'pendingNoteModifies' | 'pendingUploadHashes' | 'pendingConfigModifies'): void {
-        localStorage.removeItem(this.getInternalKey(field));
+        const key = this.getInternalKey(field);
+        this.plugin.app.saveLocalStorage(key, null);
     }
 
     /**
@@ -179,7 +178,7 @@ export class LocalStorageManager {
                 this.checkChanges();
             }
         });
-        
+
         // 标记为已启动 (Reuse watchTimer as a boolean flag)
         this.watchTimer = 1;
     }
@@ -323,7 +322,7 @@ export class LocalStorageManager {
     /**
      * 获取所有同步项的虚拟配置信息
      */
-    async getStorageConfigs(): Promise<any[]> {
+    async getStorageConfigs(): Promise<{ path: string; pathHash: string; contentHash: string; mtime: number; ctime: number; size: number; isLocalStorage: boolean }[]> {
         const keys = this.getKeys();
         const configs = [];
 

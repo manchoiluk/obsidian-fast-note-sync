@@ -47,30 +47,30 @@ export class WebSocketClient {
 
     // Load count from local storage
     const storageKey = getWsCountStorageKey(this.plugin);
-    let storedCount = localStorage.getItem(storageKey);
+    let storedCount = this.plugin.app.loadLocalStorage(storageKey);
 
     // 迁移逻辑：如果新键无值，尝试按顺序读取旧键
     if (storedCount === null) {
       const vaultName = this.plugin.app.vault.getName();
       // 1. 尝试上一个格式: fast-note-sync-[Vault]-wsCount
       const prevKey1 = `fast-note-sync-${vaultName}-wsCount`;
-      let oldValue = localStorage.getItem(prevKey1);
+      let oldValue = this.plugin.app.loadLocalStorage(prevKey1);
 
       // 2. 尝试更早的格式: fast-note-sync-[Vault]-ws-count
       if (oldValue === null) {
         const prevKey2 = `fast-note-sync-${vaultName}-ws-count`;
-        oldValue = localStorage.getItem(prevKey2);
+        oldValue = this.plugin.app.loadLocalStorage(prevKey2);
       }
 
       // 3. 尝试最初始格式: fast-note-sync-ws-count
       if (oldValue === null) {
         const oldKey = "fast-note-sync-ws-count";
-        oldValue = localStorage.getItem(oldKey);
+        oldValue = this.plugin.app.loadLocalStorage(oldKey);
       }
 
       if (oldValue !== null) {
         storedCount = oldValue;
-        localStorage.setItem(storageKey, storedCount);
+        this.plugin.app.saveLocalStorage(storageKey, storedCount);
       }
     }
 
@@ -143,7 +143,7 @@ export class WebSocketClient {
       const wsUrl = addRandomParam(this.plugin.runWsApi + "/api/user/sync?lang=" + moment.locale() + "&count=" + this.count + "&client=" + client + "&clientName=" + clientName + "&clientVersion=" + clientVersion);
       this.ws = new WebSocket(wsUrl)
       this.count++
-      localStorage.setItem(getWsCountStorageKey(this.plugin), this.count.toString())
+      this.plugin.app.saveLocalStorage(getWsCountStorageKey(this.plugin), this.count.toString())
 
       this.ws.onerror = (error) => {
         dump("WebSocket error:", {
@@ -288,9 +288,9 @@ export class WebSocketClient {
           } else {
             if (data.data) {
               // 针对服务端版本 (For server version)
-              const serverCurrent = this.plugin.localStorageManager.getMetadata("serverVersion");
-              const serverLatest = data.data.versionNewName || data.data.version;
-              const serverIsNew = (data.data.versionIsNew ?? this.plugin.localStorageManager.getMetadata("serverVersionIsNew")) && isVersionNew(serverCurrent, serverLatest);
+              const serverCurrent = (this.plugin.localStorageManager.getMetadata("serverVersion") as string) || "";
+              const serverLatest = (data.data.versionNewName || data.data.version) as string;
+              const serverIsNew = (data.data.versionIsNew ?? this.plugin.localStorageManager.getMetadata("serverVersionIsNew") as boolean) && isVersionNew(serverCurrent, serverLatest);
               this.plugin.localStorageManager.setMetadata("serverVersionIsNew", serverIsNew)
 
               this.plugin.localStorageManager.setMetadata("serverVersionNewName", data.data.versionNewName ?? this.plugin.localStorageManager.getMetadata("serverVersionNewName"))
@@ -300,8 +300,8 @@ export class WebSocketClient {
 
               // 针对插件版本 (For plugin version)
               const pluginCurrent = this.plugin.manifest.version;
-              const pluginLatest = data.data.pluginVersionNewName;
-              const pluginIsNew = (data.data.pluginVersionIsNew ?? this.plugin.localStorageManager.getMetadata("pluginVersionIsNew")) && isVersionNew(pluginCurrent, pluginLatest);
+              const pluginLatest = data.data.pluginVersionNewName as string;
+              const pluginIsNew = (data.data.pluginVersionIsNew ?? this.plugin.localStorageManager.getMetadata("pluginVersionIsNew") as boolean) && isVersionNew(pluginCurrent, pluginLatest);
               this.plugin.localStorageManager.setMetadata("pluginVersionIsNew", pluginIsNew)
 
               this.plugin.localStorageManager.setMetadata("pluginVersionNewName", data.data.pluginVersionNewName ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewName"))
@@ -371,7 +371,7 @@ export class WebSocketClient {
     if (this.ws) {
       // Use helper to cleanly close and remove listeners
       this.cleanupWebSocket(this.ws);
-      this.ws = null as any; // Clear reference
+      this.ws = null as unknown as WebSocket; // Clear reference
     }
 
     clearUploadQueue()

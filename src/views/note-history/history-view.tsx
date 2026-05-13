@@ -7,6 +7,7 @@ import { LucideIcon } from "./lucide-icon";
 import type FastSync from "../../main";
 import { $ } from "../../i18n/lang";
 import { showSyncNotice } from "../../lib/helps";
+import { ConfirmModal } from "../confirm-modal";
 
 
 interface HistoryViewProps {
@@ -62,21 +63,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ plugin, filePath }) =>
     };
 
     const handleRestore = async (id: number) => {
-        const confirm = window.confirm($("ui.history.restore_confirm"));
-        if (!confirm) return;
-
-        try {
-            setLoading(true);
-            const success = await service.restoreNoteVersion(id);
-            if (success) {
-                showSyncNotice($("ui.history.restore_success"));
-                loadHistory(page);
+        new ConfirmModal(plugin.app, $("ui.history.restore"), $("ui.history.restore_confirm"), async () => {
+            try {
+                setLoading(true);
+                const success = await service.restoreNoteVersion(id);
+                if (success) {
+                    showSyncNotice($("ui.history.restore_success"));
+                    loadHistory(page);
+                }
+            } catch (e) {
+                console.error("handleRestore error:", e);
+            } finally {
+                setLoading(false);
             }
-        } catch (e) {
-            console.error("handleRestore error:", e);
-        } finally {
-            setLoading(false);
-        }
+        }).open();
     };
 
     const getClientIcon = (clientName: string) => {

@@ -40,6 +40,12 @@ export interface UserDTO {
     updatedAt: string;
 }
 
+export interface ApiResponse<T = any> {
+    code: number;
+    message?: string;
+    data: T;
+}
+
 /**
  * 统一的 HTTP API 服务类
  */
@@ -49,8 +55,9 @@ export class HttpApiService {
     /**
      * 判断响应是否成功 (code > 0 && code < 300)
      */
-    private isSuccess(json: any): boolean {
-        return json && json.code > 0 && json.code < 300;
+    private isSuccess(json: unknown): boolean {
+        const res = json as ApiResponse;
+        return !!(res && res.code > 0 && res.code < 300);
     }
 
     /**
@@ -109,6 +116,7 @@ export class HttpApiService {
             }
         } catch (e) {
             // 即使失败，也确保 runApi 有值（回退到探测的 base）
+            console.error("probeApiRedirect error:", e);
             this.plugin.updateRuntimeApi(base);
             return false;
         }
@@ -142,7 +150,8 @@ export class HttpApiService {
                 method: "GET"
             });
             // 根据用户提供的结构，isAdmin 位于 data 中
-            return status === 200 && json.data?.isAdmin === true;
+            const res = json as ApiResponse<{ isAdmin: boolean }>;
+            return status === 200 && res.data?.isAdmin === true;
         } catch (e) {
             console.error("checkAdmin error:", e);
             return false;
@@ -186,7 +195,7 @@ export class HttpApiService {
      * @param endpoint 接口相对路径（如 /api/notes，不包含主机名）
      * @param options 请求选项
      */
-    private async request(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string }): Promise<{ status: number, json: any, finalUrl: string }> {
+    private async request(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string }): Promise<{ status: number, json: unknown, finalUrl: string }> {
         const networkLibrary = this.plugin.settings.networkLibrary;
         // 使用 runApi 作为基准
         const base = (this.plugin.runApi || this.plugin.settings.api).replace(/\/+$/, "");
@@ -235,7 +244,12 @@ export class HttpApiService {
             };
 
             const res = await fetch(url, fetchOptions);
-            const json = await res.json();
+            let json: unknown = null;
+            try {
+                json = await res.json();
+            } catch {
+                // ignore
+            }
 
             if (res.url && res.url !== url) {
                 try {
@@ -248,7 +262,7 @@ export class HttpApiService {
                             this.plugin.updateRuntimeApi(newBase);
                         }
                     }
-                } catch (e) {
+                } catch {
                     // ignore
                 }
             }
@@ -284,16 +298,17 @@ export class HttpApiService {
                 throw new Error(`HTTP ${status}: Failed to fetch history list`);
             }
 
-            if (!this.isSuccess(json)) {
-                throw new Error(json?.message || "Failed to fetch history list");
+            const res = json as ApiResponse<{ list: NoteHistoryItem[], pager?: { totalRows: number } }>;
+            if (!this.isSuccess(res)) {
+                throw new Error(res?.message || "Failed to fetch history list");
             }
 
             return {
-                list: json.data?.list || [],
-                totalRows: json.data?.pager?.totalRows || 0
+                list: res.data?.list || [],
+                totalRows: res.data?.pager?.totalRows || 0
             };
         } catch (e) {
-            if (e instanceof TypeError && e.message.includes('fetch')) {
+            if (e instanceof Error && e.message.includes('fetch')) {
                 throw new Error("无法连接到服务器，请检查网络连接");
             }
             throw e;
@@ -312,12 +327,14 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to fetch history detail";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to fetch history detail";
                 showSyncNotice(msg);
                 throw new Error(msg);
             }
 
-            return json.data;
+            const res = json as ApiResponse<NoteHistoryDetail>;
+            return res.data;
         } catch (e) {
             throw e;
         }
@@ -339,7 +356,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to restore note version";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to restore note version";
                 showSyncNotice(msg);
                 return false;
             }
@@ -356,7 +374,7 @@ export class HttpApiService {
      * 获取服务端文件信息
      * 用于在删除本地文件前核对状态
      */
-    async getFileInfo(path: string): Promise<any> {
+    async getFileInfo(path: string): Promise<unknown> {
         const params = new URLSearchParams({
             vault: this.plugin.settings.vault,
             path: path,
@@ -372,7 +390,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                throw new Error(json?.message || `HTTP ${status}: Failed to fetch file info`);
+                const res = json as ApiResponse;
+                throw new Error(res?.message || `HTTP ${status}: Failed to fetch file info`);
             }
 
             return json;
@@ -407,11 +426,12 @@ export class HttpApiService {
                 throw new Error(`HTTP ${status}: Failed to fetch note list`);
             }
 
-            if (!this.isSuccess(json)) {
-                throw new Error(json?.message || "Failed to fetch note list");
+            const res = json as ApiResponse<NoteListResponse>;
+            if (!this.isSuccess(res)) {
+                throw new Error(res?.message || "Failed to fetch note list");
             }
 
-            return json.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
+            return res.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
         } catch (e) {
             throw e;
         }
@@ -443,11 +463,12 @@ export class HttpApiService {
                 throw new Error(`HTTP ${status}: Failed to fetch file list`);
             }
 
-            if (!this.isSuccess(json)) {
-                throw new Error(json?.message || "Failed to fetch file list");
+            const res = json as ApiResponse<FileListResponse>;
+            if (!this.isSuccess(res)) {
+                throw new Error(res?.message || "Failed to fetch file list");
             }
 
-            return json.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
+            return res.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
         } catch (e) {
             throw e;
         }
@@ -469,7 +490,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to restore note";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to restore note";
                 showSyncNotice(msg);
                 return false;
             }
@@ -497,7 +519,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to restore file";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to restore file";
                 showSyncNotice(msg);
                 return false;
             }
@@ -525,7 +548,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to delete file";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to delete file";
                 showSyncNotice(msg);
                 return false;
             }
@@ -554,7 +578,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || (path ? "永久删除失败" : "清空回收站失败");
+                const res = json as ApiResponse;
+                const msg = res?.message || (path ? "永久删除失败" : "清空回收站失败");
                 showSyncNotice(msg);
                 return false;
             }
@@ -582,11 +607,13 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to create share";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to create share";
                 showSyncNotice(msg);
                 return null;
             }
-            return json.data;
+            const res = json as ApiResponse<{ id: number, token: string, isPassword?: boolean, shortLink?: string, baseUrl?: string }>;
+            return res.data;
         } catch (e) {
             console.error("createShare error:", e);
             showSyncNotice("创建分享失败");
@@ -612,7 +639,8 @@ export class HttpApiService {
             if (status !== 200 || !this.isSuccess(json)) {
                 return null;
             }
-            return json.data;
+            const res = json as ApiResponse<{ id: number, token: string, isPassword?: boolean, shortLink?: string, baseUrl?: string }>;
+            return res.data;
         } catch (e) {
             console.error("getShare error:", e);
             return null;
@@ -636,7 +664,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to update password";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to update password";
                 showSyncNotice(msg);
                 return false;
             }
@@ -667,12 +696,14 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to create short link";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to create short link";
                 showSyncNotice(msg);
                 return null;
             }
             // 根据 Web GUI 逻辑，res.data 直接就是短链接字符串
-            return json.data || null;
+            const res = json as ApiResponse<string>;
+            return res.data || null;
         } catch (e) {
             console.error("createShortLink error:", e);
             showSyncNotice("生成短链接失败");
@@ -696,7 +727,8 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                const msg = json?.message || "Failed to cancel share";
+                const res = json as ApiResponse;
+                const msg = res?.message || "Failed to cancel share";
                 showSyncNotice(msg);
                 return false;
             }
@@ -720,7 +752,8 @@ export class HttpApiService {
         try {
             const { status, json } = await this.request(endpoint, { method: "GET" });
             if (status !== 200 || !this.isSuccess(json)) return null;
-            return json.data || [];
+            const res = json as ApiResponse<string[]>;
+            return res.data || [];
         } catch (e) {
             console.error("getSharePaths error:", e);
             return null;
@@ -739,10 +772,12 @@ export class HttpApiService {
             });
 
             if (status !== 200 || !this.isSuccess(json)) {
-                throw new Error(json?.message || "Failed to fetch user info");
+                const res = json as ApiResponse;
+                throw new Error(res?.message || "Failed to fetch user info");
             }
 
-            return json.data;
+            const res = json as ApiResponse<UserDTO>;
+            return res.data;
         } catch (e) {
             throw e;
         }
@@ -751,7 +786,7 @@ export class HttpApiService {
     /**
      * 获取在线客户端列表
      */
-    async getWSClients(): Promise<any[]> {
+    async getWSClients(): Promise<unknown[]> {
         const endpoint = `/api/admin/ws_clients`;
         try {
             const { status, json } = await this.request(endpoint, {
@@ -761,7 +796,8 @@ export class HttpApiService {
             if (status !== 200 || !this.isSuccess(json)) {
                 return [];
             }
-            return json.data || [];
+            const res = json as ApiResponse<unknown[]>;
+            return res.data || [];
         } catch (e) {
             console.error("getWSClients error:", e);
             return [];
@@ -773,7 +809,7 @@ export class HttpApiService {
  * 扩展 API 服务类以支持回收站功能
  */
 export interface NoteListResponse {
-    list: any[];
+    list: unknown[];
     pager: {
         page: number;
         pageSize: number;
@@ -783,7 +819,7 @@ export interface NoteListResponse {
 }
 
 export interface FileListResponse {
-    list: any[];
+    list: unknown[];
     pager: {
         page: number;
         pageSize: number;

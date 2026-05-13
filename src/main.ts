@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Platform, addIcon } from "obsidian";
+import { Plugin, WorkspaceLeaf, Platform, addIcon, App } from "obsidian";
 
 import { dump, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken } from "./lib/helps";
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
@@ -21,6 +21,7 @@ import { handleSync } from "./lib/operator";
 import { HttpApiService } from "./lib/api";
 import { clearAllTempChunks } from "./lib/file_operator";
 import { $ } from "./i18n/lang";
+import { FileDownloadSession } from "./lib/types";
 
 
 export default class FastSync extends Plugin {
@@ -96,8 +97,8 @@ export default class FastSync extends Plugin {
   uploadedChunksCount: number = 0 // 已上传分片计数
 
   // 文件下载会话管理
-  fileDownloadSessions: Map<string, any> = new Map()
-  syncTimer: ReturnType<typeof setTimeout> | null = null // 同步定时器
+  fileDownloadSessions: Map<string, FileDownloadSession> = new Map()
+  syncTimer: any // 自动同步定时器
 
   public lastStatusBarPercentage: number = 0
   public currentSyncType: "full" | "incremental" = "incremental"
@@ -245,7 +246,7 @@ export default class FastSync extends Plugin {
    */
   applyMobileToastTop() {
     if (!Platform.isMobile) return
-    document.body.style.setProperty("--fns-toast-top", `${this.settings.mobileToastTop}px`)
+    activeDocument.body.style.setProperty("--fns-toast-top", `${this.settings.mobileToastTop}px`)
   }
 
   async onload() {
@@ -406,16 +407,20 @@ export default class FastSync extends Plugin {
       const anyUploadCheckpointPattern = /^fns-.+-uploadSession-/
       const expireMs = 20 * 60 * 1000
       const now = Date.now()
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i)
+      
+      // 注意：这里需要清理的是 localStorage 中的项，由于 app.loadLocalStorage 不支持遍历，
+      // 我们只能继续使用 window.localStorage，但仅限于清理。
+      for (let i = window.localStorage.length - 1; i >= 0; i--) {
+        const key = window.localStorage.key(i)
         if (key && (key.startsWith(uploadCheckpointPrefix) || anyUploadCheckpointPattern.test(key))) {
           try {
-            const cp = JSON.parse(localStorage.getItem(key) || '{}')
+            const data = window.localStorage.getItem(key)
+            const cp = JSON.parse(data || '{}')
             if (!cp.timestamp || now - cp.timestamp > expireMs) {
-              localStorage.removeItem(key)
+              window.localStorage.removeItem(key)
             }
-          } catch (e) {
-            localStorage.removeItem(key)
+          } catch {
+            window.localStorage.removeItem(key)
           }
         }
       }
@@ -501,7 +506,7 @@ export default class FastSync extends Plugin {
           folderRules.push(oldRule)
         }
       })
-      delete (this.settings as any).configExclude
+      delete (this.settings as PluginSettings & { configExclude?: unknown }).configExclude
       hasMigration = true
     }
 
@@ -542,7 +547,7 @@ export default class FastSync extends Plugin {
           whitelistRules.push(oldRule)
         }
       })
-      delete (this.settings as any).configExcludeWhitelist
+      delete (this.settings as PluginSettings & { configExcludeWhitelist?: unknown }).configExcludeWhitelist
       hasMigration = true
     }
 
@@ -566,7 +571,7 @@ export default class FastSync extends Plugin {
       if (data.isShowNotice === undefined) {
         this.settings.isShowNotice = data.showSyncNotice
       }
-      delete (this.settings as any).showSyncNotice
+      delete (this.settings as PluginSettings & { showSyncNotice?: unknown }).showSyncNotice
       hasMigration = true
     }
 
@@ -638,7 +643,7 @@ export default class FastSync extends Plugin {
       }
       // 用于首次同步测试
       if (this.isFirstSync && this.websocket?.isAuth) {
-        this.syncTimer = setTimeout(() => {
+        this.syncTimer = window.setTimeout(() => {
           if (setItem == "syncEnabled" && this.settings.syncEnabled) {
             handleSync(this, false, "note")
           } else if (setItem == "configSyncEnabled" && this.settings.configSyncEnabled) {
@@ -652,7 +657,7 @@ export default class FastSync extends Plugin {
       this.lastSyncMtime = new Map()
       this.lastSyncPathDeleted = new Set()
       this.lastSyncPathRenamed = new Set()
-      this.fileDownloadSessions = new Map<string, any>()
+      this.fileDownloadSessions = new Map<string, FileDownloadSession>()
     } else {
       this.websocket?.unRegister()
       this.isWatchEnabled = false
@@ -696,7 +701,7 @@ export default class FastSync extends Plugin {
   async setCommandHotkey(commandId: string, shortcutStr: string) {
     const fullId = `${this.manifest.id}:${commandId}`;
     const parts = shortcutStr.split("+");
-    const modifiers = parts.filter(p => ["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(p)) as any[];
+    const modifiers = parts.filter(p => ["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(p)) as string[];
     const key = parts.find(p => !["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(p));
 
     const hotkey = { modifiers, key: key || "" };
@@ -727,7 +732,7 @@ export default class FastSync extends Plugin {
     if (leaves.length > 0) {
       const leaf = leaves[0]
       // 如果已经打开，判断是否处于当前视图且可见，如果是则关闭
-      if (leaf === workspace.activeLeaf || (leaf as any).view?.containerEl?.isShown()) {
+      if (leaf === workspace.activeLeaf || (leaf as WorkspaceLeaf & { view: { containerEl: HTMLElement } }).view?.containerEl?.isShown()) {
         leaf.detach()
         return
       }

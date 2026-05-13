@@ -1,4 +1,4 @@
-import { normalizePath } from "obsidian";
+import { normalizePath, App } from "obsidian";
 
 import { hashContent, dump, configIsPathExcluded, configAddPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync } from "./helps";
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
@@ -18,7 +18,7 @@ export const CONFIG_THEME_EXTS_TO_WATCH = [".css", ".json"]
  * 配置操作函数导出
  */
 
-let reloadTimer: ReturnType<typeof setTimeout> | null = null
+let reloadTimer: any = null
 const pendingConfigUpdates: Map<string, string> = new Map()
 
 export const configModify = async function (path: string, plugin: FastSync, eventEnter: boolean = false, content?: string) {
@@ -303,7 +303,7 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
     plugin.configSyncTasks.completed++
 }
 
-export const receiveConfigSyncDelete = async function (data: any, plugin: FastSync) {
+export const receiveConfigSyncDelete = async function (data: { path: string, lastTime?: number }, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) return
@@ -322,7 +322,7 @@ export const receiveConfigSyncDelete = async function (data: any, plugin: FastSy
             await plugin.app.vault.adapter.remove(fullPath)
         } finally {
             // 延时 500ms 清理
-            setTimeout(() => {
+            window.setTimeout(() => {
                 plugin.lastSyncPathDeleted.delete(data.path)
             }, 500);
         }
@@ -347,7 +347,7 @@ export const receiveConfigSyncDelete = async function (data: any, plugin: FastSy
     plugin.configSyncTasks.completed++
 }
 
-export const receiveConfigSyncEnd = async function (data: any, plugin: FastSync) {
+export const receiveConfigSyncEnd = async function (data: unknown, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
     dump(`Receive config sync end:`, data)
 
@@ -365,7 +365,7 @@ export const receiveConfigSyncEnd = async function (data: any, plugin: FastSync)
     plugin.syncTypeCompleteCount++
 }
 
-export const receiveConfigSyncClear = async function (data: any, plugin: FastSync) {
+export const receiveConfigSyncClear = async function (data: unknown, plugin: FastSync) {
     plugin.localStorageManager.setMetadata("lastConfigSyncTime", 0)
     showSyncNotice($("ui.status.clear_success"))
     plugin.configSyncTasks.completed++
@@ -454,8 +454,8 @@ export const configAllPaths = async function (configDirs: string[], plugin: Fast
             // 解析目录名称，用于判断是否为自定义目录
             const normalizedConfigDir = configDir.replace(/\\/g, "/")
 
-            // 特殊处理 .obsidian 目录（为了向后兼容和针对插件/主题的特定扫描逻辑）
-            if (normalizedConfigDir.endsWith(".obsidian")) {
+            // 特殊处理配置目录（为了向后兼容和针对插件/主题的特定扫描逻辑）
+            if (normalizedConfigDir.endsWith(plugin.app.vault.configDir)) {
                 const rootItems = await adapter.list(normalizePath(configDir))
                 for (const file of rootItems.files) {
                     const fileName = file.split("/").pop() || ""
@@ -550,7 +550,7 @@ export const configReload = async function (path: string, plugin: FastSync, even
 
     // 清除旧计时器
     if (reloadTimer) {
-        clearTimeout(reloadTimer)
+        window.clearTimeout(reloadTimer)
     }
 
     // 设置新计时器，延迟 1 秒
@@ -562,12 +562,38 @@ export const configReload = async function (path: string, plugin: FastSync, even
             const tasks = plugin.configSyncTasks;
             const totalTasks = tasks.needModify + tasks.needSyncMtime + tasks.needDelete;
             if (!plugin.configSyncEnd || tasks.completed < totalTasks) {
-                reloadTimer = setTimeout(checkAndReload, 500);
+                reloadTimer = window.setTimeout(checkAndReload, 500);
                 return;
             }
         }
 
-        const app = plugin.app as any
+        const app = plugin.app as App & {
+            vault: {
+                reloadConfig?(): Promise<void>;
+                getConfig(key: string): any;
+                setConfig(key: string, value: any): void;
+            };
+            customCss?: {
+                themes: Record<string, unknown>;
+                theme: string;
+                setTheme(theme: string): void;
+                onConfigChange(): void;
+                readSnippets(): Promise<void>;
+            };
+            plugins: {
+                enabledPlugins: Set<string>;
+                disablePlugin(id: string): Promise<void>;
+                enablePlugin(id: string): Promise<void>;
+            };
+            hotkeys?: {
+                load(): Promise<void>;
+            };
+            setting?: {
+                activeTab?: {
+                    display(): void;
+                };
+            };
+        }
         const configDir = plugin.app.vault.configDir
 
         const updates = Array.from(pendingConfigUpdates.entries())
@@ -686,7 +712,7 @@ export const configReload = async function (path: string, plugin: FastSync, even
         if (app.setting?.activeTab) app.setting.activeTab.display()
     }
 
-    reloadTimer = setTimeout(checkAndReload, 1000)
+    reloadTimer = window.setTimeout(checkAndReload, 1000)
 }
 
 
@@ -699,7 +725,7 @@ const configOperators: Map<string, ConfigOperator> = new Map([
     ["ConfigDelete", configDelete],
     ["ConfigEmptyFoldersClean", configEmptyFoldersClean],
     ["ConfigReload", configReload],
-    ["ConfigAllPaths", configAllPaths as any],
+    ["ConfigAllPaths", configAllPaths as unknown as ConfigOperator],
     ["ConfigIsPathExcluded", configIsPathExcluded],
     ["ConfigAddPathExcluded", configAddPathExcluded],
 ])

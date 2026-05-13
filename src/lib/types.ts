@@ -35,7 +35,7 @@ export interface ReceiveMessage {
 
 export interface SyncMessage {
     action: string;
-    data: any;
+    data: unknown;
 }
 
 export interface ReceiveFileSyncUpdateMessage {

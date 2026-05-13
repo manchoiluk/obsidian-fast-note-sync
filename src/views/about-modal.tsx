@@ -47,17 +47,17 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
     const [pollingCount, setPollingCount] = React.useState(0);
 
     const pluginCurrent = plugin.manifest.version;
-    const pluginNew = plugin.localStorageManager.getMetadata("pluginVersionNewName");
-    const pluginIsNew = plugin.localStorageManager.getMetadata("pluginVersionIsNew");
-    const pluginNewChangelog = plugin.localStorageManager.getMetadata("pluginVersionNewChangelogContent");
-    const pluginCurrentChangelog = plugin.localStorageManager.getMetadata("pluginVersionChangelogContent");
+    const pluginNew = plugin.localStorageManager.getMetadata("pluginVersionNewName") as string;
+    const pluginIsNew = !!plugin.localStorageManager.getMetadata("pluginVersionIsNew");
+    const pluginNewChangelog = plugin.localStorageManager.getMetadata("pluginVersionNewChangelogContent") as string;
+    const pluginCurrentChangelog = plugin.localStorageManager.getMetadata("pluginVersionChangelogContent") as string;
 
-    const serverCurrent = plugin.localStorageManager.getMetadata("serverVersion");
-    const serverNew = plugin.localStorageManager.getMetadata("serverVersionNewName");
-    const serverIsNew = plugin.localStorageManager.getMetadata("serverVersionIsNew");
-    const serverNewChangelog = plugin.localStorageManager.getMetadata("serverVersionNewChangelogContent");
-    const serverCurrentChangelog = plugin.localStorageManager.getMetadata("serverVersionChangelogContent");
-    const serverBaseChangelog = plugin.localStorageManager.getMetadata("serverChangelog");
+    const serverCurrent = plugin.localStorageManager.getMetadata("serverVersion") as string;
+    const serverNew = plugin.localStorageManager.getMetadata("serverVersionNewName") as string;
+    const serverIsNew = !!plugin.localStorageManager.getMetadata("serverVersionIsNew");
+    const serverNewChangelog = plugin.localStorageManager.getMetadata("serverVersionNewChangelogContent") as string;
+    const serverCurrentChangelog = plugin.localStorageManager.getMetadata("serverVersionChangelogContent") as string;
+    const serverBaseChangelog = plugin.localStorageManager.getMetadata("serverChangelog") as string;
 
     const [isAdmin, setIsAdmin] = React.useState(false);
 

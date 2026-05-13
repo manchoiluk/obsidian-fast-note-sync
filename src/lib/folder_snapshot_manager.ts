@@ -95,7 +95,7 @@ export class FolderSnapshotManager {
      */
     private loadFromStorage(): boolean {
         try {
-            let data = localStorage.getItem(this.storageKey);
+            let data = this.plugin.app.loadLocalStorage(this.storageKey);
 
             // 迁移逻辑：如果新键无数据，尝试读取旧键
             if (!data) {
@@ -103,23 +103,23 @@ export class FolderSnapshotManager {
 
                 // 1. 尝试上一个格式: fast-note-sync-[Vault]-folderSnapshot
                 const prevKey1 = `fast-note-sync-${vaultName}-folderSnapshot`;
-                data = localStorage.getItem(prevKey1);
+                data = this.plugin.app.loadLocalStorage(prevKey1);
 
                 // 2. 尝试更早格式: fast-note-sync-[Vault]-folder-snapshot
                 if (!data) {
                     const prevKey2 = `fast-note-sync-${vaultName}-folder-snapshot`;
-                    data = localStorage.getItem(prevKey2);
+                    data = this.plugin.app.loadLocalStorage(prevKey2);
                 }
 
                 // 3. 尝试最原始格式: fast-note-sync-folder-snapshot-[Vault]
                 if (!data) {
                     const oldKey = `fast-note-sync-folder-snapshot-${vaultName}`;
-                    data = localStorage.getItem(oldKey);
+                    data = this.plugin.app.loadLocalStorage(oldKey);
                 }
 
                 if (data) {
                     dump("FolderSnapshotManager: 发现旧版快照数据，执行迁移");
-                    localStorage.setItem(this.storageKey, data);
+                    this.plugin.app.saveLocalStorage(this.storageKey, data);
                 } else {
                     return false;
                 }
@@ -141,7 +141,7 @@ export class FolderSnapshotManager {
     private saveToStorage(): void {
         try {
             const obj = Object.fromEntries(this.snapshotMap);
-            localStorage.setItem(this.storageKey, JSON.stringify(obj));
+            this.plugin.app.saveLocalStorage(this.storageKey, JSON.stringify(obj));
         } catch (error) {
             dump("FolderSnapshotManager: 保存快照失败", error);
         }

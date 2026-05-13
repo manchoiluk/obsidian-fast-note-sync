@@ -1,4 +1,4 @@
-import { Notice, moment, normalizePath, TFolder, Platform, App } from "obsidian";
+import { Notice, moment, normalizePath, TFolder, Platform, App, PluginManifest } from "obsidian";
 
 import FastSync from "../main";
 
@@ -8,7 +8,7 @@ import FastSync from "../main";
  * Get the real plugin directory (handles manually renamed folders)
  */
 export const getPluginDir = function (plugin: FastSync): string {
-  return (plugin.manifest as any).dir || `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`
+  return (plugin.manifest as PluginManifest & { dir?: string }).dir || `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`
 }
 
 /**
@@ -347,7 +347,7 @@ export const hashContentAsync = async function (content: string): Promise<string
     hash &= hash
 
     if (i > 0 && i % yieldSize === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
     }
   }
   return String(hash)
@@ -443,7 +443,7 @@ async function computeRollingHash(view: Uint8Array | null): Promise<string> {
     hash &= hash
 
     if (i > 0 && i % yieldSize === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
     }
   }
   const result = String(hash)
@@ -466,7 +466,7 @@ export const describeBinarySyncLimit = function (): string {
 
 export const logMemorySnapshot = function (label: string): void {
   if (!isLogEnabled) return
-  const memory = (performance as any)?.memory
+  const memory = (performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory
   if (memory) {
     dump("[FastNoteSync][Memory]", label, {
       used: formatFileSize(memory.usedJSHeapSize),
@@ -496,16 +496,16 @@ export const getSafeCtime = function (stat: { ctime?: number; mtime?: number }):
 /**
  * 延迟执行 (让出主线程)
  */
-export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+export const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
 /**
  * 防抖函数
  */
-export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null
-  return function (this: any, ...args: Parameters<T>) {
-    if (timeout) clearTimeout(timeout)
-    timeout = setTimeout(() => {
+export function debounce<T extends (...args: unknown[]) => unknown>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: any = null
+  return function (this: unknown, ...args: Parameters<T>) {
+    if (timeout) window.clearTimeout(timeout)
+    timeout = window.setTimeout(() => {
       func.apply(this, args)
     }, wait)
   }
@@ -568,7 +568,10 @@ export function generateUUID(): string {
 
   // 兼容性回退方案 (使用 getRandomValues)
   if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
-    return (([1e7] as any) + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c: any) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
+    return (([1e7] as unknown as string) + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c: string) => {
+        const cNum = parseInt(c);
+        return (cNum ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (cNum / 4)))).toString(16);
+    })
   }
 
   // 最后的兜底方案 (Math.random)
@@ -606,7 +609,7 @@ export const dump = function (...message: unknown[]): void {
 /**
  * 以表格形式打印日志
  */
-export const dumpTable = function (message: any): void {
+export const dumpTable = function (message: unknown): void {
   if (isLogEnabled) {
     console.table(message)
   }
@@ -676,10 +679,10 @@ export function showSyncNotice(message: string, duration: number = 2500): SyncNo
     }
   }
   // 移除已有 toast 避免堆叠 / Remove existing toast to avoid stacking
-  const existing = document.querySelector(".fns-mobile-toast")
+  const existing = activeDocument.querySelector(".fns-mobile-toast")
   if (existing) existing.remove()
 
-  const toast = document.body.createDiv()
+  const toast = activeDocument.body.createDiv()
   toast.className = "fns-mobile-toast"
   toast.textContent = message
 
@@ -693,7 +696,7 @@ export function showSyncNotice(message: string, duration: number = 2500): SyncNo
   }
 
   if (duration > 0) {
-    hideTimeout = setTimeout(startHide, duration)
+    hideTimeout = window.setTimeout(startHide, duration)
   }
 
   return {
@@ -701,7 +704,7 @@ export function showSyncNotice(message: string, duration: number = 2500): SyncNo
       toast.textContent = msg
     },
     hide: () => {
-      if (hideTimeout) clearTimeout(hideTimeout)
+      if (hideTimeout) window.clearTimeout(hideTimeout)
       startHide()
     },
   }
@@ -735,13 +738,14 @@ export async function loadApiToken(app: App, plugin: FastSync, dataJsonToken?: s
   }
 
   if (token) {
+    const tokenStr = token as string;
     // 如果是旧的加密格式，由于已移除 SafeStorage 特性，将无法解密。
     // 返回空字符串引导用户重新输入，或直接返回（如果已经是明文）。
-    if (token.startsWith("encrypted:")) {
+    if (tokenStr.startsWith("encrypted:")) {
       dump("[ApiToken] Found legacy encrypted token, but SafeStorage is removed. Please re-input token.");
       return "";
     }
-    return token;
+    return tokenStr;
   }
 
   dump("[ApiToken] No token found in any storage")

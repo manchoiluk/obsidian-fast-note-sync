@@ -2816,9 +2816,10 @@ body .suggestion-container {
     justify-content: center;
     width: 32px;
     height: 32px;
-    background-color: rgba(var(--interactive-accent-rgb), 0.1);
+    background-color: var(--background-primary);
     color: var(--interactive-accent);
-    border-radius: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
     
     svg {
       width: 18px;
@@ -2864,55 +2865,46 @@ body .suggestion-container {
 
 /* 卡片样式 / Card Styles */
 .fns-share-card {
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border-faint);
-  border-radius: 12px;
-  padding: 16px;
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  gap: 24px;
   position: relative;
   overflow: hidden;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background-color: var(--interactive-accent);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  &:hover {
-    border-color: var(--background-modifier-border);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
-    transform: translateY(-2px);
-    
-    &::before {
-      opacity: 0.6;
-    }
-  }
+.fns-share-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .fns-share-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.85em;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  gap: 6px;
   
-  svg {
-    width: 14px;
-    height: 14px;
-    opacity: 0.6;
+  .fns-header-icon {
+    display: flex;
+    align-items: center;
+    color: var(--interactive-accent);
+    opacity: 0.8;
+    
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+  
+  .fns-header-title {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
   }
 }
 
@@ -3032,35 +3024,30 @@ body .suggestion-container {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: transparent;
+  background-color: var(--background-secondary);
   color: var(--text-error);
-  border: 1.5px solid var(--text-error);
-  padding: 0 20px;
-  height: 38px;
-  border-radius: 19px;
-  font-weight: 600;
+  border: 1px solid var(--background-modifier-border);
+  padding: 0 16px;
+  height: 34px;
+  border-radius: 6px;
+  font-weight: 500;
   font-size: 0.9em;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: none;
-  opacity: 0.85;
 
   &:hover {
     background-color: var(--text-error);
     color: white;
     border-color: var(--text-error);
-    transform: scale(1.02);
-    box-shadow: 0 4px 15px rgba(var(--text-error-rgb, 255, 0, 0), 0.25);
-    opacity: 1;
   }
   
   &:active {
-    transform: scale(0.98);
+    opacity: 0.8;
   }
   
   svg {
     width: 16px;
     height: 16px;
-    stroke-width: 2.5px;
+    stroke-width: 2px;
   }
 }
 

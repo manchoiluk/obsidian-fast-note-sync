@@ -25,7 +25,7 @@ export class RecycleBinModal extends Modal {
     private page: number = 1;
     private pageSize: number = 20;
     private totalRows: number = 0;
-    private items: any[] = [];
+    private items: RecycleItem[] = [];
     private loading: boolean = false;
 
     private selectedPaths: Set<string> = new Set();
@@ -318,8 +318,8 @@ export class RecycleBinModal extends Modal {
 
         try {
             if (this.activeTab === 'note') {
-                const res = await this.api.getNoteList(this.page, this.pageSize, true);
-                const newList = res?.list || [];
+                const res = await this.api.getNoteList(this.page, this.pageSize, true) as any;
+                const newList = (res?.list || []) as RecycleItem[];
                 if (append) {
                     this.items = [...(this.items || []), ...newList];
                 } else {
@@ -327,8 +327,8 @@ export class RecycleBinModal extends Modal {
                 }
                 this.totalRows = res?.pager?.totalRows || 0;
             } else {
-                const res = await this.api.getFileList(this.page, this.pageSize, true);
-                const newList = res?.list || [];
+                const res = await this.api.getFileList(this.page, this.pageSize, true) as any;
+                const newList = (res?.list || []) as RecycleItem[];
                 if (append) {
                     this.items = [...(this.items || []), ...newList];
                 } else {

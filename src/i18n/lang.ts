@@ -60,13 +60,13 @@ export const localeMap: { [k: string]: Partial<typeof en> } = {
 
 // Use a string variable first to avoid computed property name resolution warnings
 // 先用字符串变量缓存，避免静态分析无法解析计算属性名
-const _localeKey: string = moment.locale();
+const _localeKey: string = (moment as any).locale ? (moment as any).locale() : "en";
 const locale = localeMap[_localeKey] as Partial<LangMap> | undefined;
 
 
 function getValueFromPath(root: Record<string, unknown>, path: string): unknown {
     const normalized = path
-        .replace(/\[(?:'([^']*)'|"([^"]*)"|([^'\]"[\]]+))\]/g, (_m, g1, g2, g3) => {
+        .replace(/\[(?:'([^']*)'|"([^"]*)"|([^'\]"[\]]+))\]/g, (_m: string, g1: string | undefined, g2: string | undefined, g3: string | undefined) => {
             const key = g1 ?? g2 ?? g3;
             return "." + key;
         })
@@ -91,7 +91,7 @@ function getValueFromPath(root: Record<string, unknown>, path: string): unknown 
 
 function interpolate(str: string, params: Record<string, unknown>): string {
     if (!str || typeof str !== "string") return String(str ?? "");
-    return str.replace(/\$\{([^}]+)\}/g, (_match, expression) => {
+    return str.replace(/\$\{([^}]+)\}/g, (_match: string, expression: string) => {
         const path = expression.trim();
         if (!/^[A-Za-z0-9_.[\]'"\s-]+$/.test(path)) {
             return "";

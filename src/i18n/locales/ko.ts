@@ -374,7 +374,7 @@ export default {
   "ui.recycle_bin.select_all": "전체 선택",
   "ui.share.title": "노트 공유",
   "ui.share.checking": "공유 상태를 확인하는 중...",
-  "ui.share.not_shared_yet": "이 노트는 아직 공유되지 않았습니다",
+  "ui.share.not_shared_yet": "아직 공유되지 않았습니다",
   "ui.share.create": "공유 시작",
   "ui.share.success": "공유 성공",
   "ui.share.shortLinkCreate": "짧은 링크 생성",

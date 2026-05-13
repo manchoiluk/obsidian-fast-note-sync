@@ -208,8 +208,9 @@ export class SyncLogManager {
         let logPath: string | undefined = undefined;
         let logVault: string | undefined = undefined;
         if (typeof data === "object" && data !== null) {
-            logPath = (data as any).Path || (data as any).path || (data as any).data?.Path || (data as any).data?.path;
-            logVault = (data as any).Vault || (data as any).vault || (data as any).data?.Vault || (data as any).data?.vault;
+            const d = data as { Path?: string, path?: string, Vault?: string, vault?: string, data?: { Path?: string, path?: string, Vault?: string, vault?: string } };
+            logPath = d.Path || d.path || d.data?.Path || d.data?.path;
+            logVault = d.Vault || d.vault || d.data?.Vault || d.data?.vault;
         }
 
         // 根据消息类型调整 action 名称
@@ -222,7 +223,8 @@ export class SyncLogManager {
         const targetStatus: LogStatus = ['FileUpload', 'FileDownload', 'ConfigUpload'].includes(action) ? 'pending' : 'success';
 
         // 提取 sessionId
-        const sessionId = (data as any)?.sessionId || (data as any)?.SessionID || (data as any)?.data?.sessionId || (data as any)?.data?.SessionID;
+        const d = data as { sessionId?: string, SessionID?: string, data?: { sessionId?: string, SessionID?: string } };
+        const sessionId = d?.sessionId || d?.SessionID || d?.data?.sessionId || d?.data?.SessionID;
 
         if (sessionId) {
             this.addOrUpdateLog({

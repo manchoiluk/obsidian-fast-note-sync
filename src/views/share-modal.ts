@@ -103,16 +103,19 @@ export class ShareModal extends Modal {
     private renderShareResult(parent: HTMLElement) {
         const resultContainer = parent.createDiv("fns-share-result-layout");
         
-        // --- 1. 分享链接部分 (Card) ---
-        const linkCard = resultContainer.createDiv("fns-share-card");
-        const linkHeader = linkCard.createDiv("fns-share-card-header");
-        setIcon(linkHeader.createSpan(), "globe");
-        linkHeader.createSpan({ text: $("ui.share.link") });
+        // 创建统一的主卡片容器 / Create a single main card container
+        const mainCard = resultContainer.createDiv("fns-share-card");
+
+        // --- 1. 分享链接部分 (Link Section) ---
+        const linkSection = mainCard.createDiv("fns-share-section");
+        const linkHeader = linkSection.createDiv("fns-share-card-header");
+        setIcon(linkHeader.createSpan("fns-header-icon"), "globe");
+        linkHeader.createSpan({ text: $("ui.share.link"), cls: "fns-header-title" });
 
         const apiBase = this.shareData?.baseUrl || (this.plugin.runApi || this.plugin.settings.api).replace(/\/+$/, "");
         const shareUrl = `${apiBase}/share/${this.shareData?.id}/${this.shareData?.token}`;
 
-        const linkActionGroup = linkCard.createDiv("fns-share-input-group");
+        const linkActionGroup = linkSection.createDiv("fns-share-input-group");
         
         const linkInputWrapper = linkActionGroup.createDiv("fns-input-wrapper");
         const linkInput = linkInputWrapper.createEl("input", {
@@ -136,13 +139,14 @@ export class ShareModal extends Modal {
         externalBtn.buttonEl.addClass("fns-share-icon-btn");
         externalBtn.onClick(() => window.open(shareUrl, "_blank"));
 
-        // --- 2. 访问密码部分 (Card) ---
-        const pwdCard = resultContainer.createDiv("fns-share-card");
-        const pwdHeader = pwdCard.createDiv("fns-share-card-header");
-        setIcon(pwdHeader.createSpan(), "lock");
-        pwdHeader.createSpan({ text: $("ui.share.password") });
 
-        const pwdActionGroup = pwdCard.createDiv("fns-share-input-group");
+        // --- 2. 访问密码部分 (Password Section) ---
+        const pwdSection = mainCard.createDiv("fns-share-section");
+        const pwdHeader = pwdSection.createDiv("fns-share-card-header");
+        setIcon(pwdHeader.createSpan("fns-header-icon"), "lock");
+        pwdHeader.createSpan({ text: $("ui.share.password"), cls: "fns-header-title" });
+
+        const pwdActionGroup = pwdSection.createDiv("fns-share-input-group");
         const pwdInputWrapper = pwdActionGroup.createDiv("fns-input-wrapper");
 
         let displayValue = this.passwordValue;
@@ -201,13 +205,14 @@ export class ShareModal extends Modal {
             this.render();
         });
 
-        // --- 3. 短链接部分 (Card) ---
-        const shortCard = resultContainer.createDiv("fns-share-card");
-        const shortHeader = shortCard.createDiv("fns-share-card-header");
-        setIcon(shortHeader.createSpan(), "link-2");
-        shortHeader.createSpan({ text: $("ui.share.shortLink") });
 
-        const shortActionGroup = shortCard.createDiv("fns-share-input-group");
+        // --- 3. 短链接部分 (Short Link Section) ---
+        const shortSection = mainCard.createDiv("fns-share-section");
+        const shortHeader = shortSection.createDiv("fns-share-card-header");
+        setIcon(shortHeader.createSpan("fns-header-icon"), "link-2");
+        shortHeader.createSpan({ text: $("ui.share.shortLink"), cls: "fns-header-title" });
+
+        const shortActionGroup = shortSection.createDiv("fns-share-input-group");
 
         if (this.shareData?.shortLink) {
             const shortInputWrapper = shortActionGroup.createDiv("fns-input-wrapper");
@@ -251,9 +256,10 @@ export class ShareModal extends Modal {
             shortInput.readOnly = true; // 占位显示
 
             const createShortBtn = new ButtonComponent(shortActionGroup)
-                .setButtonText($("ui.share.shortLinkCreate"))
+                .setIcon("plus-circle")
+                .setTooltip($("ui.share.shortLinkCreate"))
                 .setDisabled(this.loading);
-            createShortBtn.buttonEl.addClass("fns-share-text-btn");
+            createShortBtn.buttonEl.addClass("fns-share-icon-btn");
             createShortBtn.onClick(async () => {
                 this.loading = true;
                 this.render();

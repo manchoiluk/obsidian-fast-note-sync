@@ -374,7 +374,7 @@ export default {
   "ui.recycle_bin.select_all": "Select All",
   "ui.share.title": "Share Note",
   "ui.share.checking": "Checking share status...",
-  "ui.share.not_shared_yet": "This note is not shared yet",
+  "ui.share.not_shared_yet": "This note has not been shared yet.",
   "ui.share.create": "Enable Sharing",
   "ui.share.success": "Shared successfully",
   "ui.share.shortLinkCreate": "Generate Short Link",

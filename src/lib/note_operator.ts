@@ -247,7 +247,7 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
       // Server push means path was created/updated; clear any stale deleteAck pending
       plugin.pendingNoteDeleteAcks.delete(data.path)
     } finally {
-      setTimeout(() => {
+      window.setTimeout(() => {
         plugin.removeIgnoredFile(normalizedPath)
       }, 500);
     }
@@ -394,7 +394,7 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
         }
       } finally {
         // 延时 500ms 清理拦截集合，确保本地事件已被处理
-        setTimeout(() => {
+        window.setTimeout(() => {
           plugin.removeIgnoredFile(normalizedPath)
           plugin.lastSyncPathDeleted.delete(normalizedPath)
         }, 500);
@@ -408,7 +408,7 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
 /**
  * 接收笔记同步结束通知
  */
-export const receiveNoteSyncEnd = async function (data: any, plugin: FastSync) {
+export const receiveNoteSyncEnd = async function (data: unknown, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   dump(`Receive note end:`, data)
 
@@ -428,7 +428,7 @@ export const receiveNoteSyncEnd = async function (data: any, plugin: FastSync) {
 /**
  * 接收服务端笔记重命名通知
  */
-export const receiveNoteSyncRename = async function (data: any, plugin: FastSync) {
+export const receiveNoteSyncRename = async function (data: { path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
     plugin.noteSyncTasks.completed++
@@ -464,7 +464,10 @@ export const receiveNoteSyncRename = async function (data: any, plugin: FastSync
           const renamedFile = plugin.app.vault.getFileByPath(normalizedNewPath)
           if (renamedFile instanceof TFile) {
             const content = await plugin.app.vault.read(renamedFile)
-            await plugin.app.vault.modify(renamedFile, content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
+            const options: any = {};
+            if (data.ctime && data.ctime > 0) options.ctime = data.ctime;
+            if (data.mtime && data.mtime > 0) options.mtime = data.mtime;
+            await plugin.app.vault.modify(renamedFile, content, options);
           }
         }
 
@@ -478,7 +481,7 @@ export const receiveNoteSyncRename = async function (data: any, plugin: FastSync
           plugin.localStorageManager.setMetadata("lastNoteSyncTime", data.lastTime)
         }
       } finally {
-        setTimeout(() => {
+        window.setTimeout(() => {
           plugin.removeIgnoredFile(normalizedNewPath)
           plugin.removeIgnoredFile(normalizedOldPath)
           plugin.lastSyncPathRenamed.delete(normalizedNewPath)

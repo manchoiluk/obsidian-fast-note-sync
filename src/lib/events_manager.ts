@@ -12,10 +12,10 @@ import { $ } from "../i18n/lang";
 
 export class EventManager {
   private plugin: FastSync
-  private rawEventTimers: Map<string, any> = new Map()
+  private rawEventTimers: Map<string, number> = new Map()
   //保存待处理的重命名文件的路径，用于跳过同时触发的 modify 事件
   private pendingRenamePaths: Set<string> = new Set()
-  private blurTimer: any | null = null
+  private blurTimer: number | null = null
 
   constructor(plugin: FastSync) {
     this.plugin = plugin
@@ -65,11 +65,11 @@ export class EventManager {
    * Stop all timers and clear task status
    */
   public stop() {
-    this.rawEventTimers.forEach((timer) => clearTimeout(timer))
+    this.rawEventTimers.forEach((timer) => window.clearTimeout(timer))
     this.rawEventTimers.clear()
     this.pendingRenamePaths.clear()
     if (this.blurTimer) {
-      clearTimeout(this.blurTimer)
+      window.clearTimeout(this.blurTimer)
       this.blurTimer = null
     }
   }
@@ -92,7 +92,7 @@ export class EventManager {
     if (Platform.isMobile) {
       dump("Obsidian Mobile Focus")
       if (this.blurTimer) {
-        clearTimeout(this.blurTimer)
+        window.clearTimeout(this.blurTimer)
         this.blurTimer = null
         dump("Obsidian Mobile Focus (Timer cancelled)")
       }
@@ -106,7 +106,7 @@ export class EventManager {
     if (Platform.isMobile) {
       if (this.plugin.settings.mobileBlurPauseEnabled) {
         dump("Obsidian Mobile Plugin Blur (Waiting 30s)")
-        if (this.blurTimer) clearTimeout(this.blurTimer)
+        if (this.blurTimer) window.clearTimeout(this.blurTimer)
         this.blurTimer = window.setTimeout(() => {
           dump("Obsidian Mobile Blur (Executing)")
           this.plugin.disableWatch()
@@ -136,7 +136,7 @@ export class EventManager {
     }
   }
 
-  private watchModify = (file: TAbstractFile, ctx?: any) => {
+  private watchModify = (file: TAbstractFile, ctx?: unknown) => {
     // 检查 WebSocket 认证状态
     if (!this.plugin.websocket || !this.plugin.websocket.isAuth) {
       return
@@ -162,7 +162,7 @@ export class EventManager {
     })
   }
 
-  private watchDelete = (file: TAbstractFile, ctx?: any) => {
+  private watchDelete = (file: TAbstractFile, ctx?: unknown) => {
     // 检查 WebSocket 认证状态
     if (!this.plugin.websocket || !this.plugin.websocket.isAuth) {
       return
@@ -182,7 +182,7 @@ export class EventManager {
     })
   }
 
-  private watchRename = (file: TAbstractFile, oldFile: string, ctx?: any) => {
+  private watchRename = (file: TAbstractFile, oldFile: string, ctx?: unknown) => {
     // 检查 WebSocket 认证状态
     if (!this.plugin.websocket || !this.plugin.websocket.isAuth) {
       return
@@ -246,7 +246,7 @@ export class EventManager {
     if (delay <= 0) {
       executeRename()
     } else {
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         this.rawEventTimers.delete(file.path)
         executeRename()
       }, delay)
@@ -254,7 +254,7 @@ export class EventManager {
     }
   }
 
-  private watchRaw = (path: string, ctx?: any) => {
+  private watchRaw = (path: string, ctx?: unknown) => {
     if (!path) return
 
     // 检查 WebSocket 认证状态
@@ -282,7 +282,7 @@ export class EventManager {
    */
   private clearTimer(key: string) {
     if (this.rawEventTimers.has(key)) {
-      clearTimeout(this.rawEventTimers.get(key))
+      window.clearTimeout(this.rawEventTimers.get(key))
       this.rawEventTimers.delete(key)
     }
   }
@@ -296,7 +296,7 @@ export class EventManager {
   private runWithDelay(key: string, task: () => void | Promise<void>, delayset: number = 0) {
     // 如果已有相同 key 的定时器，先清除
     if (this.rawEventTimers.has(key)) {
-      clearTimeout(this.rawEventTimers.get(key))
+      window.clearTimeout(this.rawEventTimers.get(key))
       this.rawEventTimers.delete(key)
     }
 
@@ -316,7 +316,7 @@ export class EventManager {
       return
     }
 
-    const timer = setTimeout(async () => {
+    const timer = window.setTimeout(async () => {
       this.rawEventTimers.delete(key)
 
       // 执行任务时加锁，并带重试逻辑
