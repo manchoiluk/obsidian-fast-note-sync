@@ -25,6 +25,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     if: github.actor == 'haierkeys'
+    env:
+      CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v6
@@ -91,9 +93,8 @@ jobs:
 
       - name: Sync to CNB (Optional)
         # 仅在配置了 CNB_TOKEN 时运行
-        if: ${{ secrets.CNB_TOKEN }}
+        if: env.CNB_TOKEN != ''
         env:
-          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
           CNB_REPO: haierkeys/obsidian-fast-note-sync
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           RELEASE_BODY: ${{ github.event.inputs.release_note }}
