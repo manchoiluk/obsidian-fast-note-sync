@@ -8,9 +8,11 @@ on:
       - "master"
     paths:
       - "manifest.json"
-# 权限配置：允许脚本写入仓库内容（用于发布 Release）
+# 权限配置：允许脚本写入仓库内容并生成构建证明
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 env:
   NAME: ${{ github.event.repository.name }}
@@ -138,13 +140,21 @@ jobs:
           target_commitish: ${{ github.sha }} # 明确指定在当前分支的 commit 上创建 tag
           overwrite_files: true
           files: |
-            fast-note-sync-v${{ steps.check_version.outputs.release_tag }}.zip
             main.js
             manifest.json
             styles.css
             changelog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Artifact Attestation
+        if: steps.check_version.outputs.should_release == 'true'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
       - name: Push Tag to CNB
         if: steps.check_version.outputs.should_release == 'true'

@@ -2191,5 +2191,261 @@
     justify-content: center;
   }
 }
+/* --- Fast Note Sync Refactor Utilities --- */
+.fns-flex {
+  display: flex;
+}
+
+.fns-inline-flex {
+  display: inline-flex;
+}
+
+.fns-flex-center-v {
+  display: flex;
+  align-items: center;
+}
+
+.fns-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fns-flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fns-flex-1 {
+  flex: 1;
+}
+
+.fns-relative {
+  position: relative;
+}
+
+.fns-abs-center-v-right {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.fns-gap-5 {
+  gap: 5px;
+}
+
+.fns-gap-8 {
+  gap: 8px;
+}
+
+.fns-gap-10 {
+  gap: 10px;
+}
+
+.fns-margin-r-8 {
+  margin-right: 8px;
+}
+
+.fns-margin-b-8 {
+  margin-bottom: 8px;
+}
+
+.fns-margin-b-10 {
+  margin-bottom: 10px;
+}
+
+.fns-margin-b-20 {
+  margin-bottom: 20px;
+}
+
+.fns-margin-v-20 {
+  margin: 20px 0;
+}
+
+.fns-padding-5 {
+  padding: 5px;
+}
+
+.fns-padding-10 {
+  padding: 10px;
+}
+
+.fns-padding-20 {
+  padding: 20px;
+}
+
+.fns-padding-v-20 {
+  padding: 20px 0;
+}
+
+.fns-padding-r-35 {
+  padding-right: 35px;
+}
+
+.fns-text-center {
+  text-align: center;
+}
+
+.fns-muted-text {
+  color: var(--text-muted);
+}
+
+.fns-error-text {
+  color: var(--text-error);
+}
+
+.fns-accent-text {
+  color: var(--text-accent);
+}
+
+.fns-bold {
+  font-weight: bold;
+}
+
+.fns-font-09 {
+  font-size: 0.9em;
+}
+
+.fns-font-085 {
+  font-size: 0.85em;
+}
+
+.fns-break-all {
+  word-break: break-all;
+}
+
+.fns-w-100 {
+  width: 100%;
+}
+
+.fns-h-auto {
+  height: auto;
+}
+
+.fns-opacity-5 {
+  opacity: 0.5;
+}
+
+.fns-no-shadow {
+  box-shadow: none;
+}
+
+.fns-no-border {
+  border: none;
+}
+
+.fns-bg-transparent {
+  background-color: transparent;
+}
+
+.fns-bg-field {
+  background-color: var(--background-modifier-form-field);
+}
+
+.fns-radius-8 {
+  border-radius: 8px;
+}
+
+/* Modal specific overrides */
+.fns-modal-wide .modal {
+  width: 800px;
+  max-width: 90vw;
+}
+
+/* Share Modal specific hover effects */
+.fns-share-modal .fns-abs-center-v-right:hover {
+  opacity: 1;
+}
+
+.fns-share-modal .fns-share-footer {
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.fns-padding-h-5 {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.fns-items-center {
+  align-items: center;
+}
+
+.fns-overflow-hidden {
+  overflow: hidden;
+}
+
+.fns-list-container {
+  min-height: 300px;
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.fns-padding-40 {
+  padding: 40px;
+}
+
+.fns-padding-60 {
+  padding: 60px;
+}
+
+.fns-margin-b-15 {
+  margin-bottom: 15px;
+}
+
+.fns-opacity-6 {
+  opacity: 0.6;
+}
+
+.fns-font-lg {
+  font-size: 1.1em;
+}
+
+.fns-padding-8-10 {
+  padding: 8px 10px;
+}
+
+.fns-border-b {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.fns-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.fns-font-bold {
+  font-weight: bold;
+}
+
+.fns-no-wrap {
+  white-space: nowrap;
+}
+
+.fns-text-ellipsis {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.fns-font-sm {
+  font-size: 0.8em;
+}
+
+/* Rule Editor specifics */
+.fns-rule-textarea-base {
+  height: 32px;
+}
+
+.fns-hidden {
+  display: none !important;
+}
+
+.fns-white-text {
+  color: white !important;
+}
 
 /*# sourceMappingURL=styles.css.map */

@@ -373,10 +373,10 @@ export class SettingTab extends PluginSettingTab {
       const otherText = item.classList.contains("setting-item") ? "" : item.textContent?.toLowerCase() || ""
 
       if (name.includes(query) || desc.includes(query) || otherText.includes(query)) {
-        item.style.display = ""
+        item.removeClass("fns-hidden")
         hasVisibleItem = true
       } else {
-        item.style.display = "none"
+        item.addClass("fns-hidden")
       }
     })
 
@@ -394,7 +394,11 @@ export class SettingTab extends PluginSettingTab {
           break
         }
       }
-      item.style.display = shouldShow ? "" : "none"
+      if (shouldShow) {
+        item.removeClass("fns-hidden")
+      } else {
+        item.addClass("fns-hidden")
+      }
     })
 
     // 3. 处理 "No results" 消息
@@ -669,8 +673,7 @@ export class SettingTab extends PluginSettingTab {
       }
 
       const resetAllButton = debugDiv.createEl("button")
-      resetAllButton.addClass("mod-cta")
-      resetAllButton.style.color = "white"
+      resetAllButton.addClass("mod-cta", "fns-white-text")
       resetAllButton.setText($("setting.debug.reset_all"))
       resetAllButton.onclick = () => {
         new ConfirmModal(

@@ -87,7 +87,8 @@ export class RuleEditor {
             el.style.height = el.scrollHeight + 'px';
           } else {
             el.setAttr("wrap", "off");
-            el.style.height = '32px';
+            el.style.height = ""; // 清除内联高度，允许类名生效
+            el.addClass("fns-rule-textarea-base");
           }
         };
 

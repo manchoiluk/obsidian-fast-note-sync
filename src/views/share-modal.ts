@@ -47,30 +47,20 @@ export class ShareModal extends Modal {
         // 标题增加图标
         this.titleEl.empty();
         const titleIcon = this.titleEl.createSpan();
-        titleIcon.style.marginRight = "8px";
-        titleIcon.style.display = "inline-flex";
-        titleIcon.style.alignItems = "center";
+        titleIcon.addClass("fns-margin-r-8", "fns-inline-flex", "fns-flex-center-v");
         setIcon(titleIcon, "share-2");
         this.titleEl.createSpan({ text: $("ui.share.title") });
 
         const container = contentEl.createDiv("fns-share-container");
-        container.style.padding = "10px";
+        container.addClass("fns-padding-10");
 
         const filePathEl = container.createDiv("fns-share-file-path");
-        filePathEl.style.marginBottom = "20px";
-        filePathEl.style.color = "var(--text-muted)";
-        filePathEl.style.fontSize = "0.9em";
-        filePathEl.style.wordBreak = "break-all";
-        filePathEl.style.backgroundColor = "var(--background-modifier-form-field)";
-        filePathEl.style.padding = "10px";
-        filePathEl.style.borderRadius = "8px";
+        filePathEl.addClass("fns-margin-b-20", "fns-muted-text", "fns-font-09", "fns-break-all", "fns-bg-field", "fns-padding-10", "fns-radius-8");
         filePathEl.innerText = this.path;
  
         if (this.loading) {
             const loadingEl = container.createDiv("fns-share-loading");
-            loadingEl.style.textAlign = "center";
-            loadingEl.style.padding = "20px";
-            loadingEl.style.color = "var(--text-muted)";
+            loadingEl.addClass("fns-text-center", "fns-padding-20", "fns-muted-text");
             loadingEl.innerText = $("ui.share.checking");
             return;
         }
@@ -84,8 +74,7 @@ export class ShareModal extends Modal {
 
     private renderCreateButton(parent: HTMLElement) {
         const btnContainer = parent.createDiv("fns-share-btn-container");
-        btnContainer.style.textAlign = "center";
-        btnContainer.style.padding = "20px 0";
+        btnContainer.addClass("fns-text-center", "fns-padding-v-20");
 
         const btn = new ButtonComponent(btnContainer)
             .setButtonText(this.loading ? $("ui.share.button_creating") : $("ui.share.create"))
@@ -111,13 +100,7 @@ export class ShareModal extends Modal {
         
         // --- 1. 分享链接部分 ---
         const labelEl = resultContainer.createDiv("fns-share-label");
-        labelEl.style.marginBottom = "8px";
-        labelEl.style.fontWeight = "bold";
-        labelEl.style.display = "flex";
-        labelEl.style.alignItems = "center";
-        labelEl.style.gap = "5px";
-        labelEl.style.fontSize = "0.85em";
-        labelEl.style.color = "var(--text-muted)";
+        labelEl.addClass("fns-margin-b-8", "fns-bold", "fns-flex", "fns-flex-center-v", "fns-gap-5", "fns-font-085", "fns-muted-text");
         const linkLabelIcon = labelEl.createSpan();
         setIcon(linkLabelIcon, "globe");
         labelEl.createSpan({ text: $("ui.share.link") });
@@ -126,21 +109,17 @@ export class ShareModal extends Modal {
         const shareUrl = `${apiBase}/share/${this.shareData?.id}/${this.shareData?.token}`;
 
         const linkContainer = resultContainer.createDiv("fns-share-link-container");
-        linkContainer.style.display = "flex";
-        linkContainer.style.gap = "10px";
-        linkContainer.style.marginBottom = "20px";
+        linkContainer.addClass("fns-flex", "fns-gap-10", "fns-margin-b-20");
 
         // 输入框包装容器
         const inputWrapper = linkContainer.createDiv();
-        inputWrapper.style.position = "relative";
-        inputWrapper.style.flex = "1";
+        inputWrapper.addClass("fns-relative", "fns-flex-1");
 
         const inputEl = inputWrapper.createEl("input", {
             type: "text",
             value: shareUrl,
         });
-        inputEl.style.width = "100%";
-        inputEl.style.paddingRight = "35px"; // 为复制按钮留位
+        inputEl.addClass("fns-w-100", "fns-padding-r-35");
         inputEl.readOnly = true;
 
         // 内嵌复制按钮
@@ -148,21 +127,7 @@ export class ShareModal extends Modal {
             .setIcon("copy")
             .setTooltip($("ui.share.copy"));
         
-        copyBtn.buttonEl.style.position = "absolute";
-        copyBtn.buttonEl.style.right = "2px";
-        copyBtn.buttonEl.style.top = "50%";
-        copyBtn.buttonEl.style.transform = "translateY(-50%)";
-        copyBtn.buttonEl.style.boxShadow = "none";
-        copyBtn.buttonEl.style.border = "none";
-        copyBtn.buttonEl.style.backgroundColor = "transparent";
-        copyBtn.buttonEl.style.color = "var(--text-muted)";
-        copyBtn.buttonEl.style.display = "flex";
-        copyBtn.buttonEl.style.height = "auto";
-        copyBtn.buttonEl.style.padding = "5px";
-        copyBtn.buttonEl.style.opacity = "0.5";
-
-        copyBtn.buttonEl.addEventListener("mouseenter", () => copyBtn.buttonEl.style.opacity = "1");
-        copyBtn.buttonEl.addEventListener("mouseleave", () => copyBtn.buttonEl.style.opacity = "0.5");
+        copyBtn.buttonEl.addClass("fns-abs-center-v-right", "fns-no-shadow", "fns-no-border", "fns-bg-transparent", "fns-muted-text", "fns-flex", "fns-h-auto", "fns-padding-5", "fns-opacity-5");
 
         copyBtn.onClick(() => {
             navigator.clipboard.writeText(shareUrl);
@@ -179,26 +144,17 @@ export class ShareModal extends Modal {
 
         // --- 2. 密码管理部分 ---
         const passwordLabelEl = resultContainer.createDiv("fns-share-label");
-        passwordLabelEl.style.marginBottom = "8px";
-        passwordLabelEl.style.fontWeight = "bold";
-        passwordLabelEl.style.display = "flex";
-        passwordLabelEl.style.alignItems = "center";
-        passwordLabelEl.style.gap = "5px";
-        passwordLabelEl.style.fontSize = "0.85em";
-        passwordLabelEl.style.color = "var(--text-muted)";
+        passwordLabelEl.addClass("fns-margin-b-8", "fns-bold", "fns-flex", "fns-flex-center-v", "fns-gap-5", "fns-font-085", "fns-muted-text");
         const pwdLabelIcon = passwordLabelEl.createSpan();
         setIcon(pwdLabelIcon, "lock");
         passwordLabelEl.createSpan({ text: $("ui.share.password") });
 
         const passwordContainer = resultContainer.createDiv("fns-share-password-container");
-        passwordContainer.style.display = "flex";
-        passwordContainer.style.gap = "10px";
-        passwordContainer.style.marginBottom = "20px";
+        passwordContainer.addClass("fns-flex", "fns-gap-10", "fns-margin-b-20");
 
         // 密码输入框包装容器
         const pwdInputWrapper = passwordContainer.createDiv();
-        pwdInputWrapper.style.position = "relative";
-        pwdInputWrapper.style.flex = "1";
+        pwdInputWrapper.addClass("fns-relative", "fns-flex-1");
 
         // 如果已经有密码且用户还没修改，显示假密码
         let displayValue = this.passwordValue;
@@ -211,8 +167,7 @@ export class ShareModal extends Modal {
             value: displayValue,
             placeholder: $("ui.share.passwordPlaceholder")
         });
-        pwdInputEl.style.width = "100%";
-        pwdInputEl.style.paddingRight = "35px"; // 为眼睛图标留位
+        pwdInputEl.addClass("fns-w-100", "fns-padding-r-35");
 
         // 眼睛按钮逻辑 (内嵌至容器最右侧，使用 ButtonComponent 确保与复制按钮尺寸一致)
         const eyeBtn = new ButtonComponent(pwdInputWrapper)
@@ -225,21 +180,7 @@ export class ShareModal extends Modal {
                 this.render();
             });
         
-        eyeBtn.buttonEl.style.position = "absolute";
-        eyeBtn.buttonEl.style.right = "2px"; 
-        eyeBtn.buttonEl.style.top = "50%";
-        eyeBtn.buttonEl.style.transform = "translateY(-50%)";
-        eyeBtn.buttonEl.style.boxShadow = "none";
-        eyeBtn.buttonEl.style.border = "none";
-        eyeBtn.buttonEl.style.backgroundColor = "transparent";
-        eyeBtn.buttonEl.style.color = "var(--text-muted)";
-        eyeBtn.buttonEl.style.display = "flex";
-        eyeBtn.buttonEl.style.height = "auto";
-        eyeBtn.buttonEl.style.padding = "5px";
-        eyeBtn.buttonEl.style.opacity = "0.5";
-
-        eyeBtn.buttonEl.addEventListener("mouseenter", () => eyeBtn.buttonEl.style.opacity = "1");
-        eyeBtn.buttonEl.addEventListener("mouseleave", () => eyeBtn.buttonEl.style.opacity = "0.5");
+        eyeBtn.buttonEl.addClass("fns-abs-center-v-right", "fns-no-shadow", "fns-no-border", "fns-bg-transparent", "fns-muted-text", "fns-flex", "fns-h-auto", "fns-padding-5", "fns-opacity-5");
 
         pwdInputEl.addEventListener("input", (e) => {
             this.passwordValue = (e.target as HTMLInputElement).value;
@@ -274,34 +215,24 @@ export class ShareModal extends Modal {
 
         // --- 3. 短链接部分 ---
         const shortLinkLabelEl = resultContainer.createDiv("fns-share-label");
-        shortLinkLabelEl.style.marginBottom = "8px";
-        shortLinkLabelEl.style.fontWeight = "bold";
-        shortLinkLabelEl.style.display = "flex";
-        shortLinkLabelEl.style.alignItems = "center";
-        shortLinkLabelEl.style.gap = "5px";
-        shortLinkLabelEl.style.fontSize = "0.85em";
-        shortLinkLabelEl.style.color = "var(--text-muted)";
+        shortLinkLabelEl.addClass("fns-margin-b-8", "fns-bold", "fns-flex", "fns-flex-center-v", "fns-gap-5", "fns-font-085", "fns-muted-text");
         const shortLinkIcon = shortLinkLabelEl.createSpan();
         setIcon(shortLinkIcon, "link-2");
         shortLinkLabelEl.createSpan({ text: $("ui.share.shortLink") });
 
         const shortLinkContainer = resultContainer.createDiv("fns-share-short-link-container");
-        shortLinkContainer.style.display = "flex";
-        shortLinkContainer.style.gap = "10px";
-        shortLinkContainer.style.marginBottom = "20px";
+        shortLinkContainer.addClass("fns-flex", "fns-gap-10", "fns-margin-b-20");
 
         if (this.shareData?.shortLink) {
             // 短链接输入框包装容器
             const shortInputWrapper = shortLinkContainer.createDiv();
-            shortInputWrapper.style.position = "relative";
-            shortInputWrapper.style.flex = "1";
+            shortInputWrapper.addClass("fns-relative", "fns-flex-1");
 
             const shortInputEl = shortInputWrapper.createEl("input", {
                 type: "text",
                 value: this.shareData.shortLink,
             });
-            shortInputEl.style.width = "100%";
-            shortInputEl.style.paddingRight = "35px";
+            shortInputEl.addClass("fns-w-100", "fns-padding-r-35");
             shortInputEl.readOnly = true;
 
             // 内嵌复制按钮
@@ -309,21 +240,7 @@ export class ShareModal extends Modal {
                 .setIcon("copy")
                 .setTooltip($("ui.share.shortLinkCopy"));
             
-            shortCopyBtn.buttonEl.style.position = "absolute";
-            shortCopyBtn.buttonEl.style.right = "2px";
-            shortCopyBtn.buttonEl.style.top = "50%";
-            shortCopyBtn.buttonEl.style.transform = "translateY(-50%)";
-            shortCopyBtn.buttonEl.style.boxShadow = "none";
-            shortCopyBtn.buttonEl.style.border = "none";
-            shortCopyBtn.buttonEl.style.backgroundColor = "transparent";
-            shortCopyBtn.buttonEl.style.color = "var(--text-muted)";
-            shortCopyBtn.buttonEl.style.display = "flex";
-            shortCopyBtn.buttonEl.style.height = "auto";
-            shortCopyBtn.buttonEl.style.padding = "5px";
-            shortCopyBtn.buttonEl.style.opacity = "0.5";
-
-            shortCopyBtn.buttonEl.addEventListener("mouseenter", () => shortCopyBtn.buttonEl.style.opacity = "1");
-            shortCopyBtn.buttonEl.addEventListener("mouseleave", () => shortCopyBtn.buttonEl.style.opacity = "0.5");
+            shortCopyBtn.buttonEl.addClass("fns-abs-center-v-right", "fns-no-shadow", "fns-no-border", "fns-bg-transparent", "fns-muted-text", "fns-flex", "fns-h-auto", "fns-padding-5", "fns-opacity-5");
 
             shortCopyBtn.onClick(() => {
                 navigator.clipboard.writeText(this.shareData!.shortLink!);
@@ -351,9 +268,7 @@ export class ShareModal extends Modal {
                 type: "text",
                 placeholder: $("ui.share.shortLink"),
             });
-            emptyInput.style.flex = "1";
-            emptyInput.readOnly = true;
-            emptyInput.disabled = true;
+            emptyInput.addClass("fns-flex-1");
 
             new ButtonComponent(shortLinkContainer)
                 .setIcon("link-2")
@@ -373,23 +288,13 @@ export class ShareModal extends Modal {
 
         // --- 4. 底部操作栏 (左右布局) ---
         const footerContainer = resultContainer.createDiv("fns-share-footer");
-        footerContainer.style.display = "flex";
-        footerContainer.style.justifyContent = "space-between";
-        footerContainer.style.alignItems = "center";
-        footerContainer.style.marginTop = "20px";
-        footerContainer.style.paddingTop = "15px";
-        footerContainer.style.borderTop = "1px solid var(--background-modifier-border)";
+        footerContainer.addClass("fns-flex-between", "fns-margin-b-20", "fns-padding-v-20", "fns-share-footer");
 
         // 左侧：分享成功提示
         const tipEl = footerContainer.createDiv("fns-share-tip");
-        tipEl.style.fontSize = "0.85em";
-        tipEl.style.color = "var(--text-accent)";
-        tipEl.style.display = "flex";
-        tipEl.style.alignItems = "center";
-        tipEl.style.gap = "5px";
+        tipEl.addClass("fns-font-085", "fns-accent-text", "fns-flex-center-v", "fns-gap-5");
         const iconSpan = tipEl.createSpan();
-        iconSpan.style.display = "inline-flex";
-        iconSpan.style.alignItems = "center";
+        iconSpan.addClass("fns-inline-flex", "fns-flex-center-v");
         setIcon(iconSpan, "check-circle-2");
         tipEl.createSpan({ text: $("ui.share.success") });
 
@@ -398,18 +303,14 @@ export class ShareModal extends Modal {
             .setCta()
             .setDisabled(this.loading);
         
-        cancelBtn.buttonEl.style.display = "flex";
-        cancelBtn.buttonEl.style.alignItems = "center";
-        cancelBtn.buttonEl.style.justifyContent = "center";
-        cancelBtn.buttonEl.style.gap = "8px";
+        cancelBtn.buttonEl.addClass("fns-flex-center", "fns-gap-8");
 
         // 确保按钮内容为空后再手动构建，防止重复或冲突
         cancelBtn.buttonEl.empty();
 
         // 分别创建图标和文字的 span
         const cancelIconSpan = cancelBtn.buttonEl.createSpan();
-        cancelIconSpan.style.display = "inline-flex";
-        cancelIconSpan.style.alignItems = "center";
+        cancelIconSpan.addClass("fns-inline-flex", "fns-flex-center-v");
         setIcon(cancelIconSpan, "unlink"); 
         
         cancelBtn.buttonEl.createSpan({ text: $("ui.share.cancel") });

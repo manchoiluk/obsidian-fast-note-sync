@@ -92,8 +92,9 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
             setHasUpgrade(hasNew);
         };
         checkUpgrade();
-        const timer = setInterval(checkUpgrade, 3000); // 每3秒检查一次
-        return () => clearInterval(timer);
+        // 移除 3秒一次的定时器，仅在打开视图时检查。这符合 Obsidian 审核要求，避免不必要的后台数据查询。
+        // const timer = setInterval(checkUpgrade, 3000); 
+        // return () => clearInterval(timer);
     }, [plugin.localStorageManager]);
 
     React.useEffect(() => {

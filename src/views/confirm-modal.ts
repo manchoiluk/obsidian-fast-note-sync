@@ -37,7 +37,7 @@ export class ConfirmModal extends Modal {
         const messageEl = contentEl.createEl("div", {
             cls: this.isWarning ? "fns-modal-warning-message" : "fns-modal-info-message"
         });
-        messageEl.innerHTML = this.message;
+        messageEl.setText(this.message);
 
         new Setting(contentEl)
             .addButton((btn) => {

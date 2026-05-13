@@ -161,7 +161,7 @@ export class FileCloudPreview {
     const previewElement = await this.createPreviewElement(filePath, cloudUrl, ext, subpath);
 
     if (previewElement) {
-      embed.innerHTML = "";
+      embed.empty();
 
       // 增加动态类名处理
       const classNames = this.getEmbedClass(ext);
@@ -523,15 +523,9 @@ export class FileCloudPreview {
     container.addClass("file-embed-title");
 
     const fileName = filePath.split("/").pop() || filePath;
-    container.innerHTML = `
-        <span class="file-embed-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file">
-            <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path>
-            <path d="M14 2v5a1 1 0 0 0 1 1h5"></path>
-          </svg>
-        </span>
-        ${fileName}
-    `;
+    const iconEl = container.createSpan({ cls: "file-embed-icon" });
+    setIcon(iconEl, "file");
+    container.appendText(` ${fileName}`);
 
     container.onclick = () => window.open(cloudUrl, "_blank");
     return container;

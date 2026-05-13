@@ -54,17 +54,13 @@ export class RecycleBinModal extends Modal {
         contentEl.addClass("fns-recycle-bin-modal");
         // 加宽界面
         this.containerEl.addClass("fns-modal-wide");
-        (this.containerEl.querySelector(".modal") as HTMLElement).style.width = "800px";
-        (this.containerEl.querySelector(".modal") as HTMLElement).style.maxWidth = "90vw";
 
         this.titleEl.innerText = $("ui.recycle_bin.title");
 
         // offline check
         if (!this.plugin.websocket || !this.plugin.websocket.isConnected()) {
             const div = contentEl.createDiv("fns-recycle-offline");
-            div.style.padding = "20px";
-            div.style.textAlign = "center";
-            div.style.color = "var(--text-error)";
+            div.addClass("fns-padding-20", "fns-text-center", "fns-error-text");
             div.innerText = $("ui.recycle_bin.offline");
             return;
         }
@@ -79,9 +75,7 @@ export class RecycleBinModal extends Modal {
 
     private renderTabs(parent: HTMLElement) {
         const tabContainer = parent.createDiv("fns-recycle-tabs");
-        tabContainer.style.display = "flex";
-        tabContainer.style.marginBottom = "10px";
-        tabContainer.style.gap = "10px";
+        tabContainer.addClass("fns-flex", "fns-margin-b-10", "fns-gap-10");
 
         const noteTabBtn = new ButtonComponent(tabContainer)
             .setButtonText($("ui.recycle_bin.note"))
@@ -104,21 +98,14 @@ export class RecycleBinModal extends Modal {
 
     private renderActions(parent: HTMLElement) {
         const actionContainer = parent.createDiv("fns-recycle-actions");
-        actionContainer.style.display = "flex";
-        actionContainer.style.justifyContent = "space-between";
-        actionContainer.style.alignItems = "center";
-        actionContainer.style.marginBottom = "10px";
-        actionContainer.style.padding = "0 5px";
+        actionContainer.addClass("fns-flex-between", "fns-margin-b-10", "fns-padding-h-5");
 
         const leftActions = actionContainer.createDiv("fns-actions-left");
-        leftActions.style.display = "flex";
-        leftActions.style.gap = "10px";
+        leftActions.addClass("fns-flex", "fns-gap-10");
 
         // 全选复选框
         const selectAllContainer = leftActions.createDiv();
-        selectAllContainer.style.display = "flex";
-        selectAllContainer.style.alignItems = "center";
-        selectAllContainer.style.gap = "5px";
+        selectAllContainer.addClass("fns-flex", "fns-items-center", "fns-gap-5");
 
         const selectAllCb = selectAllContainer.createEl("input", { type: "checkbox" });
         const items = this.items || [];
@@ -196,34 +183,25 @@ export class RecycleBinModal extends Modal {
 
     private renderList(listContainer: HTMLElement) {
         listContainer.empty();
-        listContainer.style.minHeight = "300px";
-        listContainer.style.maxHeight = "500px";
-        listContainer.style.overflowY = "auto";
-        listContainer.style.border = "1px solid var(--background-modifier-border)";
-        listContainer.style.borderRadius = "4px";
-        listContainer.style.marginTop = "10px";
+        listContainer.addClass("fns-list-container");
 
         if (this.loading && (!this.items || this.items.length === 0)) {
             const loadingDiv = listContainer.createDiv("fns-loading");
-            loadingDiv.style.padding = "40px 20px";
-            loadingDiv.style.textAlign = "center";
+            loadingDiv.addClass("fns-padding-40", "fns-text-center");
             loadingDiv.innerText = $("ui.history.loading");
             return;
         }
 
         if (!this.items || this.items.length === 0) {
             const emptyState = listContainer.createDiv({ cls: "fns-empty-state" });
-            emptyState.style.padding = "60px 20px";
-            emptyState.style.textAlign = "center";
-            emptyState.style.color = "var(--text-muted)";
+            emptyState.addClass("fns-padding-60", "fns-text-center", "fns-muted-text");
 
             const emptyIcon = emptyState.createDiv();
-            emptyIcon.style.marginBottom = "15px";
-            emptyIcon.style.opacity = "0.6";
+            emptyIcon.addClass("fns-margin-b-15", "fns-opacity-6");
             setIcon(emptyIcon, "archive-x"); // 使用 archive-x 图标
 
             const emptyText = emptyState.createDiv();
-            emptyText.style.fontSize = "1.1em";
+            emptyText.addClass("fns-font-lg");
             emptyText.innerText = this.activeTab === 'note' ? $("ui.recycle_bin.empty_note") : $("ui.recycle_bin.empty_file");
             return;
         }
@@ -244,8 +222,7 @@ export class RecycleBinModal extends Modal {
         // Load more at bottom
         if (this.items.length < this.totalRows) {
             const loadMoreDiv = listContainer.createDiv("fns-load-more");
-            loadMoreDiv.style.textAlign = "center";
-            loadMoreDiv.style.padding = "20px";
+            loadMoreDiv.addClass("fns-text-center", "fns-padding-20");
 
             if (this.loading) {
                 loadMoreDiv.innerText = $("ui.history.loading");
@@ -262,18 +239,10 @@ export class RecycleBinModal extends Modal {
 
     private renderItem(container: HTMLElement, item: RecycleItem) {
         const itemDiv = container.createDiv("fns-recycle-item");
-        itemDiv.style.display = "flex";
-        itemDiv.style.alignItems = "center";
-        itemDiv.style.padding = "8px 10px";
-        itemDiv.style.borderBottom = "1px solid var(--background-modifier-border)";
-        itemDiv.style.justifyContent = "space-between";
+        itemDiv.addClass("fns-flex-between", "fns-padding-8-10", "fns-border-b");
 
         const leftDiv = itemDiv.createDiv("fns-item-left");
-        leftDiv.style.display = "flex";
-        leftDiv.style.alignItems = "center";
-        leftDiv.style.gap = "8px";
-        leftDiv.style.overflow = "hidden";
-        leftDiv.style.flex = "1";
+        leftDiv.addClass("fns-flex", "fns-items-center", "fns-gap-8", "fns-overflow-hidden", "fns-flex-1");
 
         // 复选框
         const cb = leftDiv.createEl("input", { type: "checkbox" });
@@ -293,17 +262,11 @@ export class RecycleBinModal extends Modal {
         setIcon(iconDiv, this.activeTab === 'note' ? "file-text" : "file");
 
         const infoDiv = leftDiv.createDiv("fns-item-info");
-        infoDiv.style.display = "flex";
-        infoDiv.style.flexDirection = "column";
-        infoDiv.style.overflow = "hidden";
-        infoDiv.style.flex = "1";
+        infoDiv.addClass("fns-flex", "fns-flex-col", "fns-overflow-hidden", "fns-flex-1");
 
         const nameEl = infoDiv.createDiv("fns-item-name");
         nameEl.innerText = item.path;
-        nameEl.style.fontWeight = "bold";
-        nameEl.style.whiteSpace = "nowrap";
-        nameEl.style.overflow = "hidden";
-        nameEl.style.textOverflow = "ellipsis";
+        nameEl.addClass("fns-font-bold", "fns-no-wrap", "fns-overflow-hidden", "fns-text-ellipsis");
         nameEl.title = item.path;
 
         const dateEl = infoDiv.createDiv("fns-item-date");
@@ -318,12 +281,10 @@ export class RecycleBinModal extends Modal {
             metaText += `${$("ui.recycle_bin.delete_time")}: ${date.toLocaleString()}`;
         }
         dateEl.innerText = metaText;
-        dateEl.style.fontSize = "0.8em";
-        dateEl.style.color = "var(--text-muted)";
+        dateEl.addClass("fns-font-sm", "fns-muted-text");
 
         const rightDiv = itemDiv.createDiv("fns-item-right");
-        rightDiv.style.display = "flex";
-        rightDiv.style.gap = "5px";
+        rightDiv.addClass("fns-flex", "fns-gap-5");
 
         new ButtonComponent(rightDiv)
             .setButtonText($("ui.recycle_bin.restore"))
