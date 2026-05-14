@@ -272,6 +272,14 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     plugin.fileHashManager.setFileHashes(plugin.pendingNoteModifies, (path) => plugin.app.vault.getFileByPath(path)?.stat)
     plugin.pendingNoteModifies.clear()
     plugin.localStorageManager.clearPending('pendingNoteModifies')
+    // 同步结束，提交扫描阶段计算出的哈希 (Commit hashes calculated during scan)
+    for (const [path, cache] of plugin.scannedNoteHashes) {
+      const existing = (plugin.fileHashManager as any).hashMap.get(path)
+      if (!existing || existing.mtime <= cache.mtime) {
+        plugin.fileHashManager.setFileHash(path, cache.hash, cache.mtime, cache.size)
+      }
+    }
+    plugin.scannedNoteHashes.clear()
   } else if (type === "file") {
     plugin.fileHashManager.removeFileHashes(plugin.pendingDeleteFilePaths)
     plugin.pendingDeleteFilePaths.clear()
@@ -279,6 +287,14 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     plugin.fileHashManager.setFileHashes(plugin.pendingUploadHashes, (path) => plugin.app.vault.getFileByPath(path)?.stat)
     plugin.pendingUploadHashes.clear()
     plugin.localStorageManager.clearPending('pendingUploadHashes')
+    // 同步结束，提交扫描阶段计算出的哈希 (Commit hashes calculated during scan)
+    for (const [path, cache] of plugin.scannedFileHashes) {
+      const existing = (plugin.fileHashManager as any).hashMap.get(path)
+      if (!existing || existing.mtime <= cache.mtime) {
+        plugin.fileHashManager.setFileHash(path, cache.hash, cache.mtime, cache.size)
+      }
+    }
+    plugin.scannedFileHashes.clear()
   } else if (type === "folder") {
     for (const path of plugin.pendingDeleteFolderPaths) plugin.folderSnapshotManager.removeFolder(path)
     plugin.pendingDeleteFolderPaths.clear()
@@ -286,11 +302,23 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     if (plugin.configHashManager && plugin.configHashManager.isReady()) {
       plugin.configHashManager.removeFileHashes(plugin.pendingDeleteConfigPaths)
       // 同步结束，提交本轮同步中可能产生的待确认上传 hash
-      plugin.configHashManager.setFileHashes(plugin.pendingConfigModifies)
+      await plugin.configHashManager.setFileHashes(plugin.pendingConfigModifies, async (path) => {
+        const isVirtual = path.startsWith(plugin.localStorageManager.syncPathPrefix)
+        if (isVirtual) return { mtime: Date.now(), size: plugin.localStorageManager.getItemValue(plugin.localStorageManager.pathToKey(path) || "")?.length || 0 }
+        return await plugin.app.vault.adapter.stat(normalizePath(path))
+      })
     }
     plugin.pendingDeleteConfigPaths.clear()
     plugin.pendingConfigModifies.clear()
     plugin.localStorageManager.clearPending('pendingConfigModifies')
+    // 同步结束，提交扫描阶段计算出的哈希 (Commit hashes calculated during scan)
+    for (const [path, cache] of plugin.scannedConfigHashes) {
+      const existing = (plugin.configHashManager as any).hashMap.get(path)
+      if (!existing || existing.mtime <= cache.mtime) {
+        plugin.configHashManager.setFileHash(path, cache.hash, cache.mtime, cache.size)
+      }
+    }
+    plugin.scannedConfigHashes.clear()
   }
 
   // 3. 调用原始 End 处理函数 (更新时间戳等)
@@ -496,6 +524,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
               if (contentHash === null) {
                 try {
                   contentHash = await hashContentAsync(await plugin.app.vault.read(file));
+                  // 暂存哈希，待同步结束时统一存入 (Temporarily store hash, commit on sync end)
+                  plugin.scannedNoteHashes.set(file.path, { hash: contentHash, mtime: file.stat.mtime, size: file.stat.size });
                   dump(`[HashNote] [Calc] path=${file.path} size=${formatFileSize(file.stat.size)} hash=${contentHash}`)
                 } catch (e) {
                   console.warn(`[FastNoteSync] 哈希笔记失败，跳过: ${file.path}`, e);
@@ -543,6 +573,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
               if (contentHash === null) {
                 try {
                   contentHash = await hashFileAsync(plugin.app, file.path);
+                  // 暂存哈希，待同步结束时统一存入 (Temporarily store hash, commit on sync end)
+                  plugin.scannedFileHashes.set(file.path, { hash: contentHash, mtime: file.stat.mtime, size: file.stat.size });
                   logMemorySnapshot(`after scan hash ${file.path}`);
                   // 注意：hashFileAsync 内部已经带了 [Calc] 类型的 dump，此处不再重复
                 } catch (e) {
@@ -685,6 +717,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
         if (contentHash === null) {
           try {
             contentHash = await hashFileAsync(plugin.app, path);
+            // 暂存哈希，待同步结束时统一存入 (Temporarily store hash, commit on sync end)
+            plugin.scannedConfigHashes.set(path, { hash: contentHash, mtime: stat.mtime, size: stat.size });
             // 注意：hashFileAsync 内部已经带了 [Calc] 类型的 dump
           } catch (e) {
             console.warn(`[FastNoteSync] 哈希配置失败，跳过: ${path}`, e);

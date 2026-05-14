@@ -172,10 +172,10 @@ export class ConfigHashManager {
         this.saveToStorage();
     }
 
-    setFileHashes(entries: Iterable<[string, string]>, getStat?: (path: string) => { mtime?: number; size?: number } | null | undefined): void {
+    async setFileHashes(entries: Iterable<[string, string]>, getStat?: (path: string) => Promise<{ mtime?: number; size?: number } | null | undefined> | { mtime?: number; size?: number } | null | undefined): Promise<void> {
         let changed = false;
         for (const [path, hash] of entries) {
-            const stat = getStat?.(path);
+            const stat = await getStat?.(path);
             this.hashMap.set(path, { hash, mtime: stat?.mtime || 0, size: stat?.size || 0 });
             changed = true;
         }

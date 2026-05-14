@@ -81,9 +81,15 @@ export default class FastSync extends Plugin {
   // 待服务端 SettingDeleteAck 确认的路径集合，Ack 到达后才从 hashManager 移除
   // Paths pending SettingDeleteAck; remove from hashManager only after server confirms deletion
   pendingConfigDeleteAcks: Set<string> = new Set()
-  // 待确认的配置上传 hash 映射，等待服务端 SettingModifyAck 后再写入 hashManager
-  // Pending config upload hash map, update hashManager only after server SettingModifyAck
+  // 待确认的配置上传 hash 映射，等待服务端 SettingModifyAck 后再写入 configHashManager
+  // Pending config upload hash map, update configHashManager only after server SettingModifyAck
   pendingConfigModifies: Map<string, string> = new Map()
+
+  // 暂存本轮同步扫描过程中新计算出的哈希，待同步结束（SyncEnd）时统一持久化到 HashManager
+  // Temporarily store newly calculated hashes during scan, commit to HashManager on SyncEnd
+  scannedNoteHashes: Map<string, { hash: string; mtime: number; size: number }> = new Map()
+  scannedFileHashes: Map<string, { hash: string; mtime: number; size: number }> = new Map()
+  scannedConfigHashes: Map<string, { hash: string; mtime: number; size: number }> = new Map()
 
   syncTypeCompleteCount: number = 0 // 已完成同步的类型计数
   expectedSyncCount: number = 0 // 预期的同步类型计数
@@ -154,6 +160,9 @@ export default class FastSync extends Plugin {
     this.fileSyncEnd = false
     this.configSyncEnd = false
     this.folderSyncEnd = false
+    this.scannedNoteHashes.clear()
+    this.scannedFileHashes.clear()
+    this.scannedConfigHashes.clear()
   }
 
   // 计算总任务数

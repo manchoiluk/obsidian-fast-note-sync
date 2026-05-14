@@ -191,9 +191,16 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
 
     // 更新配置哈希表
     if (plugin.configHashManager && plugin.configHashManager.isReady()) {
-        plugin.configHashManager.setFileHash(data.path, data.contentHash)
+        const filePath = normalizePath(data.path);
+        const stat = isVirtual ? null : await plugin.app.vault.adapter.stat(filePath);
+        // 如果是虚拟路径，mtime 使用推送过来的，size 使用内容长度
+        // For virtual paths, use pushed mtime and content length as size
+        const size = isVirtual ? (data.content?.length || 0) : (stat?.size || 0);
+        const mtime = data.mtime || (stat?.mtime || 0);
+        
+        plugin.configHashManager.setFileHash(data.path, data.contentHash, mtime, size)
         // 记录 mtime
-        plugin.lastSyncMtime.set(data.path, data.mtime)
+        plugin.lastSyncMtime.set(data.path, mtime)
     }
 
     plugin.configSyncTasks.completed++
@@ -381,12 +388,22 @@ export const receiveConfigSyncClear = async function (data: unknown, plugin: Fas
  * 收到 SettingModifyAck，将 pending hash 转移到正式 configHashManager 并更新 lastConfigSyncTime
  * Receive SettingModifyAck, move pending hash to formal configHashManager and update lastConfigSyncTime
  */
-export const receiveConfigModifyAck = function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
+export const receiveConfigModifyAck = async function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
     if (data.path) {
         const contentHash = plugin.pendingConfigModifies.get(data.path)
         if (contentHash !== undefined) {
             if (plugin.configHashManager && plugin.configHashManager.isReady()) {
-                plugin.configHashManager.setFileHash(data.path, contentHash)
+                const isVirtual = data.path.startsWith(plugin.localStorageManager.syncPathPrefix)
+                let mtime = 0, size = 0
+                if (isVirtual) {
+                    mtime = Date.now() // LocalStorage 虚拟时间
+                    size = plugin.localStorageManager.getItemValue(plugin.localStorageManager.pathToKey(data.path) || "")?.length || 0
+                } else {
+                    const stat = await plugin.app.vault.adapter.stat(normalizePath(data.path));
+                    mtime = stat?.mtime || 0
+                    size = stat?.size || 0
+                }
+                plugin.configHashManager.setFileHash(data.path, contentHash, mtime, size)
             }
             plugin.pendingConfigModifies.delete(data.path)
             plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
