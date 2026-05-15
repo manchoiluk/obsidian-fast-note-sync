@@ -1,4 +1,4 @@
-import { Menu, MenuItem, setIcon, Platform } from 'obsidian';
+import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
 
 import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes } from './operator';
 import { showSyncNotice, isVersionNew } from './helps';
@@ -7,8 +7,8 @@ import { ShareModal } from '../views/share-modal';
 import { RecycleBinModal } from '../views/recycle-bin-modal';
 import { AboutModal } from '../views/about-modal';
 import { $ } from "../i18n/lang";
-import { AppWithInternal, MenuItemWithDom } from "./types";
-import FastSync from '../main';
+import { AppWithInternal, MenuItemWithDom, MenuWithHide, WorkspaceWithInternal } from "./types";
+import FastSync from "../main";
 
 
 export class MenuManager {
@@ -117,6 +117,10 @@ export class MenuManager {
 
     // 监听活动文件切换，更新分享图标颜色
     // Listen for active file changes to update share icon color
+    this.plugin.registerEvent(this.plugin.app.workspace.on("layout-change", () => {
+      this.updateShareIconColor();
+      void this.refreshUpgradeBadge();
+    }));
     this.plugin.registerEvent(
       this.plugin.app.workspace.on("active-leaf-change", () => {
         this.updateShareIconColor();
@@ -127,13 +131,16 @@ export class MenuManager {
       })
     );
 
+    // Note: handleFileMenu and handleEditorMenu are missing from the codebase.
+    // EventManager handles file-menu for Note History and Share.
+
     // 初始化 同步日志 状态栏入口
     this.logStatusBarItem = this.plugin.addStatusBarItem();
     this.logStatusBarItem.addClass("mod-clickable");
     setIcon(this.logStatusBarItem, "arrow-down-up");
     this.logStatusBarItem.setAttribute("aria-label", $("ui.log.view_log"));
     this.logStatusBarItem.addEventListener("click", () => {
-      this.plugin.activateLogView();
+      void this.plugin.activateLogView();
     });
 
     // 初始化 回收站 状态栏入口
@@ -142,7 +149,7 @@ export class MenuManager {
     setIcon(this.recycleBinStatusBarItem, "archive-x");
     this.recycleBinStatusBarItem.setAttribute("aria-label", $("ui.recycle_bin.title"));
     this.recycleBinStatusBarItem.addEventListener("click", () => {
-      this.plugin.activateRecycleBinView();
+      void this.plugin.activateRecycleBinView();
     });
     
     this.refreshConcurrencyIndicator();
@@ -150,7 +157,7 @@ export class MenuManager {
     this.plugin.addCommand({
       id: "start-full-sync",
       name: $("ui.menu.full_sync"),
-      callback: () => startupFullSync(this.plugin),
+      callback: () => { void startupFullSync(this.plugin); },
     });
 
     this.plugin.addCommand({
@@ -170,8 +177,9 @@ export class MenuManager {
       id: "open-sync-log",
       name: $("ui.log.view_log"),
       callback: () => {
-        this.plugin.activateLogView()
+        void this.plugin.activateLogView()
       },
+      // eslint-disable-next-line obsidianmd/commands/no-default-hotkeys
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "Q" }]
     })
 
@@ -181,6 +189,7 @@ export class MenuManager {
       callback: () => {
         this.showRibbonMenu()
       },
+      // eslint-disable-next-line obsidianmd/commands/no-default-hotkeys
       hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "W" }]
     })
 
@@ -189,15 +198,13 @@ export class MenuManager {
       name: $("ui.menu.settings"),
       callback: () => {
         const app = this.plugin.app as AppWithInternal;
-        const setting = app.setting;
-        if (setting && setting.containerEl && setting.containerEl.parentElement !== null) {
-          setting.close()
-        } else if (setting) {
-          setting.open()
-          setting.openTabById(this.plugin.manifest.id)
+        if (app.setting) {
+          app.setting.open();
+          app.setting.openTabById(this.plugin.manifest.id);
         }
       },
-      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "S" }]
+      // eslint-disable-next-line obsidianmd/commands/no-default-hotkeys
+      hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "E" }]
     })
   }
 
@@ -270,7 +277,7 @@ export class MenuManager {
 
     // 尝试寻找 DOM 中已经存在的点，防止重复创建 (Try to find existing dot in DOM to prevent duplicates)
     if (!this.mobileStatusDot) {
-      this.mobileStatusDot = activeDocument.body.querySelector(".fns-mobile-status-dot") as HTMLElement;
+      this.mobileStatusDot = activeDocument.body.querySelector(".fns-mobile-status-dot");
     }
 
     if (pos === 'hidden') {
@@ -318,14 +325,14 @@ export class MenuManager {
    */
   updateMobileHeaderIcon(status: boolean) {
     this.mobileHeaderIconStatus = status;
-    this.plugin.app.workspace.iterateRootLeaves((leaf) => {
+    (this.plugin.app.workspace as unknown as WorkspaceWithInternal).iterateRootLeaves((leaf: WorkspaceLeaf) => {
       // containerEl 通常是 .workspace-leaf-content，直接向下查询 .view-actions
       // containerEl is usually .workspace-leaf-content, query .view-actions downward
       const viewActions = (leaf.view.containerEl.querySelector('.view-actions')
         ?? leaf.view.containerEl.closest?.('.workspace-leaf-content')?.querySelector('.view-actions')) as HTMLElement | null;
       if (!viewActions) return;
 
-      let btn = viewActions.querySelector('.fns-status-action') as HTMLElement | null;
+      let btn = viewActions.querySelector('.fns-status-action');
       if (!btn) {
         btn = viewActions.createEl('button', {
           cls: 'clickable-icon view-action fns-status-action fns-ribbon-container',
@@ -335,9 +342,9 @@ export class MenuManager {
       }
 
       btn.empty();
-      setIcon(btn, status ? 'wifi' : 'wifi-off');
+      setIcon(btn as HTMLElement, status ? 'wifi' : 'wifi-off');
       btn.createDiv("fns-ribbon-badge");
-      btn.onclick = (e) => this.showRibbonMenu(e as MouseEvent);
+      (btn as HTMLElement).onclick = (e: MouseEvent) => this.showRibbonMenu(e);
     });
     this.refreshUpgradeBadge();
   }
@@ -391,7 +398,7 @@ export class MenuManager {
     const serverNew = !!this.plugin.localStorageManager.getMetadata("serverVersionIsNew");
     const hasNew = (pluginNew || serverNew);
 
-    const show = hasNew ? "block" : "none";
+    // const visibility = hasNew ? "block" : "none";
 
     // 只有在开启了显示红点设置时才在外部图标上显示 / Only show on external icons if setting is enabled
     const ribbonShow = (this.plugin.settings.showUpgradeBadge && hasNew) ? "block" : "none";
@@ -490,11 +497,11 @@ export class MenuManager {
     const menu = new Menu();
     this.activeMenu = menu;
 
-    // 监听菜单关闭事件以便重置引用
-    const originalHide = menu.hide.bind(menu);
-    menu.hide = () => {
+    const menuWithHide = menu as unknown as MenuWithHide;
+    const originalHide: () => void = menuWithHide.hide.bind(menuWithHide) as () => void;
+    menuWithHide.hide = () => {
       this.activeMenu = null;
-      return originalHide();
+      originalHide();
     };
 
     if (this.plugin.websocket.isRegister) {
@@ -503,7 +510,7 @@ export class MenuManager {
           .setIcon("pause")
           .setTitle($("ui.menu.disable_sync"))
           .onClick(async () => {
-            this.plugin.websocket.unRegister(true);
+            void this.plugin.websocket.unRegister(true);
             showSyncNotice($("ui.menu.disable_sync_desc"));
           });
         (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.disable_sync_desc"));
@@ -514,7 +521,7 @@ export class MenuManager {
           .setIcon("play")
           .setTitle($("ui.menu.enable_sync"))
           .onClick(async () => {
-            this.plugin.websocket.register();
+            void this.plugin.websocket.register();
             showSyncNotice($("ui.menu.enable_sync_desc"));
           });
         (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.enable_sync_desc"));
@@ -526,7 +533,7 @@ export class MenuManager {
         .setIcon("cloud")
         .setTitle($("ui.menu.default_sync"))
         .onClick(async () => {
-          startupSync(this.plugin);
+          void startupSync(this.plugin);
         });
       (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.default_sync_desc"));
     });
@@ -536,21 +543,20 @@ export class MenuManager {
         .setIcon("cloudy")
         .setTitle($("ui.menu.full_sync"))
         .onClick(async () => {
-          startupFullSync(this.plugin);
+          void startupFullSync(this.plugin);
         });
       (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.full_sync_desc"));
     });
 
     menu.addSeparator();
-    menu.addItem((item: MenuItem) => {
-      item
+    menu.addItem((item) => {
+      item.setTitle($("ui.log.title"))
         .setIcon("arrow-down-up")
-        .setTitle($("ui.log.title"))
-        .onClick(async () => {
-          this.plugin.activateLogView();
+        .onClick(() => {
+          void this.plugin.activateLogView();
         });
-      (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.log.view_log"));
     });
+
 
     menu.addSeparator();
     menu.addItem((item: MenuItem) => {
@@ -580,14 +586,14 @@ export class MenuManager {
             // Reveal native file explorer sidebar (filter only applies to native file explorer)
             const leaves = this.plugin.app.workspace.getLeavesOfType("file-explorer");
             if (leaves.length > 0) {
-              this.plugin.app.workspace.revealLeaf(leaves[0]);
+              void this.plugin.app.workspace.revealLeaf(leaves[0]);
             }
           });
         (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.sharing_desc"));
 
         // 异步获取分享列表并更新标题 / Async fetch share list and update title
         if (this.plugin.websocket.isAuth) {
-          this.plugin.shareIndicatorManager?.syncWithServer().then(() => {
+          void this.plugin.shareIndicatorManager?.syncWithServer().then(() => {
             const newCount = this.plugin.shareIndicatorManager?.getSharedCount() ?? 0;
             if (this.activeMenu === menu) {
               item.setTitle($("ui.menu.sharing", { count: newCount }));
@@ -609,7 +615,7 @@ export class MenuManager {
       (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.system.websocketClients"));
       
       // 异步获取在线客户端数量并更新菜单项
-      this.plugin.api.getWSClients().then(clients => {
+      void this.plugin.api.getWSClients().then(clients => {
         const count = clients?.length || 0;
         if (count > 0 && this.activeMenu === menu) {
           item.setTitle($("ui.system.websocketClients") + ` (${count})`);
@@ -678,7 +684,7 @@ export class MenuManager {
       };
 
       menu.addItem((item: MenuItem) => {
-        const title = $("ui.menu.server") + ": v" + serverVersion;
+        const title = $("ui.menu.server") + ": v" + (serverVersion as string);
         item.setTitle(title)
           .setIcon("server")
           .onClick(onServerVersionClick);

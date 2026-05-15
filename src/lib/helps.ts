@@ -1,4 +1,4 @@
-import { Notice, moment, normalizePath, TFolder, Platform, App, PluginManifest } from "obsidian";
+import { Notice, normalizePath, TFolder, Platform, App, PluginManifest } from "obsidian";
 
 import FastSync from "../main";
 
@@ -299,7 +299,6 @@ export const isPathInConfigSyncDirs = function (path: string, plugin: FastSync):
 
   // 3. 检查是否为用户定义的自定义同步目录
   const customDirs = getConfigSyncCustomDirs(plugin)
-  dump(customDirs)
   if (customDirs.some((dir) => normalizedPath === dir || normalizedPath.startsWith(dir + "/"))) return true
 
   return false
@@ -651,6 +650,7 @@ export const setLogEnabled = (enabled: boolean) => {
  */
 export const dump = function (...message: unknown[]): void {
   if (isLogEnabled) {
+    // eslint-disable-next-line obsidianmd/rule-custom-message
     console.log(...message)
   }
 }
@@ -660,6 +660,7 @@ export const dump = function (...message: unknown[]): void {
  */
 export const dumpTable = function (message: unknown): void {
   if (isLogEnabled) {
+    // eslint-disable-next-line obsidianmd/rule-custom-message
     console.table(message)
   }
 }

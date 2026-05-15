@@ -51,8 +51,7 @@ async function getClipboardContent(plugin: FastSync): Promise<void> {
     const text = await navigator.clipboard.readText()
 
     // 检查是否为 JSON 格式
-    let parsedData = JSON.parse(text)
-
+    const parsedData = JSON.parse(text) as Record<string, unknown>;
     // 检查是否为对象且包含 api 和 apiToken
     if (typeof parsedData === "object" && parsedData !== null) {
       const hasApi = "api" in parsedData
@@ -60,7 +59,7 @@ async function getClipboardContent(plugin: FastSync): Promise<void> {
       const vault = "vault" in parsedData
 
       if (hasApi && hasApiToken && vault) {
-        void clipboardReadTipSave(parsedData.api, parsedData.apiToken, parsedData.vault, $("setting.remote.paste_success"))
+        void clipboardReadTipSave(parsedData.api as string, parsedData.apiToken as string, parsedData.vault as string, $("setting.remote.paste_success"))
         return
       }
     }
@@ -126,7 +125,7 @@ export const SettingsView = ({ plugin }: { plugin: FastSync }) => {
     if (tableData.length < 2) return null;
 
     const parseRow = (row: string) => row.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1).map(s => s.trim());
-    const headerRow = parseRow(tableData[0]);
+    parseRow(tableData[0]);
     const bodyRows = tableData.slice(2).map(parseRow);
 
     // 解析链接并在新窗口打开

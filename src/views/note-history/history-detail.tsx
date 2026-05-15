@@ -97,7 +97,7 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ content, diffs, sh
     const [copied, setCopied] = React.useState(false);
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(content).then(() => {
+        void navigator.clipboard.writeText(content).then(() => {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
         });

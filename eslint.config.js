@@ -9,6 +9,9 @@ export default defineConfig([
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./tsconfig.json" },
+      globals: {
+        process: "readonly",
+      },
     },
 
     // You can add your own configuration to override or add rules

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, moment, setIcon, Platform, MenuItem } from "obsidian";
+import { ItemView, WorkspaceLeaf, moment, setIcon, Platform, MenuItem, Menu } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
 import * as React from "react";
 
@@ -164,7 +164,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     }, [categoryFilter, typeFilter]);
 
     const clearLogs = () => {
-        SyncLogManager.getInstance().clearLogs();
+        void SyncLogManager.getInstance().clearLogs();
         setCurrentPage(1);
     };
 
@@ -189,16 +189,16 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
             return;
         }
 
-        const { Menu } = require("obsidian");
         const menu = new Menu();
 
         // 类别筛选子菜单
-        menu.addItem((item: MenuItemWithInternal) => {
-            item.setTitle($("ui.log.filter_category"))
+        menu.addItem((item: MenuItem) => {
+            const internalItem = item as MenuItemWithInternal;
+            internalItem.setTitle($("ui.log.filter_category"))
                 .setIcon("layers")
                 .setSection("category");
             
-            const subMenu = item.setSubmenu();
+            const subMenu = internalItem.setSubmenu();
             categories.forEach(cat => {
                 subMenu.addItem((subItem: MenuItem) => {
                     subItem.setTitle(cat.label)
@@ -213,12 +213,13 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         });
 
         // 类型筛选子菜单
-        menu.addItem((item: MenuItemWithInternal) => {
-            item.setTitle($("ui.log.filter_type"))
+        menu.addItem((item: MenuItem) => {
+            const internalItem = item as MenuItemWithInternal;
+            internalItem.setTitle($("ui.log.filter_type"))
                 .setIcon("arrow-up-down")
                 .setSection("type");
             
-            const subMenu = item.setSubmenu();
+            const subMenu = internalItem.setSubmenu();
             types.forEach(t => {
                 subMenu.addItem((subItem: MenuItem) => {
                     subItem.setTitle(t.label)
@@ -242,7 +243,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                 });
         });
 
-        menu.showAtMouseEvent(e.nativeEvent as MouseEvent);
+        (menu as unknown as { showAtMouseEvent(e: MouseEvent): void }).showAtMouseEvent(e.nativeEvent);
     };
 
     return (
@@ -252,7 +253,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                     <h3 style={{ margin: 0 }}>{$("ui.log.title")}</h3>
                     <div
                         className="connection-status-container clickable-icon fns-ribbon-container"
-                        onClick={(e) => plugin.menuManager.showRibbonMenu(e.nativeEvent as MouseEvent)}
+                        onClick={(e) => plugin.menuManager.showRibbonMenu(e.nativeEvent)}
                         style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
                     >
                         <ObsidianIcon 
@@ -352,6 +353,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                         <div key={log.id} className={`fns-sync-log-item fns-sync-log-category-${log.category} fns-sync-log-status-${log.status} fns-sync-log-type-${log.type}`}>
                             <div className="fns-sync-log-item-header">
                                 <span className="fns-sync-log-time">{moment(log.timestamp).format("HH:mm:ss")}</span>
+                                {/* eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */}
                                 <span className="fns-sync-log-action">{$(`ui.log.action.${log.action}` as any)}</span>
                                 <span className="fns-sync-log-type-tag">
                                     {log.type === 'send' ? (
@@ -359,6 +361,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                     ) : log.type === 'receive' ? (
                                         <svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
                                     ) : null}
+                                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */}
                                     {$(`ui.log.type_${log.type}` as any)}
                                 </span>
                                 <div className="fns-sync-log-header-right">

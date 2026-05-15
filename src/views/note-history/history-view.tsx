@@ -28,7 +28,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ plugin, filePath }) =>
     const service = React.useMemo(() => new HttpApiService(plugin), [plugin]);
 
     React.useEffect(() => {
-        loadHistory(1);
+        void loadHistory(1);
     }, [filePath]);
 
     React.useEffect(() => {
@@ -63,19 +63,21 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ plugin, filePath }) =>
     };
 
     const handleRestore = async (id: number) => {
-        new ConfirmModal(plugin.app, $("ui.history.restore"), $("ui.history.restore_confirm"), async () => {
-            try {
-                setLoading(true);
-                const success = await service.restoreNoteVersion(id);
-                if (success) {
-                    showSyncNotice($("ui.history.restore_success"));
-                    loadHistory(page);
+        new ConfirmModal(plugin.app, $("ui.history.restore"), $("ui.history.restore_confirm"), () => {
+            void (async () => {
+                try {
+                    setLoading(true);
+                    const success = await service.restoreNoteVersion(id);
+                    if (success) {
+                        showSyncNotice($("ui.history.restore_success"));
+                        void loadHistory(page);
+                    }
+                } catch (e) {
+                    console.error("handleRestore error:", e);
+                } finally {
+                    setLoading(false);
                 }
-            } catch (e) {
-                console.error("handleRestore error:", e);
-            } finally {
-                setLoading(false);
-            }
+            })();
         }).open();
     };
 
@@ -140,11 +142,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ plugin, filePath }) =>
                                         <td>{item.createdAt}</td>
                                         <td>
                                             <div className="history-actions">
-                                                <button className="view-btn" onClick={() => handleView(item.id)}>
+                                                <button className="view-btn" onClick={() => { void handleView(item.id); }}>
                                                     <LucideIcon icon="eye" size={14} />
                                                     {$("ui.history.view")}
                                                 </button>
-                                                <button className="restore-btn" onClick={() => handleRestore(item.id)}>
+                                                <button className="restore-btn" onClick={() => { void handleRestore(item.id); }}>
                                                     <LucideIcon icon="rotate-ccw" size={14} />
                                                     {$("ui.history.restore")}
                                                 </button>
@@ -165,7 +167,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ plugin, filePath }) =>
                     <button
                         className="pagination-btn"
                         disabled={page <= 1 || loading}
-                        onClick={() => loadHistory(page - 1)}
+                        onClick={() => { void loadHistory(page - 1); }}
                         title={$("ui.history.page_prev")}
                     >
                         <LucideIcon icon="chevron-left" size={14} />
@@ -178,7 +180,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ plugin, filePath }) =>
                     <button
                         className="pagination-btn"
                         disabled={page >= totalPages || loading}
-                        onClick={() => loadHistory(page + 1)}
+                        onClick={() => { void loadHistory(page + 1); }}
                         title={$("ui.history.page_next")}
                     >
                         <LucideIcon icon="chevron-right" size={14} />

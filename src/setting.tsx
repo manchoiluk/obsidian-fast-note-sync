@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Platform, SearchComponent, MarkdownRenderer, Component } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
 
-import { handleSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from "./lib/operator";
+import { resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from "./lib/operator";
 import { parseRules, SyncRule, getPluginDir, debounce, showSyncNotice } from "./lib/helps";
 import { SettingsView, SupportView } from "./views/settings-view";
 import { RuleEditorModal } from "./views/rule-editor-modal";
@@ -179,6 +179,8 @@ export class SettingTab extends PluginSettingTab {
   private searchComponent: SearchComponent | null = null
   private lastViewMode: string = "" // 用于记录上次渲染的模式 (TabId 或 "SEARCH")
 
+  private component: Component = new Component()
+  
   constructor(app: App, plugin: FastSync) {
     super(app, plugin)
     this.plugin = plugin
@@ -187,15 +189,17 @@ export class SettingTab extends PluginSettingTab {
   hide(): void {
     this.roots.forEach((root) => root.unmount())
     this.roots = []
+    this.component.unload()
   }
 
   display(): void {
+    this.component.load()
     const { containerEl: set } = this
 
     // 1. 初始化基础布局结构 (仅在首次或容器被清空时)
     const headerEl = set.querySelector(".fns-setting-tab-header") as HTMLElement
     const hasSearch = set.querySelector(".fns-setting-search-container")
-    this.contentEl = set.querySelector(".fns-setting-tab-content") as HTMLElement
+    this.contentEl = set.querySelector(".fns-setting-tab-content")
 
     if (!headerEl || !hasSearch || !this.contentEl) {
       set.empty()
@@ -209,7 +213,7 @@ export class SettingTab extends PluginSettingTab {
       this.updateHeaderSelection(headerEl)
     }
 
-    const contentEl = this.contentEl!
+    const contentEl = this.contentEl
 
     // 2. 移动端滑动监听 (如果 contentEl 是新建的，需要重新挂载)
     if (Platform.isMobile && !contentEl.hasAttribute("data-swipe-init")) {
@@ -471,7 +475,7 @@ export class SettingTab extends PluginSettingTab {
     new Setting(set).setName($("setting.debug.update_source")).addDropdown((dropdown) =>
       dropdown
         .addOption("github", "GitHub")
-        .addOption("cnb", "腾讯 CNB")
+        .addOption("cnb", "腾讯 cnb")
         .setValue(this.plugin.settings.updateSource || "github")
         .onChange(async (value: "github" | "cnb") => {
           this.plugin.settings.updateSource = value
@@ -621,7 +625,7 @@ export class SettingTab extends PluginSettingTab {
       const logViewButton = debugDiv.createEl("button")
       logViewButton.setText($("ui.log.view_log"))
       logViewButton.onclick = () => {
-        this.plugin.activateLogView()
+        void this.plugin.activateLogView()
       }
     } else {
       const clearTimeButton = debugDiv.createEl("button")
@@ -631,8 +635,8 @@ export class SettingTab extends PluginSettingTab {
           this.app,
           $("ui.title.notice"),
           $("setting.debug.clear_time_desc"),
-          async () => {
-            await resetSettingSyncTime(this.plugin)
+          () => {
+            void resetSettingSyncTime(this.plugin)
           },
           $("ui.button.confirm"),
           $("ui.button.cancel"),
@@ -647,8 +651,8 @@ export class SettingTab extends PluginSettingTab {
           this.app,
           $("ui.title.notice"),
           $("setting.debug.clear_hash_only_desc"),
-          async () => {
-            await clearAllHashes(this.plugin)
+          () => {
+            void clearAllHashes(this.plugin)
           },
           $("ui.button.confirm"),
           $("ui.button.cancel"),
@@ -663,8 +667,8 @@ export class SettingTab extends PluginSettingTab {
           this.app,
           $("ui.title.notice"),
           $("setting.debug.clear_hash_desc"),
-          async () => {
-            await rebuildAllHashes(this.plugin)
+          () => {
+            void rebuildAllHashes(this.plugin)
           },
           $("ui.button.confirm"),
           $("ui.button.cancel"),
@@ -680,14 +684,15 @@ export class SettingTab extends PluginSettingTab {
           this.app,
           $("setting.debug.reset_all"),
           $("setting.debug.reset_all_desc"),
-          async () => {
-            // 先运行远端配置清理逻辑
-            if (this.plugin.settings.configSyncEnabled) {
-              this.plugin.isWaitClearSync = true
-            }
-            this.plugin.websocket.SendMessage("SettingClear", {
-              vault: this.plugin.settings.vault,
-            })
+          () => {
+            void (async () => {
+              // 先运行远端配置清理逻辑
+              if (this.plugin.settings.configSyncEnabled) {
+                this.plugin.isWaitClearSync = true
+              }
+              void this.plugin.websocket.SendMessage("SettingClear", {
+                vault: this.plugin.settings.vault,
+              }).catch(e => console.error(e))
 
             // 备份需要保留的远端核心配置
             const backup = {
@@ -730,7 +735,8 @@ export class SettingTab extends PluginSettingTab {
 
             // 重新渲染设置页面以展示变化
             this.display()
-          },
+          })();
+        },
           $("ui.button.confirm"),
           $("ui.button.cancel"),
           false,
@@ -763,8 +769,8 @@ export class SettingTab extends PluginSettingTab {
 
     new Setting(set).setName($("setting.debug.network_library")).addDropdown((dropdown) =>
       dropdown
-        .addOption("fetch", "fetch")
-        .addOption("requestUrl", "requestUrl")
+        .addOption("fetch", "Fetch")
+        .addOption("requestUrl", "Request URL")
         .setValue(this.plugin.settings.networkLibrary)
         .onChange(async (value: "fetch" | "requestUrl") => {
           this.plugin.settings.networkLibrary = value
@@ -993,38 +999,40 @@ export class SettingTab extends PluginSettingTab {
     shortcutSetting.addText((text) => {
       text.setPlaceholder("Ctrl+Shift+Q").setValue(displayShortcut(this.plugin.getCommandHotkey("open-sync-log")))
 
-      text.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
+      text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+        void (async () => {
+          e.preventDefault()
+          e.stopPropagation()
 
-        const modifiers = []
-        if (e.ctrlKey) modifiers.push(Platform.isMacOS ? "Control" : "Ctrl")
-        if (e.metaKey) modifiers.push(Platform.isMacOS ? "Cmd" : "Meta")
-        if (e.altKey) modifiers.push("Alt")
-        if (e.shiftKey) modifiers.push("Shift")
+          const modifiers = []
+          if (e.ctrlKey) modifiers.push(Platform.isMacOS ? "Control" : "Ctrl")
+          if (e.metaKey) modifiers.push(Platform.isMacOS ? "Cmd" : "Meta")
+          if (e.altKey) modifiers.push("Alt")
+          if (e.shiftKey) modifiers.push("Shift")
 
-        let key = e.key
-        if (["Control", "Meta", "Alt", "Shift"].includes(key)) {
-          key = ""
-        }
-
-        if (modifiers.length > 0 || key) {
-          let shortcutStr = modifiers.join("+")
-          if (key) {
-            if (shortcutStr) shortcutStr += "+"
-            shortcutStr += key.toUpperCase()
+          let key = e.key
+          if (["Control", "Meta", "Alt", "Shift"].includes(key)) {
+            key = ""
           }
 
-          let storageStr = shortcutStr
-          if (Platform.isMacOS) {
-            storageStr = storageStr.replace(/Cmd/g, "Mod").replace(/Control/g, "Ctrl")
-          } else {
-            storageStr = storageStr.replace(/Ctrl/g, "Mod")
-          }
+          if (modifiers.length > 0 || key) {
+            let shortcutStr = modifiers.join("+")
+            if (key) {
+              if (shortcutStr) shortcutStr += "+"
+              shortcutStr += key.toUpperCase()
+            }
 
-          text.setValue(shortcutStr)
-          await this.plugin.setCommandHotkey("open-sync-log", storageStr)
-        }
+            let storageStr = shortcutStr
+            if (Platform.isMacOS) {
+              storageStr = storageStr.replace(/Cmd/g, "Mod").replace(/Control/g, "Ctrl")
+            } else {
+              storageStr = storageStr.replace(/Ctrl/g, "Mod")
+            }
+
+            text.setValue(shortcutStr)
+            await this.plugin.setCommandHotkey("open-sync-log", storageStr)
+          }
+        })();
       })
     })
 
@@ -1041,38 +1049,40 @@ export class SettingTab extends PluginSettingTab {
     menuShortcutSetting.addText((text) => {
       text.setPlaceholder("Ctrl+Shift+W").setValue(displayShortcut(this.plugin.getCommandHotkey("open-sync-menu")))
 
-      text.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
+      text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+        void (async () => {
+          e.preventDefault()
+          e.stopPropagation()
 
-        const modifiers = []
-        if (e.ctrlKey) modifiers.push(Platform.isMacOS ? "Control" : "Ctrl")
-        if (e.metaKey) modifiers.push(Platform.isMacOS ? "Cmd" : "Meta")
-        if (e.altKey) modifiers.push("Alt")
-        if (e.shiftKey) modifiers.push("Shift")
+          const modifiers = []
+          if (e.ctrlKey) modifiers.push(Platform.isMacOS ? "Control" : "Ctrl")
+          if (e.metaKey) modifiers.push(Platform.isMacOS ? "Cmd" : "Meta")
+          if (e.altKey) modifiers.push("Alt")
+          if (e.shiftKey) modifiers.push("Shift")
 
-        let key = e.key
-        if (["Control", "Meta", "Alt", "Shift"].includes(key)) {
-          key = ""
-        }
-
-        if (modifiers.length > 0 || key) {
-          let shortcutStr = modifiers.join("+")
-          if (key) {
-            if (shortcutStr) shortcutStr += "+"
-            shortcutStr += key.toUpperCase()
+          let key = e.key
+          if (["Control", "Meta", "Alt", "Shift"].includes(key)) {
+            key = ""
           }
 
-          let storageStr = shortcutStr
-          if (Platform.isMacOS) {
-            storageStr = storageStr.replace(/Cmd/g, "Mod").replace(/Control/g, "Ctrl")
-          } else {
-            storageStr = storageStr.replace(/Ctrl/g, "Mod")
-          }
+          if (modifiers.length > 0 || key) {
+            let shortcutStr = modifiers.join("+")
+            if (key) {
+              if (shortcutStr) shortcutStr += "+"
+              shortcutStr += key.toUpperCase()
+            }
 
-          text.setValue(shortcutStr)
-          await this.plugin.setCommandHotkey("open-sync-menu", storageStr)
-        }
+            let storageStr = shortcutStr
+            if (Platform.isMacOS) {
+              storageStr = storageStr.replace(/Cmd/g, "Mod").replace(/Control/g, "Ctrl")
+            } else {
+              storageStr = storageStr.replace(/Ctrl/g, "Mod")
+            }
+
+            text.setValue(shortcutStr)
+            await this.plugin.setCommandHotkey("open-sync-menu", storageStr)
+          }
+        })();
       })
     })
 
@@ -1089,38 +1099,40 @@ export class SettingTab extends PluginSettingTab {
     settingShortcutSetting.addText((text) => {
       text.setPlaceholder("Ctrl+Shift+S").setValue(displayShortcut(this.plugin.getCommandHotkey("open-settings")))
 
-      text.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
+      text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+        void (async () => {
+          e.preventDefault()
+          e.stopPropagation()
 
-        const modifiers = []
-        if (e.ctrlKey) modifiers.push(Platform.isMacOS ? "Control" : "Ctrl")
-        if (e.metaKey) modifiers.push(Platform.isMacOS ? "Cmd" : "Meta")
-        if (e.altKey) modifiers.push("Alt")
-        if (e.shiftKey) modifiers.push("Shift")
+          const modifiers = []
+          if (e.ctrlKey) modifiers.push(Platform.isMacOS ? "Control" : "Ctrl")
+          if (e.metaKey) modifiers.push(Platform.isMacOS ? "Cmd" : "Meta")
+          if (e.altKey) modifiers.push("Alt")
+          if (e.shiftKey) modifiers.push("Shift")
 
-        let key = e.key
-        if (["Control", "Meta", "Alt", "Shift"].includes(key)) {
-          key = ""
-        }
-
-        if (modifiers.length > 0 || key) {
-          let shortcutStr = modifiers.join("+")
-          if (key) {
-            if (shortcutStr) shortcutStr += "+"
-            shortcutStr += key.toUpperCase()
+          let key = e.key
+          if (["Control", "Meta", "Alt", "Shift"].includes(key)) {
+            key = ""
           }
 
-          let storageStr = shortcutStr
-          if (Platform.isMacOS) {
-            storageStr = storageStr.replace(/Cmd/g, "Mod").replace(/Control/g, "Ctrl")
-          } else {
-            storageStr = storageStr.replace(/Ctrl/g, "Mod")
-          }
+          if (modifiers.length > 0 || key) {
+            let shortcutStr = modifiers.join("+")
+            if (key) {
+              if (shortcutStr) shortcutStr += "+"
+              shortcutStr += key.toUpperCase()
+            }
 
-          text.setValue(shortcutStr)
-          await this.plugin.setCommandHotkey("open-settings", storageStr)
-        }
+            let storageStr = shortcutStr
+            if (Platform.isMacOS) {
+              storageStr = storageStr.replace(/Cmd/g, "Mod").replace(/Control/g, "Ctrl")
+            } else {
+              storageStr = storageStr.replace(/Ctrl/g, "Mod")
+            }
+
+            text.setValue(shortcutStr)
+            await this.plugin.setCommandHotkey("open-settings", storageStr)
+          }
+        })();
       })
     })
 
@@ -1168,7 +1180,7 @@ export class SettingTab extends PluginSettingTab {
               if (this.plugin.settings.configSyncEnabled) {
                 this.plugin.isWaitClearSync = true
               }
-              this.plugin.websocket.SendMessage("SettingClear", {
+              void this.plugin.websocket.SendMessage("SettingClear", {
                 vault: this.plugin.settings.vault,
               })
 
@@ -1436,11 +1448,11 @@ export class SettingTab extends PluginSettingTab {
       descEl.addClass("fns-setting-desc-markdown")
       // 动态替换配置目录占位符 / Dynamically replace config directory placeholder
       const finalDesc = desc.replace(/\$\{configDir\}/g, this.app.vault.configDir);
-      MarkdownRenderer.render(this.app, finalDesc, descEl, "", this.plugin)
+      void MarkdownRenderer.render(this.app, finalDesc, descEl, "", this.component)
     }
   }
 
-  private addRuleSetting(set: HTMLElement, name: string, desc: string, getRules: () => SyncRule[], onSave: (rules: SyncRule[]) => Promise<void>, showCaseSensitive: boolean = true, addButtonText?: string, inputPlaceholder?: string, editButtonText?: string, usePathSuggest: boolean = false, pathSuggestOptions: PathSuggestOptions = {}) {
+  private addRuleSetting(set: HTMLElement, name: string, desc: string, getRules: () => SyncRule[], onSave: (rules: SyncRule[]) => void | Promise<void>, showCaseSensitive: boolean = true, addButtonText?: string, inputPlaceholder?: string, editButtonText?: string, usePathSuggest: boolean = false, pathSuggestOptions: PathSuggestOptions = {}) {
     const setting = new Setting(set).setName(name).setClass("fns-setting-item-vertical")
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, desc)
 

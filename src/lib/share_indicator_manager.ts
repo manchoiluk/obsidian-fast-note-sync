@@ -1,4 +1,5 @@
 import type FastSync from "../main";
+import { WorkspaceWithInternal } from "./types";
 
 export class ShareIndicatorManager {
     // 内存中的分享路径集合 / In-memory set of shared paths
@@ -33,16 +34,22 @@ export class ShareIndicatorManager {
         this.sharedPaths = new Set(saved);
 
         this.onlineHandler = () => {
-            window.setTimeout(() => this.syncWithServer().catch(() => {}), 5000);
+            void (async () => {
+                await this.syncWithServer();
+            })().catch(() => {});
         };
         window.addEventListener("online", this.onlineHandler);
 
         this.startupTimer = window.setTimeout(() => {
-            this.syncWithServer().catch(() => {});
+            void this.syncWithServer().catch(() => {});
         }, 5000);
 
         // 启动 DOM 观察器
         this.startObserver();
+
+        this.plugin.registerEvent(this.plugin.app.vault.on("delete", (file) => {
+            void this.removeSharedPath(file.path);
+        }));
     }
 
     private startObserver() {
@@ -105,6 +112,13 @@ export class ShareIndicatorManager {
                 }
             }
         });
+    }
+
+    updateSharedPaths(paths: string[]): void {
+        this.sharedPaths = new Set(paths);
+        this.plugin.settings.sharedPaths = paths;
+        void this.plugin.saveSettings();
+        this.updateAllElements();
     }
 
     async syncWithServer(): Promise<void> {
@@ -170,6 +184,7 @@ export class ShareIndicatorManager {
         } else {
             activeDocument.body.removeClass('fns-filter-active');
         }
+        (this.plugin.app.workspace as unknown as WorkspaceWithInternal).requestSaveLeafState();
     }
 
     private getAllAncestorFolders(): Set<string> {
@@ -190,8 +205,8 @@ export class ShareIndicatorManager {
                 `.nav-folder:has(> .nav-folder-title[data-path="${folderPath}"]).is-collapsed`
             );
             if (folderEl) {
-                const titleEl = folderEl.querySelector(".nav-folder-title") as HTMLElement | null;
-                titleEl?.click();
+                const titleEl = folderEl.querySelector(".nav-folder-title");
+                (titleEl as HTMLElement)?.click();
             }
         }
     }

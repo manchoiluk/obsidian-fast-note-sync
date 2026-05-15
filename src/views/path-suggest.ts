@@ -1,4 +1,4 @@
-import { App, AbstractInputSuggest, TAbstractFile, TFile, TFolder, setIcon } from "obsidian";
+import { App, AbstractInputSuggest, TFolder, setIcon } from "obsidian";
 
 
 export interface PathSuggestOptions {
@@ -160,6 +160,7 @@ export class PathSuggest extends AbstractInputSuggest<string> {
     }
 
     // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     super.onKeyDown(event);
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {

@@ -1,7 +1,8 @@
 {
   "name": "fast-note-sync",
-  "version": "2.0.2",
-  "description": "Privately deployable real-time multi-device note synchronization, supporting desktop and mobile devices.",
+  "version": "1.25.21",
+  "type": "module",
+  "description": "Fast and efficient file synchronization plugin for Obsidian",
   "main": "main.js",
   "scripts": {
     "dev": "npm-run-all2 --parallel devts devcss",

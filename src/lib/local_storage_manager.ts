@@ -81,7 +81,7 @@ export class LocalStorageManager {
         const value = this.getMetadata('internalExcludes');
         if (!value) return [];
         try {
-            return JSON.parse(value as string);
+            return JSON.parse(value as string) as SyncRule[];
         } catch (e) {
             dump("[LocalStorageManager] Failed to parse internalExcludes:", e);
             return [];
@@ -118,7 +118,7 @@ export class LocalStorageManager {
         try {
             const raw = this.read(this.getInternalKey(field));
             if (!raw) return new Map();
-            const obj = JSON.parse(raw);
+            const obj = JSON.parse(raw) as Record<string, string>;
             return new Map(Object.entries(obj));
         } catch (e) {
             dump(`[LocalStorageManager] Failed to load pending ${field}:`, e);
@@ -162,20 +162,20 @@ export class LocalStorageManager {
 
         // 1. 注册工作区布局就绪事件 (Check on layout ready)
         this.plugin.app.workspace.onLayoutReady(() => {
-            this.checkChanges();
+            void this.checkChanges();
         });
 
         // 2. 注册活动笔记切换事件 (Check when switching notes)
         this.plugin.registerEvent(
             this.plugin.app.workspace.on("active-leaf-change", () => {
-                this.checkChanges();
+                void this.checkChanges();
             })
         );
 
         // 3. 监听跨窗口/标签页的 localStorage 变更 (Listen for cross-tab changes)
         window.addEventListener("storage", (e) => {
             if (e.key && this.getKeys().includes(e.key)) {
-                this.checkChanges();
+                void this.checkChanges();
             }
         });
 
@@ -230,7 +230,7 @@ export class LocalStorageManager {
 
                 const path = this.keyToPath(key);
                 dump(`[LocalStorageManager] Triggering configModify for path: ${path}`);
-                configModify(path, this.plugin, false, val);
+                void configModify(path, this.plugin, false, val);
             }
         }
     }
@@ -258,7 +258,7 @@ export class LocalStorageManager {
         try {
             const stored = this.read(this.getInternalKey("local-storage-state"));
             if (stored) {
-                const state = JSON.parse(stored);
+                const state = JSON.parse(stored) as { hashes?: Record<string, string>; mtimes?: Record<string, number> };
                 if (state.hashes) this.lastHashes = new Map(Object.entries(state.hashes));
                 if (state.mtimes) this.lastMtimes = new Map(Object.entries(state.mtimes));
                 dump("[LocalStorageManager] State loaded from storage.");
@@ -266,7 +266,7 @@ export class LocalStorageManager {
                 // 兼容旧版
                 const oldHashes = this.read(this.getInternalKey("local-storage-hashes"));
                 if (oldHashes) {
-                    this.lastHashes = new Map(Object.entries(JSON.parse(oldHashes)));
+                    this.lastHashes = new Map(Object.entries(JSON.parse(oldHashes) as Record<string, string>));
                     dump("[LocalStorageManager] Old hashes loaded.");
                 } else {
                     dump("[LocalStorageManager] No stored state found.");

@@ -45,7 +45,6 @@ export class AboutModal extends Modal {
 const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plugin' | 'server'; closeModal: () => void }) => {
     const [isUpgrading, setIsUpgrading] = React.useState(false);
     const [upgradeStatus, setUpgradeStatus] = React.useState("");
-    const [pollingCount, setPollingCount] = React.useState(0);
 
     const pluginCurrent = plugin.manifest.version;
     const pluginNew = plugin.localStorageManager.getMetadata("pluginVersionNewName") as string;
@@ -77,7 +76,7 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
 
     React.useEffect(() => {
         if (type === 'server') {
-            plugin.api.checkAdmin(abortControllerRef.current?.signal).then(res => {
+            void plugin.api.checkAdmin(abortControllerRef.current?.signal).then(res => {
                 if (isMounted.current) setIsAdmin(res);
             });
         }
@@ -97,7 +96,7 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
             if (!success) {
                 showSyncNotice($("ui.version.upgrade_fail"));
                 setIsUpgrading(false);
-                plugin.websocket.register(); // 尝试恢复连接
+                 void plugin.websocket.register(); // 尝试恢复连接
                 return;
             }
 
@@ -118,21 +117,23 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
 
             const scheduleNextPoll = () => {
               if (pollStopped) return;
-              pollTimeoutId = window.setTimeout(async () => {
-                if (pollStopped || !isMounted.current) return;
-                setPollingCount(prev => prev + 1);
-                const isAlive = await plugin.api.checkHealth(abortControllerRef.current?.signal);
-                if (!isMounted.current) return;
-                if (isAlive) {
-                  stopPolling();
-                  // 4. 重连并完成 / Reconnect and complete
-                  plugin.websocket.register();
-                  showSyncNotice($("ui.version.upgrade_success"));
-                  closeModal();
-                } else {
-                  scheduleNextPoll();
-                }
-              }, 2000);
+              pollTimeoutId = window.setTimeout(() => {
+                void (async () => {
+                  if (pollStopped || !isMounted.current) return;
+                  const isAlive = await plugin.api.checkHealth(abortControllerRef.current?.signal);
+                  if (!isMounted.current) return;
+                  if (isAlive) {
+                    stopPolling();
+                    // 4. 重连并完成 / Reconnect and complete
+                    void plugin.websocket.register();
+                    showSyncNotice($("ui.version.upgrade_success"));
+                    setIsUpgrading(false);
+                    setUpgradeStatus("");
+                  } else {
+                    scheduleNextPoll();
+                  }
+                })();
+              }, 3000);
             };
 
             scheduleNextPoll();
@@ -149,7 +150,7 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
             console.error("Upgrade process error:", e);
             showSyncNotice($("ui.version.upgrade_fail"));
             setIsUpgrading(false);
-            plugin.websocket.register();
+            void plugin.websocket.register();
         }
     };
 
@@ -285,9 +286,10 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
                         isNew={pluginIsNew}
                         changelog={pluginNewChangelog || pluginCurrentChangelog}
                         canUpgrade={pluginIsNew}
-                        onUpgrade={handlePluginUpgrade}
+                        onUpgrade={() => { void handlePluginUpgrade(); }}
                         isUpgrading={isUpgrading}
                         status={upgradeStatus}
+                        app={plugin.app}
                     />
                 )}
 
@@ -300,9 +302,10 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
                         isNew={serverIsNew}
                         changelog={serverNewChangelog || serverCurrentChangelog || serverBaseChangelog}
                         canUpgrade={serverIsNew && isAdmin}
-                        onUpgrade={handleUpgrade}
+                        onUpgrade={() => { void handleUpgrade(); }}
                         isUpgrading={isUpgrading}
                         status={upgradeStatus}
+                        app={plugin.app}
                     />
                 )}
             </div>
@@ -311,26 +314,26 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
 };
 
 const VersionItem = ({
-    title, current, latest, isNew, changelog, canUpgrade, onUpgrade, isUpgrading, status, isPlugin
+    title, current, latest, isNew, changelog, canUpgrade, onUpgrade, isUpgrading, status, isPlugin, app
 }: {
     title: string; current: string; latest: string; isNew: boolean; changelog?: string;
-    canUpgrade?: boolean; onUpgrade?: () => void; isUpgrading?: boolean; status?: string; isPlugin: boolean
+    canUpgrade?: boolean; onUpgrade?: () => void; isUpgrading?: boolean; status?: string; isPlugin: boolean;
+    app: App;
 }) => {
     const changelogRef = React.useRef<HTMLDivElement>(null);
 
     React.useEffect(() => {
-        if (changelogRef.current && changelog) {
-            changelogRef.current.empty();
-            MarkdownRenderer.render(
-                //@ts-ignore
+        if (changelog && changelogRef.current) {
+            const component = new Component();
+            void MarkdownRenderer.render(
                 app,
                 changelog,
                 changelogRef.current,
                 "",
-                new Component()
+                component
             );
         }
-    }, [changelog]);
+    }, [changelog, app]);
 
     return (
         <div className="fns-version-item">

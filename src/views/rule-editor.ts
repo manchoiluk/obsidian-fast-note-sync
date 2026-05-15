@@ -9,7 +9,7 @@ export class RuleEditor {
   private title: string;
   private description: string;
   private rules: SyncRule[];
-  private onSave: (rules: SyncRule[]) => void;
+  private onSave: (rules: SyncRule[]) => void | Promise<void>;
   private showCaseSensitive: boolean;
   private addButtonText: string;
   private inputPlaceholder: string;
@@ -25,7 +25,7 @@ export class RuleEditor {
     title: string,
     description: string,
     rules: SyncRule[],
-    onSave: (rules: SyncRule[]) => void,
+    onSave: (rules: SyncRule[]) => void | Promise<void>,
     showCaseSensitive: boolean = true,
     addButtonText?: string,
     inputPlaceholder?: string,
@@ -63,7 +63,7 @@ export class RuleEditor {
 
     if (this.description) {
       const descEl = containerEl.createDiv("fns-rule-editor-desc");
-      MarkdownRenderer.render(this.app, this.description, descEl, "", this.component);
+      void MarkdownRenderer.render(this.app, this.description, descEl, "", this.component);
     }
 
     if (this.rules.length > 0) {
@@ -148,7 +148,7 @@ export class RuleEditor {
           const caseBtn = rowEl.createEl("button", {
             text: "Aa",
             cls: "fns-case-toggle" + (rule.caseSensitive ? " is-active" : ""),
-            title: "Case Sensitive"
+            title: "Case sensitive"
           });
           caseBtn.onclick = () => {
             this.rules[index].caseSensitive = !this.rules[index].caseSensitive;
@@ -212,7 +212,7 @@ export class RuleEditor {
 
     const performSave = () => {
       this.lastSavedJson = currentJson;
-      this.onSave(rulesToSave);
+      void this.onSave(rulesToSave);
       this.saveTimer = null;
     };
 

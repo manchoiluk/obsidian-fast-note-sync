@@ -1,6 +1,6 @@
 import { normalizePath, App } from "obsidian";
 
-import { hashContent, dump, configIsPathExcluded, configAddPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync } from "./helps";
+import { hashContent, dump, configIsPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync } from "./helps";
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
@@ -99,7 +99,7 @@ export const configModify = async function (path: string, plugin: FastSync, even
     plugin.pendingConfigModifies.set(path, contentHash)
     plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
     await plugin.concurrencyManager.waitForSlot(path)
-    plugin.websocket.SendMessage("SettingModify", data)
+    void plugin.websocket.SendMessage("SettingModify", data)
 
     plugin.removeIgnoredConfigFile(path)
 }
@@ -124,7 +124,7 @@ export const configDelete = async function (path: string, plugin: FastSync, even
         pathHash: hashContent(path),
     }
     await plugin.concurrencyManager.waitForSlot(path)
-    plugin.websocket.SendMessage("SettingDelete", data, undefined, () => {
+    void plugin.websocket.SendMessage("SettingDelete", data, undefined, () => {
         // 消息真正写入 TCP 缓冲区后加入 pending set，等待 SettingDeleteAck 再删 hash
         // Add to pending set only after message is actually buffered; remove hash only on SettingDeleteAck
         plugin.pendingConfigDeleteAcks.add(path)
@@ -273,7 +273,7 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
     plugin.pendingConfigModifies.set(data.path, contentHash)
     plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
     await plugin.concurrencyManager.waitForSlot(data.path)
-    plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
+    void plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
         plugin.removeIgnoredConfigFile(data.path);
         plugin.configSyncTasks.completed++;
     });
@@ -380,7 +380,7 @@ export const receiveConfigSyncClear = async function (data: unknown, plugin: Fas
     if (plugin.isWaitClearSync) {
         plugin.isWaitClearSync = false
         const { handleSync } = await import("./operator");
-        handleSync(plugin, false, "config")
+        void handleSync(plugin, false, "config")
     }
 }
 
@@ -465,7 +465,6 @@ export const configAllPaths = async function (configDirs: string[], plugin: Fast
         }
     }
 
-    dump(configDirs)
     for (const configDir of configDirs) {
         try {
             // 解析目录名称，用于判断是否为自定义目录
@@ -556,7 +555,7 @@ export const configEmptyFoldersClean = async function (configDir: string, plugin
                     await plugin.app.vault.adapter.rmdir(normalizePath(folder), true)
                 }
             }
-        } catch { }
+        } catch { /* ignore */ }
     }
 }
 
@@ -579,7 +578,7 @@ export const configReload = async function (path: string, plugin: FastSync, even
             const tasks = plugin.configSyncTasks;
             const totalTasks = tasks.needModify + tasks.needSyncMtime + tasks.needDelete;
             if (!plugin.configSyncEnd || tasks.completed < totalTasks) {
-                reloadTimer = window.setTimeout(checkAndReload, 500);
+                reloadTimer = window.setTimeout(() => { void checkAndReload(); }, 500);
                 return;
             }
         }
@@ -641,7 +640,7 @@ export const configReload = async function (path: string, plugin: FastSync, even
                             // 核心检查：在切换主题前，先检查本地是否存在该主题文件
                             // 防止因为同步延迟导致主题文件夹还没下载完就切换，触发 Obsidian 的自动回落
                             const themes = (app.customCss as unknown as { themes?: Record<string, unknown> }).themes || {};
-                            if (targetTheme === "" || themes.hasOwnProperty(targetTheme)) {
+                            if (targetTheme === "" || Object.prototype.hasOwnProperty.call(themes, targetTheme)) {
                                 if (app.customCss.theme !== targetTheme) {
                                     app.customCss.setTheme(targetTheme)
                                     app.customCss.onConfigChange()
@@ -671,7 +670,7 @@ export const configReload = async function (path: string, plugin: FastSync, even
                     for (const id of toD) {
                         if (id != "hot-reload" && id != "fast-note-sync") await app.plugins.disablePlugin(id)
                     }
-                } catch { }
+                } catch { /* ignore */ }
             } else if (p === `${configDir}/hotkeys.json`) {
                 if (app.hotkeys) await app.hotkeys.load()
             } else if (p.startsWith(`${configDir}/snippets/`) && p.endsWith(".css")) {
@@ -731,20 +730,20 @@ export const configReload = async function (path: string, plugin: FastSync, even
         if (app.setting?.activeTab) app.setting.activeTab.display()
     }
 
-    reloadTimer = window.setTimeout(checkAndReload, 1000)
+    reloadTimer = window.setTimeout(() => { void checkAndReload(); }, 1000)
 }
 
 
 /**
  * 提取 Operator 映射
  */
-type ConfigOperator = (relativePath: string, plugin: FastSync, eventEnter?: boolean, data?: string) => void
-const configOperators: Map<string, ConfigOperator> = new Map([
-    ["ConfigModify", configModify],
-    ["ConfigDelete", configDelete],
-    ["ConfigEmptyFoldersClean", configEmptyFoldersClean],
-    ["ConfigReload", configReload],
-    ["ConfigAllPaths", configAllPaths as unknown as ConfigOperator],
-    ["ConfigIsPathExcluded", configIsPathExcluded],
-    ["ConfigAddPathExcluded", configAddPathExcluded],
-])
+// type ConfigOperator = (relativePath: string, plugin: FastSync, eventEnter?: boolean, data?: string) => void
+// const configOperators: Map<string, ConfigOperator> = new Map([
+//     ["ConfigModify", configModify],
+//     ["ConfigDelete", configDelete],
+//     ["ConfigEmptyFoldersClean", configEmptyFoldersClean],
+//     ["ConfigReload", configReload],
+//     ["ConfigAllPaths", configAllPaths as unknown as ConfigOperator],
+//     ["ConfigIsPathExcluded", configIsPathExcluded],
+//     ["ConfigAddPathExcluded", configAddPathExcluded],
+// ])

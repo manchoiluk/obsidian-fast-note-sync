@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Platform, addIcon, App } from "obsidian";
+import { Plugin, Platform, addIcon } from "obsidian";
 
 import { dump, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken, loadApiUrl, saveApiUrl, loadVault, saveVault, loadAutoRedirect, saveAutoRedirect } from "./lib/helps";
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
@@ -21,7 +21,19 @@ import { handleSync } from "./lib/operator";
 import { HttpApiService } from "./lib/api";
 import { clearAllTempChunks, abortAllFileOperations, resetFileOperations } from "./lib/file_operator";
 import { $ } from "./i18n/lang";
-import { FileDownloadSession } from "./lib/types";
+import { FileDownloadSession, AppWithInternal } from "./lib/types";
+
+
+interface LegacySettings extends Partial<PluginSettings> {
+  apiToken?: string;
+  api?: string;
+  vault?: string;
+  autoRedirectEnabled?: boolean;
+  syncExcludeFolders?: string;
+  configExclude?: string;
+  configExcludeWhitelist?: string;
+  showSyncNotice?: boolean;
+}
 
 
 export default class FastSync extends Plugin {
@@ -213,7 +225,7 @@ export default class FastSync extends Plugin {
       platformName = "Android";
     }
 
-    const clientMetadata = this.localStorageManager.getMetadata("clientName") || "";
+    const clientMetadata = (this.localStorageManager.getMetadata("clientName") as string) || "";
     return clientMetadata + (clientMetadata !== "" && platformName !== "" ? " " + platformName : platformName);
   }
 
@@ -246,7 +258,9 @@ export default class FastSync extends Plugin {
   }
 
   updateStatusBar(text: string, current?: number, total?: number) {
-    this.menuManager?.updateStatusBar(text, current, total)
+    if (this.menuManager) {
+      this.menuManager.updateStatusBar(text, current, total);
+    }
   }
 
   /**
@@ -331,10 +345,10 @@ export default class FastSync extends Plugin {
       this.menuManagerInitialized = true
 
       // 0. 清理残留的临时下载目录 (Cleanup residual temp download dirs)
-      await clearAllTempChunks(this)
+      void clearAllTempChunks(this)
 
       // 1. 初始化统计和日志 (UI)
-      SyncLogManager.getInstance().init(this)
+      void SyncLogManager.getInstance().init(this)
       this.registerView(SYNC_LOG_VIEW_TYPE, (leaf) => new SyncLogView(leaf, this))
 
       // 2. 注册命令
@@ -351,11 +365,11 @@ export default class FastSync extends Plugin {
       this.menuManager.init()
 
       // 注册 WebSocket 状态监听 (Register WebSocket status listener)
-      this.websocket.addStatusListener((status) => this.updateRibbonIcon(status))
+      this.websocket.addStatusListener((status: boolean) => this.updateRibbonIcon(status))
 
       // 初始化分享指示器管理器 / Initialize share indicator manager
       this.shareIndicatorManager = new ShareIndicatorManager(this)
-      this.shareIndicatorManager.initialize()
+      void this.shareIndicatorManager.initialize()
 
       // 4. 初始化功能管理器 (实例化)
       this.fileCloudPreview = new FileCloudPreview(this)
@@ -435,14 +449,13 @@ export default class FastSync extends Plugin {
         }
       }
 
-      // 6. 注册事件监听 (依赖哈希管理器)
       if (this.fileHashManager.isReady()) {
         this.eventManager = new EventManager(this)
-        this.eventManager.registerEvents()
+        void this.eventManager.registerEvents()
       }
 
       // 7. 刷新运行时设置 (包含网络探测，不阻塞主流程)
-      this.refreshRuntime()
+      void this.refreshRuntime()
 
       // 8. 监听外观变更 (Listen for CSS/Theme changes)
       this.registerEvent(
@@ -463,12 +476,12 @@ export default class FastSync extends Plugin {
     this.shareIndicatorManager?.unload()
     this.menuManager?.unload()
     // 取消注册文件事件
-    this.refreshRuntime(false)
+    void this.refreshRuntime(false)
     this.updateStatusBar("")
   }
 
   async loadSettings() {
-    const data = await this.loadData()
+    const data = await this.loadData() as LegacySettings | null
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data)
 
     let hasMigration = false
@@ -601,7 +614,7 @@ export default class FastSync extends Plugin {
   async onExternalSettingsChange() {
     dump("onExternalSettingsChange")
     await this.loadSettings()
-    this.saveSettings()
+    await this.saveSettings()
   }
 
   async saveSettings(setItem: string = "") {
@@ -656,7 +669,7 @@ export default class FastSync extends Plugin {
       }
 
       if (this.websocket?.isRegister) {
-        this.websocket?.register()
+        void this.websocket?.register()
       }
 
       if (this.syncTimer) {
@@ -666,9 +679,9 @@ export default class FastSync extends Plugin {
       if (this.isFirstSync && this.websocket?.isAuth) {
         this.syncTimer = window.setTimeout(() => {
           if (setItem == "syncEnabled" && this.settings.syncEnabled) {
-            handleSync(this, false, "note")
+            void handleSync(this, false, "note")
           } else if (setItem == "configSyncEnabled" && this.settings.configSyncEnabled) {
-            handleSync(this, false, "config")
+            void handleSync(this, false, "config")
           }
           this.syncTimer = null
         }, 2000)
@@ -722,7 +735,7 @@ export default class FastSync extends Plugin {
   async setCommandHotkey(commandId: string, shortcutStr: string) {
     const fullId = `${this.manifest.id}:${commandId}`;
     const parts = shortcutStr.split("+");
-    const modifiers = parts.filter(p => ["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(p)) as string[];
+    const modifiers = parts.filter(p => ["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(p));
     const key = parts.find(p => !["Mod", "Ctrl", "Alt", "Shift", "Meta"].includes(p));
 
     const hotkey = { modifiers, key: key || "" };
@@ -755,24 +768,32 @@ export default class FastSync extends Plugin {
       const leaf = leaves[0]
       // 如果已经打开，判断是否处于当前视图且可见，如果是则关闭
       const containerEl = leaf.view.containerEl as HTMLElement & { isShown(): boolean };
-      if (leaf === workspace.activeLeaf || containerEl.isShown()) {
+      if (leaf === workspace.getMostRecentLeaf() || containerEl.isShown()) {
         leaf.detach()
         return
       }
       // 否则显示它
-      workspace.revealLeaf(leaf)
+      void workspace.revealLeaf(leaf)
     } else {
       // 否则创建新的
       const leaf = workspace.getRightLeaf(false)
       await leaf?.setViewState({ type: SYNC_LOG_VIEW_TYPE, active: true })
       if (leaf) {
-        workspace.revealLeaf(leaf)
+        void workspace.revealLeaf(leaf)
       }
     }
   }
 
   async activateRecycleBinView() {
     new RecycleBinModal(this.app, this).open();
+  }
+
+  activateSettings() {
+    const appWithInternal = this.app as AppWithInternal;
+    if (appWithInternal.setting) {
+      appWithInternal.setting.open();
+      appWithInternal.setting.openTabById(this.manifest.id);
+    }
   }
 
 }

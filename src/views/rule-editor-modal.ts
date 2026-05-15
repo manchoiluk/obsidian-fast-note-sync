@@ -1,4 +1,4 @@
-import { App, Modal, Platform } from "obsidian";
+import { App, Modal } from "obsidian";
 import { SyncRule } from "../lib/helps";
 import { RuleEditor } from "./rule-editor";
 import { PathSuggestOptions } from "./path-suggest";
@@ -11,7 +11,7 @@ export class RuleEditorModal extends Modal {
     title: string,
     description: string,
     rules: SyncRule[],
-    onSave: (rules: SyncRule[]) => void,
+    onSave: (rules: SyncRule[]) => void | Promise<void>,
     showCaseSensitive: boolean = true,
     addButtonText?: string,
     inputPlaceholder?: string,

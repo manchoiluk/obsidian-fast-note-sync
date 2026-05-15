@@ -1,4 +1,4 @@
-import { moment, TFile } from "obsidian";
+import { moment } from "obsidian";
 
 import FastSync from "../main";
 
@@ -87,7 +87,7 @@ export class SyncLogManager {
 
             // 仅在状态从 pending 变为 success/error 时记录到文件，避免进度更新刷屏
             if (statusChanged && targetStatus !== 'pending') {
-                this.persistToFile(updatedLog);
+                void this.persistToFile(updatedLog);
             }
         } else {
             // Add new log
@@ -110,7 +110,7 @@ export class SyncLogManager {
 
             // 新增记录时持久化到文件（除非是 pending 状态的进度条开头，这种通常之后会有 success）
             if (newLog.status !== 'pending') {
-                this.persistToFile(newLog);
+                void this.persistToFile(newLog);
             }
         }
         this.notify();
@@ -191,7 +191,7 @@ export class SyncLogManager {
             });
         } else {
             // 没有 sessionId 的消息
-            const status = (msgData.code !== undefined && (msgData.code === 0 || (msgData.code as number) > 200)) ? 'error' : 'success';
+            const status = (msgData.code !== undefined && (msgData.code === 0 || (msgData.code) > 200)) ? 'error' : 'success';
             const message = msgData.message || (msgData.code !== undefined ? `Code: ${msgData.code}` : undefined);
             this.addLog('receive', logAction, message, status, logPath, logVault);
         }

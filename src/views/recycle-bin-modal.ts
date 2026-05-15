@@ -40,7 +40,7 @@ export class RecycleBinModal extends Modal {
 
     onOpen() {
         // 初始加载数据，数据加载完会自动渲染
-        this.loadData();
+        void this.loadData();
     }
 
     onClose() {
@@ -85,13 +85,13 @@ export class RecycleBinModal extends Modal {
         const noteTabBtn = new ButtonComponent(tabContainer)
             .setButtonText($("ui.recycle_bin.note"))
             .onClick(() => {
-                this.switchTab('note');
+                void this.switchTab('note');
             });
 
         const fileTabBtn = new ButtonComponent(tabContainer)
             .setButtonText($("ui.recycle_bin.file"))
             .onClick(() => {
-                this.switchTab('file');
+                void this.switchTab('file');
             });
 
         if (this.activeTab === 'note') {
@@ -146,8 +146,8 @@ export class RecycleBinModal extends Modal {
                         this.app,
                         $("ui.recycle_bin.bulk_delete"),
                         $("ui.recycle_bin.bulk_delete_confirm"),
-                        async () => {
-                            await this.bulkDelete();
+                        () => {
+                            void this.bulkDelete();
                         },
                         undefined,
                         undefined,
@@ -165,8 +165,8 @@ export class RecycleBinModal extends Modal {
                     this.app,
                     $("ui.recycle_bin.clear"),
                     $("ui.recycle_bin.clear_confirm"),
-                    async () => {
-                        await this.clearAll();
+                    () => {
+                        void this.clearAll();
                     },
                     undefined,
                     undefined,
@@ -226,7 +226,7 @@ export class RecycleBinModal extends Modal {
             if (this.loading || this.items.length >= this.totalRows) return;
             if (listContainer.scrollTop + listContainer.clientHeight >= listContainer.scrollHeight - 50) {
                 this.page++;
-                this.loadData(true);
+                void this.loadData(true);
             }
         });
 
@@ -242,7 +242,7 @@ export class RecycleBinModal extends Modal {
                     .setButtonText($("ui.recycle_bin.load_more"))
                     .onClick(() => {
                         this.page++;
-                        this.loadData(true);
+                        void this.loadData(true);
                     });
             }
         }
@@ -311,8 +311,8 @@ export class RecycleBinModal extends Modal {
                     this.app,
                     $("ui.recycle_bin.delete"),
                     $("ui.recycle_bin.delete_confirm"),
-                    async () => {
-                        await this.deleteItemPermanently(item);
+                    () => {
+                        void this.deleteItemPermanently(item);
                     },
                     undefined,
                     undefined,

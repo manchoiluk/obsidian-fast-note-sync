@@ -21,7 +21,7 @@ export class ShareModal extends Modal {
     }
 
     onOpen() {
-        this.checkShareStatus();
+        void this.checkShareStatus();
     }
 
     private async checkShareStatus() {
@@ -62,7 +62,7 @@ export class ShareModal extends Modal {
  
         if (this.loading) {
             const loadingEl = container.createDiv("fns-share-loading-state");
-            const spinner = loadingEl.createDiv("fns-spinner");
+            loadingEl.createDiv("fns-spinner");
             loadingEl.createDiv({ text: $("ui.share.checking"), cls: "fns-loading-text" });
             return;
         }
@@ -93,7 +93,7 @@ export class ShareModal extends Modal {
                 if (res) {
                     this.shareData = res;
                     showSyncNotice($("ui.share.success"));
-                    this.plugin.shareIndicatorManager?.addSharedPath(this.path);
+                    void this.plugin.shareIndicatorManager?.addSharedPath(this.path);
                 }
                 this.render();
             });
@@ -130,7 +130,7 @@ export class ShareModal extends Modal {
             .setTooltip($("ui.share.copy"));
         linkCopyBtn.buttonEl.addClass("fns-input-action-btn");
         linkCopyBtn.onClick(() => {
-            navigator.clipboard.writeText(shareUrl);
+            void navigator.clipboard.writeText(shareUrl);
             showSyncNotice($("ui.share.copy_success"));
         });
 
@@ -230,7 +230,7 @@ export class ShareModal extends Modal {
                 .setTooltip($("ui.share.shortLinkCopy"));
             shortCopyBtn.buttonEl.addClass("fns-input-action-btn");
             shortCopyBtn.onClick(() => {
-                navigator.clipboard.writeText(this.shareData!.shortLink!);
+                void navigator.clipboard.writeText(this.shareData!.shortLink!);
                 showSyncNotice($("ui.share.copy_success"));
             });
             
@@ -296,7 +296,7 @@ export class ShareModal extends Modal {
                     this.isPasswordVisible = false;
                     this.isPasswordDirty = false;
                     showSyncNotice($("ui.share.cancel_success"));
-                    this.plugin.shareIndicatorManager?.removeSharedPath(this.path);
+                    void this.plugin.shareIndicatorManager?.removeSharedPath(this.path);
                 }
                 this.render();
             });

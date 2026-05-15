@@ -1,6 +1,6 @@
-import { normalizePath, Plugin } from "obsidian";
+import { normalizePath } from "obsidian";
 
-import { dump, getFileName, getDirName, getDirNameOrEmpty, configAddPathExcluded, configIsPathExcluded, isPathInConfigSyncDirs, getConfigSyncCustomDirs, isInWhitelist } from "./helps";
+import { dump, getFileName, getDirNameOrEmpty, configAddPathExcluded, isPathInConfigSyncDirs, getConfigSyncCustomDirs, isInWhitelist } from "./helps";
 import { CONFIG_PLUGIN_EXTS_TO_WATCH, CONFIG_ROOT_FILES_EXCLUDE, CONFIG_THEME_EXTS_TO_WATCH, configModify, configDelete, configAllPaths } from "./config_operator";
 import type FastSync from "../main";
 
@@ -26,8 +26,8 @@ export class ConfigManager {
 
     configAddPathExcluded(`${configDir}/plugins/hot-reload/`, this.plugin)
 
-    this.loadEnabledPlugins()
-    this.initializeFileStates()
+    void this.loadEnabledPlugins()
+    void this.initializeFileStates()
   }
 
   private async initializeFileStates() {
@@ -111,21 +111,23 @@ export class ConfigManager {
 
       // 2. 特殊处理本插件的 manifest.json 更新 (本地修改场景)
       if (fileName === "manifest.json" && relativePath === `${this.pluginDir}/manifest.json`) {
-        window.setTimeout(async () => {
-          try {
-            const content = await this.plugin.app.vault.adapter.read(path)
-            const manifest = JSON.parse(content) as { version?: string }
-            if (manifest.version && manifest.version !== this.plugin.manifest.version) {
-              (this.plugin.manifest as { version: string }).version = manifest.version
-              dump(`[FastNoteSync] Local manifest updated to ${this.plugin.manifest.version}`)
+        window.setTimeout(() => {
+          void (async () => {
+            try {
+              const content = await this.plugin.app.vault.adapter.read(path)
+              const manifest = JSON.parse(content) as { version?: string }
+              if (manifest.version && manifest.version !== this.plugin.manifest.version) {
+                (this.plugin.manifest as { version: string }).version = manifest.version
+                dump(`[FastNoteSync] Local manifest updated to ${this.plugin.manifest.version}`)
+              }
+            } catch (e) {
+              console.error("[FastNoteSync] Failed to read local manifest:", e)
             }
-          } catch (e) {
-            console.error("[FastNoteSync] Failed to read local manifest:", e)
-          }
+          })();
         }, 500) // 延迟读取确保写入完成
       }
 
-      this.checkFileChange(path, eventEnter)
+      void this.checkFileChange(path, eventEnter)
     }
   }
 
@@ -136,7 +138,9 @@ export class ConfigManager {
         const plugins = JSON.parse(await this.plugin.app.vault.adapter.read(filePath)) as string[]
         if (Array.isArray(plugins)) this.enabledPlugins = new Set(plugins)
       }
-    } catch { }
+    } catch {
+      // Ignore errors when loading community-plugins.json
+    }
   }
 
   private async checkFileChange(filePath: string, eventEnter: boolean = false, isFolder: boolean = false) {
@@ -149,14 +153,12 @@ export class ConfigManager {
       // 1. 处理删除 (包括目录递归删除)
       if (!stat) {
         const prefix = filePath + "/"
-        let foundMatch = false
         for (const cachedPath of this.fileStates.keys()) {
           if (cachedPath === filePath || cachedPath.startsWith(prefix)) {
             const rel = cachedPath
             this.fileStates.delete(cachedPath)
-            configDelete(rel, this.plugin, eventEnter)
+            void configDelete(rel, this.plugin, eventEnter)
             dump("Config Delete", rel)
-            foundMatch = true
           }
         }
         return
@@ -173,7 +175,7 @@ export class ConfigManager {
       if (lastMtime === undefined) {
         this.fileStates.set(filePath, stat.mtime)
         // 初始同步或新文件
-        configModify(relativePath, this.plugin, eventEnter)
+        void configModify(relativePath, this.plugin, eventEnter)
         dump("Config Modify", relativePath)
         return
       }
@@ -181,10 +183,12 @@ export class ConfigManager {
       if (stat.mtime !== lastMtime) {
         this.fileStates.set(filePath, stat.mtime)
         // 初始同步或新文件
-        configModify(relativePath, this.plugin, eventEnter)
+        void configModify(relativePath, this.plugin, eventEnter)
         dump("Config Modify", relativePath)
       }
-    } catch { }
+    } catch {
+      // Ignore stat errors
+    }
   }
 
   public updateFileState(filePath: string, mtime: number) {

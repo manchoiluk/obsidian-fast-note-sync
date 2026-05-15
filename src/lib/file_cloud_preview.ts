@@ -9,16 +9,16 @@ import type FastSync from "../main";
  * Simple Event Bus to mimic pdfjsViewer.EventBus
  */
 class SimpleEventBus {
-  private listeners: Record<string, Function[]> = {};
+  private listeners: Record<string, ((data?: unknown) => void)[]> = {};
 
-  on(eventName: string, listener: Function) {
+  on(eventName: string, listener: (data?: unknown) => void) {
     if (!this.listeners[eventName]) {
       this.listeners[eventName] = [];
     }
     this.listeners[eventName].push(listener);
   }
 
-  off(eventName: string, listener: Function) {
+  off(eventName: string, listener: (data?: unknown) => void) {
     if (!this.listeners[eventName]) return;
     this.listeners[eventName].forEach((l, i) => {
       if (l === listener) {
@@ -33,7 +33,7 @@ class SimpleEventBus {
   }
 
   // Internal method for compatibility if needed
-  _on(eventName: string, listener: Function) {
+  _on(eventName: string, listener: (data?: unknown) => void) {
     this.on(eventName, listener);
   }
 }
@@ -44,7 +44,7 @@ class SimpleEventBus {
  */
 interface PDFPageProxy {
   getViewport(options: { scale: number }): { width: number, height: number };
-  render(options: { canvasContext: CanvasRenderingContext2D | null, viewport: any }): { promise: Promise<void> };
+  render(options: { canvasContext: CanvasRenderingContext2D | null, viewport: unknown }): { promise: Promise<void> };
 }
 
 interface PDFDocumentProxy {
@@ -100,17 +100,18 @@ export class FileCloudPreview {
    */
   private registerLivePreviewProcessor() {
     if (!this.plugin.settings.cloudPreviewEnabled) return;
-    const self = this;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const pluginInstance = this;
     this.plugin.registerEditorExtension([
       ViewPlugin.fromClass(class {
         constructor(view: EditorView) {
           // 初始加载时也尝试处理一次，解决单行笔记或初次打开不触发 update 的问题
-          self.handleLivePreviewUpdate(view);
+          pluginInstance.handleLivePreviewUpdate(view);
         }
         update(update: ViewUpdate) {
           // 只要文档变化、视口变化或插件状态变化，都尝试更新
           if (update.docChanged || update.viewportChanged || update.geometryChanged) {
-            self.handleLivePreviewUpdate(update.view);
+            pluginInstance.handleLivePreviewUpdate(update.view);
           }
         }
       })
@@ -131,7 +132,7 @@ export class FileCloudPreview {
       const sourcePath = activeView?.file?.path || "";
 
       for (const embed of Array.from(embeds)) {
-        this.processEmbed(embed as HTMLElement, {
+        void this.processEmbed(embed as HTMLElement, {
           sourcePath,
           frontmatter: {}
         } as MarkdownPostProcessorContext);
@@ -289,7 +290,7 @@ export class FileCloudPreview {
     const pdfContainer = loadingContainer.createDiv("pdf-container fns-pdf-container");
 
     // Check Theme (Simulated)
-    const isThemed = this.plugin.app.loadLocalStorage("pdfjs-is-themed");
+    const isThemed = (this.plugin.app as unknown as { loadLocalStorage(key: string): unknown }).loadLocalStorage("pdfjs-is-themed");
     if (isThemed) {
       pdfContainer.addClass("mod-themed");
     }
@@ -305,7 +306,7 @@ export class FileCloudPreview {
     const sidebarContent = sidebarContentWrapper.createDiv("pdf-sidebar-content");
 
     const thumbnailViewEl = sidebarContent.createDiv("pdf-thumbnail-view");
-    const outlineViewEl = sidebarContent.createDiv("pdf-outline-view hidden"); // hidden class usually means display: none
+    sidebarContent.createDiv("pdf-outline-view hidden"); // hidden class usually means display: none
 
     // Create Viewer Container
     const viewerContainer = contentEl.createDiv("pdf-viewer-container fns-pdf-viewer-container");
@@ -333,7 +334,7 @@ export class FileCloudPreview {
     };
 
     // Spacer
-    const spacer1 = toolbarLeft.createDiv({ cls: "pdf-toolbar-spacer fns-flex-1" });
+    toolbarLeft.createDiv({ cls: "pdf-toolbar-spacer fns-flex-1" });
 
     // Zoom Controls
     const zoomOutBtn = toolbarLeft.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Zoom Out" } });
@@ -417,14 +418,14 @@ export class FileCloudPreview {
     eventBus.on("zoomin", () => {
       if (currentScale < 5.0) {
         currentScale += 0.25;
-        renderPages();
+        void renderPages();
       }
     });
 
     eventBus.on("zoomout", () => {
       if (currentScale > 0.5) {
         currentScale -= 0.25;
-        renderPages();
+        void renderPages();
       }
     });
 
@@ -459,9 +460,9 @@ export class FileCloudPreview {
 
 
     // --- 4. Initialization ---
-    (async () => {
+    void (async () => {
       try {
-        const pdfjs = await loadPdfJs();
+        const pdfjs = (await loadPdfJs()) as { getDocument(data: ArrayBuffer): { promise: Promise<PDFDocumentProxy> } };
         const response = await requestUrl({
           url: cloudUrl,
           headers: {
@@ -476,10 +477,10 @@ export class FileCloudPreview {
         pdfDoc = await loadingTask.promise;
 
         loadingText.remove();
-        pageCountEl.setText(` / ${pdfDoc!.numPages}`);
-        pageInput.max = pdfDoc!.numPages.toString();
+        pageCountEl.setText(` / ${pdfDoc.numPages}`);
+        pageInput.max = pdfDoc.numPages.toString();
 
-        const firstPage = await pdfDoc!.getPage(1);
+        const firstPage = await pdfDoc.getPage(1);
         const viewport = firstPage.getViewport({ scale: 1 });
 
         const containerWidth = viewerContainer.clientWidth - 40; // padding
@@ -489,23 +490,25 @@ export class FileCloudPreview {
 
         // Render Thumbnails (Lazy or simple)
         // For now, simple implementation if sidebar is opened
-        eventBus.on("sidebarviewchanged", async () => {
-          if (!sidebarContainer.hasClass("fns-hidden") && thumbnailViewEl.children.length === 0) {
-            // Render thumbnails
-            for (let i = 1; i <= pdfDoc!.numPages; i++) {
-              const page = await pdfDoc!.getPage(i);
-              const thumbViewport = page.getViewport({ scale: 0.2 });
+        eventBus.on("sidebarviewchanged", () => {
+          void (async () => {
+            if (!sidebarContainer.hasClass("fns-hidden") && thumbnailViewEl.children.length === 0) {
+              // Render thumbnails
+              for (let i = 1; i <= pdfDoc!.numPages; i++) {
+                const page = await pdfDoc!.getPage(i);
+                const thumbViewport = page.getViewport({ scale: 0.2 });
 
-              const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail fns-pdf-thumbnail");
-              thumbContainer.onclick = () => eventBus.dispatch("pagechange", { pageNumber: i });
+                const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail fns-pdf-thumbnail");
+                thumbContainer.onclick = () => eventBus.dispatch("pagechange", { pageNumber: i });
 
-              const canvas = thumbContainer.createEl("canvas");
-              canvas.height = thumbViewport.height;
-              canvas.width = thumbViewport.width;
+                const canvas = thumbContainer.createEl("canvas");
+                canvas.height = thumbViewport.height;
+                canvas.width = thumbViewport.width;
 
-              await page.render({ canvasContext: canvas.getContext("2d"), viewport: thumbViewport }).promise;
+                await page.render({ canvasContext: canvas.getContext("2d"), viewport: thumbViewport }).promise;
+              }
             }
-          }
+          })();
         });
 
       } catch (e) {

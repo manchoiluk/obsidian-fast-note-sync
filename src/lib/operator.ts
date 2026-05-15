@@ -39,7 +39,7 @@ export const clearAllHashes = async (plugin: FastSync) => {
 /**
  * 检查同步是否完成
  */
-export function checkSyncCompletion(plugin: FastSync, intervalId?: number | any, syncStartTime?: number) {
+export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncStartTime?: number) {
   // 超时保底：如果同步超过 60 秒仍未完成，强制结束并恢复 watch，防止因任务计数异常导致永远无法发送
   // Safety timeout: if sync exceeds 60s, force completion and re-enable watch to prevent permanent send blockage
   const SYNC_TIMEOUT_MS = 60000;
@@ -160,12 +160,12 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number | any,
 
     // 如果开启了云预览，在首次同步后检查所有附件在服务端的状态
     if (plugin.settings.cloudPreviewEnabled) {
-      checkAndUploadAttachments(plugin);
+      void checkAndUploadAttachments(plugin);
     }
 
     // 同步完成后刷新分享指示器状态
     // Refresh share indicator state after sync completion
-    plugin.shareIndicatorManager?.syncWithServer();
+    void plugin.shareIndicatorManager?.syncWithServer();
 
     window.setTimeout(() => plugin.updateStatusBar(""), 3000);
   } else {
@@ -201,41 +201,41 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number | any,
  * 消息接收调度
  */
 
-type ReceiveOperator = (data: unknown, plugin: FastSync) => void | Promise<void>;
-export const receiveOperators: Map<string, ReceiveOperator> = new Map([
-  ["NoteSyncModify", receiveNoteSyncModify as ReceiveOperator],
-  ["NoteSyncNeedPush", receiveNoteUpload as ReceiveOperator],
-  ["NoteSyncMtime", receiveNoteSyncMtime as ReceiveOperator],
-  ["NoteSyncDelete", receiveNoteSyncDelete as ReceiveOperator],
-  ["NoteSyncRename", receiveNoteSyncRename as ReceiveOperator],
-  ["NoteModifyAck", (data, plugin) => receiveNoteModifyAck(data as { path?: string; lastTime?: number }, plugin)],
-  ["NoteRenameAck", (data, plugin) => receiveNoteRenameAck(data as { oldPath?: string; newPath?: string; lastTime?: number }, plugin)],
-  ["NoteDeleteAck", (data, plugin) => receiveNoteDeleteAck(data as { path?: string; lastTime?: number }, plugin)],
+export type OperatorHandler = (data: unknown, plugin: FastSync) => Promise<void> | void;
+export const receiveOperators: Map<string, OperatorHandler> = new Map([
+  ["NoteSyncModify", receiveNoteSyncModify],
+  ["NoteSyncNeedPush", receiveNoteUpload],
+  ["NoteSyncMtime", receiveNoteSyncMtime],
+  ["NoteSyncDelete", receiveNoteSyncDelete],
+  ["NoteSyncRename", receiveNoteSyncRename],
+  ["NoteModifyAck", (data, plugin) => receiveNoteModifyAck(data as { lastTime?: number; path?: string }, plugin)],
+  ["NoteRenameAck", (data, plugin) => receiveNoteRenameAck(data as { lastTime?: number }, plugin)],
+  ["NoteDeleteAck", (data, plugin) => receiveNoteDeleteAck(data as { lastTime?: number; path?: string }, plugin)],
   ["NoteSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "note")],
-  ["FileUpload", receiveFileUpload as ReceiveOperator],
-  ["FileSyncUpdate", receiveFileSyncUpdate as ReceiveOperator],
-  ["FileSyncChunkDownload", receiveFileSyncChunkDownload as ReceiveOperator],
-  ["FileSyncDelete", receiveFileSyncDelete as ReceiveOperator],
-  ["FileSyncRename", receiveFileSyncRename as ReceiveOperator],
-  ["FileSyncMtime", receiveFileSyncMtime as ReceiveOperator],
+  ["FileUpload", receiveFileUpload],
+  ["FileSyncUpdate", receiveFileSyncUpdate],
+  ["FileSyncChunkDownload", receiveFileSyncChunkDownload],
+  ["FileSyncDelete", receiveFileSyncDelete],
+  ["FileSyncRename", receiveFileSyncRename],
+  ["FileSyncMtime", receiveFileSyncMtime],
   ["FileSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "file")],
-  ["FileRenameAck", receiveFileRenameAck as ReceiveOperator],
-  ["FileUploadAck", receiveFileUploadAck as ReceiveOperator],
-  ["FileDeleteAck", (data, plugin) => receiveFileDeleteAck(data as { path?: string; lastTime?: number }, plugin)],
-  ["SettingSyncModify", receiveConfigSyncModify as ReceiveOperator],
-  ["SettingSyncNeedUpload", receiveConfigUpload as ReceiveOperator],
-  ["SettingSyncMtime", receiveConfigSyncMtime as ReceiveOperator],
-  ["SettingSyncDelete", receiveConfigSyncDelete as ReceiveOperator],
+  ["FileRenameAck", receiveFileRenameAck],
+  ["FileUploadAck", receiveFileUploadAck],
+  ["FileDeleteAck", (data, plugin) => receiveFileDeleteAck(data as { lastTime?: number; path?: string }, plugin)],
+  ["SettingSyncModify", receiveConfigSyncModify],
+  ["SettingSyncNeedUpload", receiveConfigUpload],
+  ["SettingSyncMtime", receiveConfigSyncMtime],
+  ["SettingSyncDelete", receiveConfigSyncDelete],
   ["SettingSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "config")],
-  ["SettingSyncClear", receiveConfigSyncClear as ReceiveOperator],
-  ["SettingModifyAck", receiveConfigModifyAck as ReceiveOperator],
-  ["SettingDeleteAck", receiveConfigDeleteAck as ReceiveOperator],
-  ["FolderSyncModify", receiveFolderSyncModify as ReceiveOperator],
-  ["FolderSyncDelete", receiveFolderSyncDelete as ReceiveOperator],
-  ["FolderSyncRename", receiveFolderSyncRename as ReceiveOperator],
+  ["SettingSyncClear", receiveConfigSyncClear],
+  ["SettingModifyAck", receiveConfigModifyAck],
+  ["SettingDeleteAck", receiveConfigDeleteAck],
+  ["FolderSyncModify", receiveFolderSyncModify],
+  ["FolderSyncDelete", receiveFolderSyncDelete],
+  ["FolderSyncRename", receiveFolderSyncRename],
   ["FolderSyncEnd", (data, plugin) => receiveSyncEndWrapper(data, plugin, "folder")],
-  ["ShareSyncRefresh", receiveShareSyncRefresh as ReceiveOperator],
-]);
+  ["ShareSyncRefresh", receiveShareSyncRefresh],
+] as [string, OperatorHandler][]);
 
 /**
  * 收到分享状态变更通知，全量刷新分享路径
@@ -243,7 +243,7 @@ export const receiveOperators: Map<string, ReceiveOperator> = new Map([
  */
 function receiveShareSyncRefresh(_data: unknown, plugin: FastSync): void {
   dump("Receive ShareSyncRefresh, triggering share indicator sync");
-  plugin.shareIndicatorManager?.syncWithServer();
+  void plugin.shareIndicatorManager?.syncWithServer();
 }
 
 /**
@@ -309,7 +309,7 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
         if (isVirtual) return { mtime: Date.now(), size: plugin.localStorageManager.getItemValue(plugin.localStorageManager.pathToKey(path) || "")?.length || 0 }
         try {
           return await plugin.app.vault.adapter.stat(normalizePath(path))
-        } catch (e) {
+        } catch {
           return null
         }
       })
@@ -349,15 +349,6 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
 /**
  * 统一分发子任务消息
  */
-async function processSyncMessages(messages: { action: string, data: unknown }[], plugin: FastSync) {
-  for (const msg of messages) {
-    const handler = receiveOperators.get(msg.action);
-    if (handler) {
-      await handler(msg.data, plugin);
-      await sleep(2)
-    }
-  }
-}
 
 
 
@@ -898,7 +889,7 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
 
     // 第一步：先发 FolderSync，确保文件夹结构先于笔记/附件在本地建立
     // Step 1: Send FolderSync first to ensure folder structure is created before notes/files
-    plugin.websocket.SendMessage("FolderSync", folderSyncData, undefined, () => {
+    void plugin.websocket.SendMessage("FolderSync", folderSyncData, undefined, () => {
       for (const folder of folderSyncData.folders) {
         plugin.folderSnapshotManager.setFolderMtime(folder.path, Date.now());
       }
@@ -912,15 +903,15 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
       const timeout = window.setTimeout(resolve, 10000)
       const checkInterval = window.setInterval(() => {
         if (!plugin.websocket?.isAuth) {
-          clearInterval(checkInterval)
-          clearTimeout(timeout)
+          window.clearInterval(checkInterval)
+          window.clearTimeout(timeout)
           resolve()
           return
         }
         const folderSyncDone = plugin.folderSyncEnd && plugin.folderSyncTasks.completed >= (plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete)
         if (folderSyncDone) {
-          clearInterval(checkInterval)
-          clearTimeout(timeout)
+          window.clearInterval(checkInterval)
+          window.clearTimeout(timeout)
           resolve()
         }
       }, 50)
@@ -928,7 +919,7 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
 
     // 第三步：文件夹结构已就绪，发 NoteSync 和 FileSync
     // Step 3: Folder structure is ready, now send NoteSync and FileSync
-    plugin.websocket.SendMessage("NoteSync", noteSyncData, undefined, () => {
+    void plugin.websocket.SendMessage("NoteSync", noteSyncData, undefined, () => {
       for (const note of noteSyncData.notes) {
         plugin.pendingNoteModifies.set(note.path, note.contentHash);
       }
@@ -938,7 +929,7 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
     // 如果启用了云预览且未开启类型限制，则不发送 FileSync 请求，从而关闭启动时的 file 同步
     // 若开启了类型限制，则需要发送以同步不受限类型的附件1
     if (!plugin.settings.cloudPreviewEnabled || plugin.settings.cloudPreviewTypeRestricted) {
-      plugin.websocket.SendMessage("FileSync", fileSyncData);
+      void plugin.websocket.SendMessage("FileSync", fileSyncData);
     }
 
     // 将已删除路径加入 pending set，等待 SyncEnd 确认服务端已处理后再从 hashManager 移除
@@ -960,7 +951,7 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
       ...(plugin.settings.offlineDeleteSyncEnabled ? { delSettings: configData.delConfigs } : {}),
       ...(configData.missingConfigs.length > 0 ? { missingSettings: configData.missingConfigs } : {}),
     };
-    plugin.websocket.SendMessage("SettingSync", configSyncData, undefined, () => {
+    void plugin.websocket.SendMessage("SettingSync", configSyncData, undefined, () => {
       for (const config of configSyncData.settings) {
         plugin.pendingConfigModifies.set(config.path, config.contentHash);
       }

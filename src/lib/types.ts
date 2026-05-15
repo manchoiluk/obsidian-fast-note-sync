@@ -193,8 +193,22 @@ export interface MenuItemWithDom {
     dom: HTMLElement;
 }
 
+/**
+ * Obsidian Menu internal hide method type.
+ * Obsidian Menu 内部 hide 方法的类型定义。
+ */
+export interface MenuWithHide {
+    hide(): void;
+}
+
 export interface MenuItemWithInternal extends MenuItem {
     setSubmenu(): Menu;
 }
 
 
+export interface WorkspaceWithInternal {
+    requestSaveLeafState(): void;
+    iterateRootLeaves(callback: (leaf: import("obsidian").WorkspaceLeaf) => void): void;
+    on(name: 'file-menu', callback: (menu: Menu, file: import("obsidian").TAbstractFile) => void, ctx?: unknown): import("obsidian").EventRef;
+    on(name: 'editor-menu', callback: (menu: Menu, editor: import("obsidian").Editor, view: import("obsidian").MarkdownView) => void, ctx?: unknown): import("obsidian").EventRef;
+}

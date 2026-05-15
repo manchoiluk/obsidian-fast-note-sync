@@ -1,8 +1,8 @@
 import { moment, Platform } from "obsidian";
 
-import { dump, isWsUrl, addRandomParam, isPathExcluded, isVersionNew, showSyncNotice } from "./helps";
+import { dump, isWsUrl, addRandomParam, isVersionNew, showSyncNotice } from "./helps";
 import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue } from "./file_operator";
-import { receiveOperators, startupSync, startupFullSync, checkSyncCompletion } from "./operator";
+import { receiveOperators, startupSync } from "./operator";
 import { SyncLogManager } from "./sync_log_manager";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
@@ -16,7 +16,6 @@ const ERROR_SYNC_CONFLICT = 530
 
 // WebSocket 连接常量
 const RECONNECT_BASE_DELAY = 3000 // 重连基础延迟 (毫秒)
-const CONNECTION_CHECK_INTERVAL = 3000 // 连接检查间隔 (毫秒)
 
 function getWsCountStorageKey(plugin: FastSync): string {
   const vaultName = plugin.app.vault.getName();
@@ -47,25 +46,25 @@ export class WebSocketClient {
 
     // Load count from local storage
     const storageKey = getWsCountStorageKey(this.plugin);
-    let storedCount = this.plugin.app.loadLocalStorage(storageKey);
+    let storedCount = this.plugin.app.loadLocalStorage(storageKey) as string | null;
 
     // 迁移逻辑：如果新键无值，尝试按顺序读取旧键
     if (storedCount === null) {
       const vaultName = this.plugin.app.vault.getName();
       // 1. 尝试上一个格式: fast-note-sync-[Vault]-wsCount
       const prevKey1 = `fast-note-sync-${vaultName}-wsCount`;
-      let oldValue = this.plugin.app.loadLocalStorage(prevKey1);
+      let oldValue = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
 
       // 2. 尝试更早的格式: fast-note-sync-[Vault]-ws-count
       if (oldValue === null) {
         const prevKey2 = `fast-note-sync-${vaultName}-ws-count`;
-        oldValue = this.plugin.app.loadLocalStorage(prevKey2);
+        oldValue = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
       }
 
       // 3. 尝试最初始格式: fast-note-sync-ws-count
       if (oldValue === null) {
         const oldKey = "fast-note-sync-ws-count";
-        oldValue = this.plugin.app.loadLocalStorage(oldKey);
+        oldValue = this.plugin.app.loadLocalStorage(oldKey) as string | null;
       }
 
       if (oldValue !== null) {
@@ -77,7 +76,7 @@ export class WebSocketClient {
     this.count = storedCount ? parseInt(storedCount) : 0
 
     // Register default file sync handler
-    this.registerBinaryHandler(BINARY_PREFIX_FILE_SYNC, (data, plugin) => handleFileChunkDownload(data, plugin));
+    this.registerBinaryHandler(BINARY_PREFIX_FILE_SYNC, (data, plugin) => { void handleFileChunkDownload(data, plugin); });
   }
 
   public registerBinaryHandler(prefix: string, handler: (data: ArrayBuffer | Blob, plugin: FastSync) => void) {
@@ -212,21 +211,19 @@ export class WebSocketClient {
         if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
           // Dynamic Binary Message Dispatch
           let binaryData: ArrayBuffer | Blob = event.data;
-          let prefix = "";
 
           // Extract prefix (first 2 bytes)
           if (binaryData instanceof Blob) {
             if (binaryData.size < 2) return;
           }
 
-          (async () => {
+          void (async () => {
             let buf: ArrayBuffer;
             if (event.data instanceof Blob) {
               buf = await event.data.arrayBuffer();
             } else {
-              buf = event.data;
+              buf = event.data as ArrayBuffer;
             }
-
             if (buf.byteLength < 2) return;
 
             const prefixBytes = new Uint8Array(buf.slice(0, 2));
@@ -247,18 +244,19 @@ export class WebSocketClient {
 
         // 处理文本消息
         // 使用字符串 of indexOf 找到第一个分隔符的位置
-        let msgData: string = event.data
+        const fullMsg = event.data as string
+        let msgData: string = fullMsg
         let msgAction: string = ""
-        const index = event.data.indexOf("|")
+        const index = fullMsg.indexOf("|")
         if (index !== -1) {
-          msgData = event.data.slice(index + 1)
-          msgAction = event.data.slice(0, index)
+          msgData = fullMsg.slice(index + 1)
+          msgAction = fullMsg.slice(0, index)
         }
         const data = JSON.parse(msgData) as { 
           code: number; 
           message?: string; 
           details?: string; 
-          data?: Record<string, any>; // data 内部仍可能有多变结构
+          data?: Record<string, unknown>; // data 内部仍可能有多变结构
           vault?: string;
         }
 
@@ -276,6 +274,8 @@ export class WebSocketClient {
             return
           } else {
             this.isAuth = true
+            const paths = (data.data?.paths as string[]) || [];
+            this.plugin.shareIndicatorManager?.updateSharedPaths(paths);
             if (data.data) {
               this.plugin.localStorageManager.setMetadata("serverVersion", data.data.version ?? this.plugin.localStorageManager.getMetadata("serverVersion"))
               this.plugin.localStorageManager.setMetadata("serverChangelog", data.data.changelog ?? this.plugin.localStorageManager.getMetadata("serverChangelog"))
@@ -284,7 +284,7 @@ export class WebSocketClient {
             this.notifyStatusChange(true)
 
             this.sendClientInfo()
-            this.StartHandle()
+            void this.StartHandle()
           }
         }
 
@@ -296,7 +296,7 @@ export class WebSocketClient {
               // 针对服务端版本 (For server version)
               const serverCurrent = (this.plugin.localStorageManager.getMetadata("serverVersion") as string) || "";
               const serverLatest = (data.data.versionNewName || data.data.version) as string;
-              const serverIsNew = (data.data.versionIsNew ?? this.plugin.localStorageManager.getMetadata("serverVersionIsNew") as boolean) && isVersionNew(serverCurrent, serverLatest);
+              const serverIsNew = (data.data.versionIsNew ?? this.plugin.localStorageManager.getMetadata("serverVersionIsNew")) && isVersionNew(serverCurrent, serverLatest);
               this.plugin.localStorageManager.setMetadata("serverVersionIsNew", serverIsNew)
 
               this.plugin.localStorageManager.setMetadata("serverVersionNewName", data.data.versionNewName ?? this.plugin.localStorageManager.getMetadata("serverVersionNewName"))
@@ -307,13 +307,13 @@ export class WebSocketClient {
               // 针对插件版本 (For plugin version)
               const pluginCurrent = this.plugin.manifest.version;
               const pluginLatest = data.data.pluginVersionNewName as string;
-              const pluginIsNew = (data.data.pluginVersionIsNew ?? this.plugin.localStorageManager.getMetadata("pluginVersionIsNew") as boolean) && isVersionNew(pluginCurrent, pluginLatest);
+              const pluginIsNew = (data.data.pluginVersionIsNew ?? this.plugin.localStorageManager.getMetadata("pluginVersionIsNew")) && isVersionNew(pluginCurrent, pluginLatest);
               this.plugin.localStorageManager.setMetadata("pluginVersionIsNew", pluginIsNew)
 
-              this.plugin.localStorageManager.setMetadata("pluginVersionNewName", (data.data.pluginVersionNewName as string) ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewName"))
-              this.plugin.localStorageManager.setMetadata("pluginVersionNewLink", (data.data.pluginVersionNewLink as string) ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewLink"))
-              this.plugin.localStorageManager.setMetadata("pluginVersionNewChangelogContent", (data.data.pluginVersionNewChangelogContent as string) ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewChangelogContent"))
-              this.plugin.localStorageManager.setMetadata("pluginVersionChangelogContent", (data.data.pluginVersionChangelogContent as string) ?? this.plugin.localStorageManager.getMetadata("pluginVersionChangelogContent"))
+              this.plugin.localStorageManager.setMetadata("pluginVersionNewName", (data.data.pluginVersionNewName) ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewName"))
+              this.plugin.localStorageManager.setMetadata("pluginVersionNewLink", (data.data.pluginVersionNewLink) ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewLink"))
+              this.plugin.localStorageManager.setMetadata("pluginVersionNewChangelogContent", (data.data.pluginVersionNewChangelogContent) ?? this.plugin.localStorageManager.getMetadata("pluginVersionNewChangelogContent"))
+              this.plugin.localStorageManager.setMetadata("pluginVersionChangelogContent", (data.data.pluginVersionChangelogContent) ?? this.plugin.localStorageManager.getMetadata("pluginVersionChangelogContent"))
               this.plugin.menuManager?.refreshUpgradeBadge();
             }
           }
@@ -337,7 +337,7 @@ export class WebSocketClient {
           }
           const handler = receiveOperators.get(msgAction)
           if (handler) {
-            handler(data.data, this.plugin)
+            void handler(data.data, this.plugin)
           }
         }
       }
@@ -421,7 +421,7 @@ export class WebSocketClient {
       dump(`Service waiting reconnect: ${this.timeConnect}, delay: ${delay}ms`)
 
       this.checkReConnectTimeout = window.setTimeout(() => {
-        this.register()
+        void this.register()
       }, delay)
     }
   }
@@ -433,7 +433,7 @@ export class WebSocketClient {
     // Clear any existing reconnect timers
     window.clearTimeout(this.checkReConnectTimeout)
     // Force register
-    this.register()
+    void this.register();
   }
 
   public async StartHandle() {

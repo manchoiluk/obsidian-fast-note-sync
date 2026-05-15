@@ -49,7 +49,7 @@ const WSClientsView = ({ plugin }: { plugin: FastSync }) => {
     };
 
     React.useEffect(() => {
-        loadClients();
+        void loadClients();
     }, []);
 
     return (
@@ -67,7 +67,7 @@ const WSClientsView = ({ plugin }: { plugin: FastSync }) => {
                     )}
                     <button 
                         className="clickable-icon fns-ws-clients-refresh-btn" 
-                        onClick={loadClients} 
+                        onClick={() => { void loadClients(); }} 
                         disabled={isLoading}
                         aria-label={$("ui.common.refresh")}
                     >

@@ -1,6 +1,4 @@
-import { TFile } from "obsidian";
-
-import { hashContent, hashContentAsync, dump, isPathExcluded, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, logMemorySnapshot, hashFileAsync } from "./helps";
+import { hashContentAsync, dump, isPathExcluded, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, logMemorySnapshot, hashFileAsync } from "./helps";
 import type FastSync from "../main";
 
 
@@ -101,8 +99,9 @@ export class FileHashManager {
           });
         } catch (error) {
           // 单个文件哈希计算失败不应中断整个构建过程
+          const msg = error instanceof Error ? error.message : String(error);
           dump(`FileHashManager: 计算哈希失败，跳过文件: ${file.path}`, error);
-          console.warn(`[FastNoteSync] 跳过文件 ${file.path}: ${error.message}`);
+          console.warn(`[FastNoteSync] 跳过文件 ${file.path}: ${msg}`);
         }
 
         processedFiles++;
@@ -111,7 +110,7 @@ export class FileHashManager {
         if (processedFiles % 50 === 0) {
           notice.setMessage(`正在初始化文件哈希映射... (${processedFiles}/${totalFiles})`);
           // 让出主线程,避免阻塞 UI
-          await new Promise(resolve => setTimeout(resolve, 0));
+          await new Promise(resolve => window.setTimeout(resolve, 0));
         }
       }
 
@@ -124,7 +123,8 @@ export class FileHashManager {
       dump(`FileHashManager: 构建完成,共 ${totalFiles} 个文件`);
     } catch (error) {
       notice.hide();
-      showSyncNotice(`文件哈希映射初始化失败: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      showSyncNotice(`文件哈希映射初始化失败: ${msg}`);
       dump("FileHashManager: 构建失败", error);
       throw error;
     }
@@ -197,7 +197,7 @@ export class FileHashManager {
    */
   private loadFromStorage(): boolean {
     try {
-      let data = this.plugin.app.loadLocalStorage(this.storageKey);
+      let data = this.plugin.app.loadLocalStorage(this.storageKey) as string | null;
 
       // 迁移逻辑：如果新键无数据，尝试读取旧键
       if (!data) {
@@ -205,18 +205,18 @@ export class FileHashManager {
 
         // 1. 尝试上一个格式: fast-note-sync-[Vault]-fileHashMap
         const prevKey1 = `fast-note-sync-${vaultName}-fileHashMap`;
-        data = this.plugin.app.loadLocalStorage(prevKey1);
+        data = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
 
         // 2. 尝试更早格式: fast-note-sync-[Vault]-file-hash-map
         if (!data) {
           const prevKey2 = `fast-note-sync-${vaultName}-file-hash-map`;
-          data = this.plugin.app.loadLocalStorage(prevKey2);
+          data = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
         }
 
         // 3. 尝试最原始格式: fast-note-sync-file-hash-map-[Vault]
         if (!data) {
           const oldKey = `fast-note-sync-file-hash-map-${vaultName}`;
-          data = this.plugin.app.loadLocalStorage(oldKey);
+          data = this.plugin.app.loadLocalStorage(oldKey) as string | null;
         }
 
         if (data) {
@@ -227,7 +227,7 @@ export class FileHashManager {
         }
       }
 
-      const parsed = JSON.parse(data);
+      const parsed = JSON.parse(data) as Record<string, unknown>;
       // 数据迁移逻辑：如果值是字符串，说明是旧版数据，需要重新构建或设为默认值
       // Data migration: if value is string, it's old version data; need to migrate or default
       const migratedMap = new Map<string, HashCache>();
@@ -265,7 +265,8 @@ export class FileHashManager {
       this.plugin.app.saveLocalStorage(this.storageKey, data);
     } catch (error) {
       dump("FileHashManager: 保存到 localStorage 失败", error);
-      showSyncNotice(`保存文件哈希映射失败: ${error.message}`);
+      const msg = error instanceof Error ? error.message : String(error);
+      showSyncNotice(`保存文件哈希映射失败: ${msg}`);
     }
   }
 

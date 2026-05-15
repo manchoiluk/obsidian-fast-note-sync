@@ -132,7 +132,7 @@ export class EventManager {
       }
       // 恢复前台时刷新分享状态（覆盖短暂后台期间其他设备变更分享的场景）
       // Refresh share state on foreground resume (covers share changes by other devices during brief background)
-      this.plugin.shareIndicatorManager?.syncWithServer()
+      void this.plugin.shareIndicatorManager?.syncWithServer()
     }
   }
 
@@ -152,12 +152,12 @@ export class EventManager {
     this.runWithDelay(file.path, () => {
       if (file instanceof TFile) {
         if (file.path.endsWith(".md")) {
-          noteModify(file, this.plugin, true)
+          void noteModify(file, this.plugin, true)
         } else {
-          fileModify(file, this.plugin, true)
+          void fileModify(file, this.plugin, true)
         }
       } else if (file instanceof TFolder) {
-        folderModify(file, this.plugin, true)
+        void folderModify(file, this.plugin, true)
       }
     })
   }
@@ -172,12 +172,12 @@ export class EventManager {
     this.runWithDelay(file.path, () => {
       if (file instanceof TFile) {
         if (file.path.endsWith(".md")) {
-          noteDelete(file, this.plugin, true)
+          void noteDelete(file, this.plugin, true)
         } else {
-          fileDelete(file, this.plugin, true)
+          void fileDelete(file, this.plugin, true)
         }
       } else if (file instanceof TFolder) {
-        folderDelete(file, this.plugin, true)
+        void folderDelete(file, this.plugin, true)
       }
     })
   }
@@ -212,8 +212,8 @@ export class EventManager {
             this.runWithDelay(
               oldFile,
               () => {
-                if (oldFile.endsWith(".md")) noteDeleteByPath(oldFile, this.plugin)
-                else fileDeleteByPath(oldFile, this.plugin)
+                if (oldFile.endsWith(".md")) void noteDeleteByPath(oldFile, this.plugin)
+                else void fileDeleteByPath(oldFile, this.plugin)
               },
               0,
             )
@@ -222,8 +222,8 @@ export class EventManager {
               file.path,
               () => {
                 //如果新文件是markdown文件，则发送笔记创建消息，否则发送文件创建消息
-                if (file.path.endsWith(".md")) noteModify(file, this.plugin, true)
-                else fileModify(file, this.plugin, true)
+                if (file.path.endsWith(".md")) void noteModify(file, this.plugin, true)
+                else void fileModify(file, this.plugin, true)
               },
               0,
             )
@@ -244,11 +244,11 @@ export class EventManager {
     }
 
     if (delay <= 0) {
-      executeRename()
+      void executeRename()
     } else {
       const timer = window.setTimeout(() => {
         this.rawEventTimers.delete(file.path)
-        executeRename()
+        void executeRename()
       }, delay)
       this.rawEventTimers.set(file.path, timer)
     }
@@ -269,7 +269,7 @@ export class EventManager {
       path,
       () => {
         if (this.plugin.configManager) {
-          this.plugin.configManager.handleRawEvent(normalizePath(path), true)
+          void this.plugin.configManager.handleRawEvent(normalizePath(path), true)
         }
       },
       300,
@@ -306,7 +306,7 @@ export class EventManager {
     if (delay <= 0) {
       // 立即执行也需要加锁，以防与其他异步任务冲突
       // 如果获取锁失败，尝试重试 3 次，每次 50ms
-      this.plugin.lockManager.withLock(
+      void this.plugin.lockManager.withLock(
         key,
         async () => {
           await task()
@@ -316,18 +316,20 @@ export class EventManager {
       return
     }
 
-    const timer = window.setTimeout(async () => {
-      this.rawEventTimers.delete(key)
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        this.rawEventTimers.delete(key)
 
-      // 执行任务时加锁，并带重试逻辑
-      // 这里的重试是为了应对可能正好有远程同步在写该文件的情况
-      await this.plugin.lockManager.withLock(
-        key,
-        async () => {
-          await task()
-        },
-        { maxRetries: 5, retryInterval: 100 },
-      )
+        // 执行任务时加锁，并带重试逻辑
+        // 这里的重试是为了应对可能正好有远程同步在写该文件的情况
+        await this.plugin.lockManager.withLock(
+          key,
+          async () => {
+            await task()
+          },
+          { maxRetries: 5, retryInterval: 100 },
+        )
+      })()
     }, delay)
 
     this.rawEventTimers.set(key, timer)

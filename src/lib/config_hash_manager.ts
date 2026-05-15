@@ -1,6 +1,6 @@
 import { normalizePath } from "obsidian";
 
-import { hashContent, hashContentAsync, dump, configIsPathExcluded, getConfigSyncCustomDirs, showSyncNotice, hashFileAsync } from "./helps";
+import { hashContentAsync, dump, configIsPathExcluded, getConfigSyncCustomDirs, showSyncNotice, hashFileAsync } from "./helps";
 import { configAllPaths } from "./config_operator";
 import type FastSync from "../main";
 
@@ -84,8 +84,6 @@ export class ConfigHashManager {
                 }
 
                 let contentHash: string;
-                let mtime = 0;
-                let size = 0;
 
                 // 检查是否为 LocalStorage 虚拟路径
                 if (path.startsWith(this.plugin.localStorageManager.syncPathPrefix)) {
@@ -206,7 +204,7 @@ export class ConfigHashManager {
      */
     private loadFromStorage(): boolean {
         try {
-            let data = this.plugin.app.loadLocalStorage(this.storageKey);
+            let data = this.plugin.app.loadLocalStorage(this.storageKey) as string | null;
 
             // 迁移逻辑：如果新键无数据，尝试读取旧键
             if (!data) {
@@ -214,18 +212,18 @@ export class ConfigHashManager {
 
                 // 1. 尝试上一个格式: fast-note-sync-[Vault]-configHashMap
                 const prevKey1 = `fast-note-sync-${vaultName}-configHashMap`;
-                data = this.plugin.app.loadLocalStorage(prevKey1);
+                data = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
 
                 // 2. 尝试更早格式: fast-note-sync-[Vault]-config-hash-map
                 if (!data) {
                     const prevKey2 = `fast-note-sync-${vaultName}-config-hash-map`;
-                    data = this.plugin.app.loadLocalStorage(prevKey2);
+                    data = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
                 }
 
                 // 3. 尝试最原始格式: fast-note-sync-config-hash-map-[Vault]
                 if (!data) {
                     const oldKey = `fast-note-sync-config-hash-map-${vaultName}`;
-                    data = this.plugin.app.loadLocalStorage(oldKey);
+                    data = this.plugin.app.loadLocalStorage(oldKey) as string | null;
                 }
 
                 if (data) {

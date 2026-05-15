@@ -1,4 +1,4 @@
-import { TFolder, Notice } from "obsidian";
+import { TFolder } from "obsidian";
 
 import { dump, isPathExcluded } from "./helps";
 import type FastSync from "../main";
@@ -95,7 +95,7 @@ export class FolderSnapshotManager {
      */
     private loadFromStorage(): boolean {
         try {
-            let data = this.plugin.app.loadLocalStorage(this.storageKey);
+            let data = this.plugin.app.loadLocalStorage(this.storageKey) as string | null;
 
             // 迁移逻辑：如果新键无数据，尝试读取旧键
             if (!data) {
@@ -103,18 +103,18 @@ export class FolderSnapshotManager {
 
                 // 1. 尝试上一个格式: fast-note-sync-[Vault]-folderSnapshot
                 const prevKey1 = `fast-note-sync-${vaultName}-folderSnapshot`;
-                data = this.plugin.app.loadLocalStorage(prevKey1);
+                data = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
 
                 // 2. 尝试更早格式: fast-note-sync-[Vault]-folder-snapshot
                 if (!data) {
                     const prevKey2 = `fast-note-sync-${vaultName}-folder-snapshot`;
-                    data = this.plugin.app.loadLocalStorage(prevKey2);
+                    data = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
                 }
 
                 // 3. 尝试最原始格式: fast-note-sync-folder-snapshot-[Vault]
                 if (!data) {
                     const oldKey = `fast-note-sync-folder-snapshot-${vaultName}`;
-                    data = this.plugin.app.loadLocalStorage(oldKey);
+                    data = this.plugin.app.loadLocalStorage(oldKey) as string | null;
                 }
 
                 if (data) {
@@ -124,7 +124,7 @@ export class FolderSnapshotManager {
                     return false;
                 }
             }
-            const parsed = JSON.parse(data);
+            const parsed = JSON.parse(data) as Record<string, number>;
             this.snapshotMap = new Map(
                 Object.entries(parsed).map(([key, value]) => [key, Number(value)])
             );

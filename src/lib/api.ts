@@ -281,25 +281,21 @@ export class HttpApiService {
         }
 
         if (networkLibrary === 'requestUrl') {
-            try {
-                // Obsidian's requestUrl doesn't natively support AbortSignal in older versions,
-                // but we check for it to be future-proof or just let it run.
-                const response = await requestUrl({
-                    url: url,
-                    method: options.method,
-                    headers: headers,
-                    body: options.body,
-                    throw: false
-                });
+            // Obsidian's requestUrl doesn't natively support AbortSignal in older versions,
+            // but we check for it to be future-proof or just let it run.
+            const response = await requestUrl({
+                url: url,
+                method: options.method,
+                headers: headers,
+                body: options.body,
+                throw: false
+            });
 
-                return {
-                    status: response.status,
-                    json: response.json as unknown,
-                    finalUrl: (response as unknown as { url?: string }).url || url
-                };
-            } catch (e) {
-                throw e;
-            }
+            return {
+                status: response.status,
+                json: response.json as unknown,
+                finalUrl: (response as unknown as { url?: string }).url || url
+            };
         } else {
             const fetchOptions: RequestInit = {
                 method: options.method,
@@ -387,23 +383,19 @@ export class HttpApiService {
     async getNoteHistoryDetail(id: number): Promise<NoteHistoryDetail> {
         const endpoint = `/api/note/history?id=${id}`;
 
-        try {
-            const { status, json } = await this.request(endpoint, {
-                method: "GET"
-            });
+        const { status, json } = await this.request(endpoint, {
+            method: "GET"
+        });
 
-            if (status !== 200 || !this.isSuccess(json)) {
-                const res = json as ApiResponse<unknown>;
-                const msg = res?.message || "Failed to fetch history detail";
-                showSyncNotice(msg);
-                throw new Error(msg);
-            }
-
-            const res = json as ApiResponse<NoteHistoryDetail>;
-            return res.data;
-        } catch (e) {
-            throw e;
+        if (status !== 200 || !this.isSuccess(json)) {
+            const res = json as ApiResponse<unknown>;
+            const msg = res?.message || "Failed to fetch history detail";
+            showSyncNotice(msg);
+            throw new Error(msg);
         }
+
+        const res = json as ApiResponse<NoteHistoryDetail>;
+        return res.data;
     }
 
     /**
@@ -450,21 +442,17 @@ export class HttpApiService {
 
         const endpoint = `/api/file/info?${params.toString()}`;
 
-        try {
-            const { status, json } = await this.request(endpoint, {
-                method: "GET"
-            });
+        const { status, json } = await this.request(endpoint, {
+            method: "GET"
+        });
 
-            if (status !== 200 || !this.isSuccess(json)) {
-                const res = json as ApiResponse<unknown>;
-                throw new Error(res?.message || `HTTP ${status}: Failed to fetch file info`);
-            }
-
-            const res = json as ApiResponse<FileInfoResponse>;
-            return res.data;
-        } catch (e) {
-            throw e;
+        if (status !== 200 || !this.isSuccess(json)) {
+            const res = json as ApiResponse<unknown>;
+            throw new Error(res?.message || `HTTP ${status}: Failed to fetch file info`);
         }
+
+        const res = json as ApiResponse<FileInfoResponse>;
+        return res.data;
     }
 
     /**
@@ -484,25 +472,21 @@ export class HttpApiService {
 
         const endpoint = `/api/notes?${params.toString()}`;
 
-        try {
-            const { status, json } = await this.request(endpoint, {
-                method: "GET",
-                signal
-            });
+        const { status, json } = await this.request(endpoint, {
+            method: "GET",
+            signal
+        });
 
-            if (status !== 200) {
-                throw new Error(`HTTP ${status}: Failed to fetch note list`);
-            }
-
-            const res = json as ApiResponse<NoteListResponse>;
-            if (!this.isSuccess(res)) {
-                throw new Error(res?.message || "Failed to fetch note list");
-            }
-
-            return res.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
-        } catch (e) {
-            throw e;
+        if (status !== 200) {
+            throw new Error(`HTTP ${status}: Failed to fetch note list`);
         }
+
+        const res = json as ApiResponse<NoteListResponse>;
+        if (!this.isSuccess(res)) {
+            throw new Error(res?.message || "Failed to fetch note list");
+        }
+
+        return res.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
     }
 
     /**
@@ -522,25 +506,21 @@ export class HttpApiService {
 
         const endpoint = `/api/files?${params.toString()}`;
 
-        try {
-            const { status, json } = await this.request(endpoint, {
-                method: "GET",
-                signal
-            });
+        const { status, json } = await this.request(endpoint, {
+            method: "GET",
+            signal
+        });
 
-            if (status !== 200) {
-                throw new Error(`HTTP ${status}: Failed to fetch file list`);
-            }
-
-            const res = json as ApiResponse<FileListResponse>;
-            if (!this.isSuccess(res)) {
-                throw new Error(res?.message || "Failed to fetch file list");
-            }
-
-            return res.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
-        } catch (e) {
-            throw e;
+        if (status !== 200) {
+            throw new Error(`HTTP ${status}: Failed to fetch file list`);
         }
+
+        const res = json as ApiResponse<FileListResponse>;
+        if (!this.isSuccess(res)) {
+            throw new Error(res?.message || "Failed to fetch file list");
+        }
+
+        return res.data || { list: [], pager: { page, pageSize, totalRows: 0, totalPages: 0 } };
     }
 
     /**
@@ -838,21 +818,17 @@ export class HttpApiService {
     async getUserInfo(): Promise<UserDTO> {
         const endpoint = `/api/user/info`;
 
-        try {
-            const { status, json } = await this.request(endpoint, {
-                method: "GET"
-            });
+        const { status, json } = await this.request(endpoint, {
+            method: "GET"
+        });
 
-            if (status !== 200 || !this.isSuccess(json)) {
-                const res = json as ApiResponse<unknown>;
-                throw new Error(res?.message || "Failed to fetch user info");
-            }
-
-            const res = json as ApiResponse<UserDTO>;
-            return res.data;
-        } catch (e) {
-            throw e;
+        if (status !== 200 || !this.isSuccess(json)) {
+            const res = json as ApiResponse<unknown>;
+            throw new Error(res?.message || "Failed to fetch user info");
         }
+
+        const res = json as ApiResponse<UserDTO>;
+        return res.data;
     }
 
     /**

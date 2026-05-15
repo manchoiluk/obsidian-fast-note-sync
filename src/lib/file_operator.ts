@@ -4,9 +4,8 @@ import { ReceiveFileSyncUpdateMessage, FileUploadMessage, FileSyncChunkDownloadM
 import { hashContent, hashArrayBuffer, getPluginDir, dump, sleep, dumpTable, isPathExcluded, getSafeCtime, isLargeBinarySyncRisk, describeBinarySyncLimit, showSyncNotice, logMemorySnapshot, hashFileAsync } from "./helps";
 import { FileCloudPreview } from "./file_cloud_preview";
 import { SyncLogManager } from "./sync_log_manager";
-import { HttpApiService, ApiResponse } from "./api";
+import { HttpApiService } from "./api";
 import type FastSync from "../main";
-import { $ } from "../i18n/lang";
 
 
 // 下载内存缓冲控制 (20MB 阈值防止 OOM)
@@ -100,7 +99,6 @@ export const fileModify = async function (file: TAbstractFile, plugin: FastSync,
 
       // --- 优化：先尝试从缓存获取有效哈希 ---
       let contentHash = plugin.fileHashManager.getValidHash(file.path, file.stat.mtime, file.stat.size);
-      let content: ArrayBuffer | null = null;
 
       if (contentHash !== null) {
         if (contentHash === baseHash && (lastSyncMtime !== undefined && lastSyncMtime === file.stat.mtime)) {
@@ -131,7 +129,7 @@ export const fileModify = async function (file: TAbstractFile, plugin: FastSync,
       plugin.pendingUploadHashes.set(file.path, contentHash)
       plugin.localStorageManager.savePending('pendingUploadHashes', plugin.pendingUploadHashes)
       await plugin.concurrencyManager.waitForSlot(file.path)
-      plugin.websocket.SendMessage("FileUploadCheck", data)
+      void plugin.websocket.SendMessage("FileUploadCheck", data)
       dump(`File modify check sent`, data.path, data.contentHash)
     } finally {
       plugin.removeIgnoredFile(file.path)
@@ -182,7 +180,7 @@ export const fileDelete = async function (file: TAbstractFile, plugin: FastSync,
         pathHash: hashContent(file.path),
       }
       await plugin.concurrencyManager.waitForSlot(file.path)
-      plugin.websocket.SendMessage("FileDelete", data, undefined, () => {
+      void plugin.websocket.SendMessage("FileDelete", data, undefined, () => {
         // 消息真正写入 TCP 缓冲区后加入 pending set，等待 FileDeleteAck 再删 hash
         // Add to pending set only after message is actually buffered; remove hash only on FileDeleteAck
         plugin.pendingFileDeleteAcks.add(file.path)
@@ -224,7 +222,7 @@ export const fileDeleteByPath = async function (filePath: string, plugin: FastSy
     plugin.addIgnoredFile(filePath)
     try {
       await plugin.concurrencyManager.waitForSlot(filePath)
-      plugin.websocket.SendMessage("FileDelete", {
+      void plugin.websocket.SendMessage("FileDelete", {
         vault: plugin.settings.vault,
         path: filePath,
         pathHash: hashContent(filePath),
@@ -267,7 +265,7 @@ export const fileRename = async function (file: TAbstractFile, oldfile: string, 
       if (activeUploadsMap.has(oldfile)) {
         activeUploadsMap.get(oldfile)!.cancelled = true;
         // 重新上传
-        fileModify(file, plugin)
+        void fileModify(file, plugin)
         dump(`Upload cancelled due to file rename: ${oldfile}`);
       } else {
 
@@ -295,7 +293,7 @@ export const fileRename = async function (file: TAbstractFile, oldfile: string, 
         // Push rename to pending queue; hashManager will be updated after server FileRenameAck
         plugin.pendingFileRenames.push({ oldPath: oldfile, newPath: file.path, contentHash })
         await plugin.concurrencyManager.waitForSlot(file.path, true)
-        plugin.websocket.SendMessage("FileRename", data)
+        void plugin.websocket.SendMessage("FileRename", data)
       }
     } finally {
       plugin.removeIgnoredFile(file.path)
@@ -376,7 +374,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       // Resume upload: read checkpoint from localStorage for the last interrupted upload
       let startChunkIndex = 0
       try {
-        const cpRaw = plugin.app.loadLocalStorage(checkpointKey)
+        const cpRaw = plugin.app.loadLocalStorage(checkpointKey) as string | undefined;
         if (cpRaw) {
           const cp = JSON.parse(cpRaw) as { sessionId?: string; lastChunkIndex?: number; contentHash?: string }
           if (cp.sessionId === data.sessionId &&
@@ -501,7 +499,8 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
           return;
         }
 
-        window.setTimeout(async () => {
+        void (async () => {
+          await sleep(2000);
           if (isPluginUnloading) return;
           try {
             const apiService = new HttpApiService(plugin);
@@ -515,6 +514,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
                 dump(`Cloud Preview: Auto delete verified file: ${file.path}`);
                 plugin.addIgnoredFile(file.path);
                 try {
+                  // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file
                   await plugin.app.vault.delete(file);
                   plugin.fileHashManager.removeFileHash(file.path);
                 } finally {
@@ -527,7 +527,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
           } catch (e) {
             dump(`Cloud Preview: Auto delete failed to fetch info for ${file.path}`, e);
           }
-        }, 2000);
+        })();
       }
     } catch (e) {
       dump(`Upload process error for ${data.path}`, e);
@@ -542,7 +542,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
   }
 
   // 任务立即执行，受外部 ConcurrencyManager 控制
-  runUpload()
+  void runUpload()
 }
 
 /**
@@ -614,7 +614,7 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       path: data.path,
       pathHash: data.pathHash,
     }
-    plugin.websocket.SendMessage("FileChunkDownload", requestData)
+    void plugin.websocket.SendMessage("FileChunkDownload", requestData)
     plugin.totalFilesToDownload++
 
     // 更新同步时间
@@ -666,6 +666,7 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
       // 记录待删除路径
       plugin.lastSyncPathDeleted.add(normalizedPath)
       try {
+        // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file
         await plugin.app.vault.delete(file)
         // 服务端推送删除,从哈希表中移除
         plugin.fileHashManager.removeFileHash(normalizedPath)
@@ -987,6 +988,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
       try {
         const targetFile = plugin.app.vault.getFileByPath(normalizedNewPath)
         if (targetFile) {
+          // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file
           await plugin.app.vault.delete(targetFile)
         }
 
@@ -1013,7 +1015,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
           plugin.localStorageManager.setMetadata("lastFileSyncTime", data.lastTime)
         }
       } finally {
-        setTimeout(() => {
+        window.setTimeout(() => {
           plugin.removeIgnoredFile(normalizedNewPath)
           plugin.removeIgnoredFile(normalizedOldPath)
           plugin.lastSyncPathRenamed.delete(normalizedNewPath)
@@ -1046,7 +1048,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
         path: data.path,
         pathHash: data.pathHash,
       }
-      plugin.websocket.SendMessage("FileRePush", rePushData)
+      void plugin.websocket.SendMessage("FileRePush", rePushData)
       if (data.contentHash) {
         const targetFile = plugin.app.vault.getFileByPath(normalizePath(data.path))
         plugin.fileHashManager.setFileHash(data.path, data.contentHash, targetFile instanceof TFile ? targetFile.stat.mtime : 0, targetFile instanceof TFile ? targetFile.stat.size : 0)
