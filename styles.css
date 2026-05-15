@@ -938,7 +938,7 @@
   background-color: #FF8A33;
 }
 .fns-sync-log-container .fns-sync-log-filter-panel .filter-group .filter-chips .filter-chip span[class^=fns-dot-].fns-dot-other {
-  background-color: #999;
+  background-color: #999999;
 }
 .fns-sync-log-container .fns-sync-log-filter-panel .filter-group .filter-chips .filter-chip span[class^=fns-dot-].fns-dot-send {
   background-color: #FF8C00;
@@ -1216,7 +1216,7 @@
   z-index: 10001;
   width: 8px;
   height: 8px;
-  background-color: #999;
+  background-color: #999999;
   border-radius: 50%;
   border: 1.5px solid var(--background-primary);
   pointer-events: none;
@@ -1802,9 +1802,6 @@ body .suggestion-container {
 .is-tablet .fns-about-modal-container .modal-content .fns-changelog-content {
   max-height: 65vh;
 }
-.fns-about-modal-container .modal-content .fns-changelog-content {
-  /* Webkit 滚动条：始终保留宽度并默认透明 */
-}
 .fns-about-modal-container .modal-content .fns-changelog-content::-webkit-scrollbar {
   width: 8px;
   background-color: transparent;
@@ -1817,17 +1814,11 @@ body .suggestion-container {
   background-color: transparent;
   border-radius: 10px;
 }
-.fns-about-modal-container .modal-content .fns-changelog-content {
-  /* 鼠标悬停逻辑 */
-}
 .fns-about-modal-container .modal-content .fns-changelog-content:hover::-webkit-scrollbar-thumb {
   background-color: var(--text-accent);
 }
 .fns-about-modal-container .modal-content .fns-changelog-content:hover::-webkit-scrollbar-track {
   background-color: var(--background-modifier-border-faint);
-}
-.fns-about-modal-container .modal-content .fns-changelog-content {
-  /* Markdown Styles Support */
 }
 .fns-about-modal-container .modal-content .fns-changelog-content h1, .fns-about-modal-container .modal-content .fns-changelog-content h2, .fns-about-modal-container .modal-content .fns-changelog-content h3, .fns-about-modal-container .modal-content .fns-changelog-content h4, .fns-about-modal-container .modal-content .fns-changelog-content h5, .fns-about-modal-container .modal-content .fns-changelog-content h6 {
   color: var(--text-normal);

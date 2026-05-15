@@ -1080,7 +1080,7 @@
             &.fns-dot-attachment { background-color: #7C4DFF; }
             &.fns-dot-folder { background-color: #1E88E5; }
             &.fns-dot-config { background-color: #FF8A33; }
-            &.fns-dot-other { background-color: #999; }
+            &.fns-dot-other { background-color: #999999; }
             &.fns-dot-send { background-color: #FF8C00; }
             &.fns-dot-receive { background-color: #007BFF; }
           }
@@ -1401,7 +1401,7 @@
   z-index: 10001;
   width: 8px;
   height: 8px;
-  background-color: #999;
+  background-color: #999999;
   border-radius: 50%;
   border: 1.5px solid var(--background-primary);
   pointer-events: none;
@@ -1996,7 +1996,7 @@ body .suggestion-container {
     max-height: 65vh;
   }
 
-  /* Webkit 滚动条：始终保留宽度并默认透明 */
+  // Webkit 滚动条：始终保留宽度并默认透明 / Webkit scrollbar: always reserve width, transparent by default
   &::-webkit-scrollbar {
     width: 8px;
     background-color: transparent;
@@ -2012,7 +2012,7 @@ body .suggestion-container {
     border-radius: 10px;
   }
 
-  /* 鼠标悬停逻辑 */
+  // 鼠标悬停逻辑 / Hover state
   &:hover::-webkit-scrollbar-thumb {
     background-color: var(--text-accent);
   }
@@ -2021,7 +2021,7 @@ body .suggestion-container {
     background-color: var(--background-modifier-border-faint);
   }
 
-  /* Markdown Styles Support */
+  // Markdown Styles Support
   h1, h2, h3, h4, h5, h6 {
     color: var(--text-normal);
     margin-top: 1.2em;

@@ -1,7 +1,7 @@
 import { App, Modal, MarkdownRenderer, Component, requestUrl } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
 import * as React from "react";
-import JSZip from "jszip";
+import { unzipSync } from "fflate";
 
 import type FastSync from "../main";
 import { dump, getPluginDir } from "../lib/helps";
@@ -203,26 +203,26 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
 
             // Extract Zip
             dump("Loading zip archive...");
-            const zip = await JSZip.loadAsync(arrayBuffer);
+            const unzipped = unzipSync(new Uint8Array(arrayBuffer));
             if (!isMounted.current) return;
 
             // 自动检测根目录前缀（寻找 manifest.json 所在位置）
             let rootPrefix = "";
-            const manifestFile = Object.keys(zip.files).find(f => f.endsWith("manifest.json"));
+            const fileNames = Object.keys(unzipped);
+            const manifestFile = fileNames.find(f => f.endsWith("manifest.json"));
             if (manifestFile) {
                 rootPrefix = manifestFile.replace("manifest.json", "");
                 if (rootPrefix) dump(`Detected root prefix in zip: "${rootPrefix}"`);
             }
 
-            const files = Object.entries(zip.files).filter(([name, file]) => !file.dir && name.startsWith(rootPrefix));
+            const files = Object.entries(unzipped).filter(([name]) => !name.endsWith('/') && name.startsWith(rootPrefix));
             dump(`Zip file contains ${files.length} valid items`);
 
-            for (const [realFilename, file] of files) {
+            for (const [realFilename, content] of files) {
                 // 剔除前缀获取相对路径
                 const relativeFilename = realFilename.substring(rootPrefix.length);
                 if (!relativeFilename) continue;
 
-                const content = await file.async('arraybuffer');
                 const path = `${pluginDir}/${relativeFilename}`;
                 dump(`Extracting file: ${realFilename} -> ${path}`);
 
@@ -239,7 +239,7 @@ const AboutView = ({ plugin, type, closeModal }: { plugin: FastSync; type: 'plug
                     }
                 }
 
-                await plugin.app.vault.adapter.writeBinary(path, content);
+                await plugin.app.vault.adapter.writeBinary(path, content.buffer);
             }
 
             dump("Plugin upgrade completed successfully, starting hot reload...");
