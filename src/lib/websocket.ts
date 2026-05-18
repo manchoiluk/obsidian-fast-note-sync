@@ -53,7 +53,7 @@ export function formatAuthorizationError(data: { code: number; message?: unknown
 }
 
 // WebSocket 连接常量
-const RECONNECT_BASE_DELAY = 3000 // 重连基础延迟 (毫秒)
+const RECONNECT_BASE_DELAY = 1000 // 重连基础延迟 (毫秒)
 const NON_RECONNECT_REASONS = new Set([
   "AuthorizationFaild",
   "ClientClose",
@@ -77,6 +77,9 @@ export class WebSocketClient {
   public timeConnect = 0
   public count = 0
   private currentStartHandleId: number = 0
+  // 防并发锁：确保同一时间只有一个 register() 在执行，避免多个 health check 互相干扰
+  // Concurrency lock: ensures only one register() runs at a time, preventing concurrent health check interference
+  private registerPromise: Promise<void> | null = null
   //同步全部文件时设置
 
 
@@ -159,6 +162,23 @@ export class WebSocketClient {
       dump("WebSocket already connecting or open, skipping register");
       return;
     }
+
+    // 防并发锁：确保同一时间只有一个 register 在执行
+    // Concurrency lock: waits for any in-flight register to complete
+    if (this.registerPromise) {
+      await this.registerPromise;
+      return;
+    }
+
+    this.registerPromise = this._doRegister();
+    try {
+      await this.registerPromise;
+    } finally {
+      this.registerPromise = null;
+    }
+  }
+
+  private async _doRegister() {
 
     // Clean up existing closed socket if any
     if (this.ws) {
