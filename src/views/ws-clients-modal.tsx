@@ -40,6 +40,14 @@ export class WSClientsModal extends Modal {
 const WSClientsView = ({ plugin }: { plugin: FastSync }) => {
     const [clients, setClients] = React.useState<WSClient[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const isMounted = React.useRef(true);
+
+    React.useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
 
     const isAuth = plugin.websocket?.isAuth;
 
@@ -49,9 +57,17 @@ const WSClientsView = ({ plugin }: { plugin: FastSync }) => {
             return;
         }
         setIsLoading(true);
-        const data = await plugin.api.getWSClients();
-        setClients(data || []);
-        setIsLoading(false);
+        try {
+            const data = await plugin.api.getWSClients();
+            if (!isMounted.current) return;
+            setClients(data || []);
+        } catch (err) {
+            console.error("Failed to load WS clients:", err);
+        } finally {
+            if (isMounted.current) {
+                setIsLoading(false);
+            }
+        }
     };
 
     React.useEffect(() => {

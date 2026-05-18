@@ -83,10 +83,20 @@ export const SettingsView = ({ plugin }: { plugin: FastSync }) => {
   const [userInfo, setUserInfo] = useState<UserDTO | null>(null);
   const [loadingUserInfo, setLoadingUserInfo] = useState<boolean>(false);
   const iconRef = useRef<HTMLSpanElement>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const listener = (status: boolean) => {
-      setIsConnected(status);
+      if (isMounted.current) {
+        setIsConnected(status);
+      }
     };
 
     plugin.websocket.addStatusListener(listener);
@@ -100,11 +110,13 @@ export const SettingsView = ({ plugin }: { plugin: FastSync }) => {
       setLoadingUserInfo(true);
       plugin.api.getUserInfo()
         .then(data => {
+          if (!isMounted.current) return;
           setUserInfo(data);
           setLoadingUserInfo(false);
         })
         .catch(err => {
           dump("Failed to fetch user info:", err);
+          if (!isMounted.current) return;
           setLoadingUserInfo(false);
         });
     } else if (!isConnected && (userInfo || loadingUserInfo)) {
@@ -200,6 +212,14 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
   const [sortBy, setSortBy] = useState("amount_3m");
   const [hoverTooltip, setHoverTooltip] = useState<{ text: string, x: number, y: number, isMobile: boolean } | null>(null);
   const [fetchError, setFetchError] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const fetchRecords = useCallback(async (page = 1, sort = sortBy) => {
     if (!plugin.settings.api) {
@@ -211,13 +231,17 @@ const SupportList = ({ plugin }: { plugin: FastSync }) => {
     setFetchError(false);
     try {
       const data = await plugin.api.getSupportRecordsPage(page, 10, sort, "desc");
+      if (!isMounted.current) return;
       setRecords(data.list);
       setPager(data.pager);
     } catch (err) {
       dump("Failed to fetch support records:", err);
+      if (!isMounted.current) return;
       setFetchError(true);
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [plugin, sortBy]);
 
