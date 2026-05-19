@@ -418,6 +418,6 @@ export default {
   "ui.system.websocketClients": "Connected Clients",
   "ui.system.wsNoClients": "No clients connected",
   "ui.system.wsStartTime": "Connection Time",
-  "ui.status.case_conflict.title": "⚠️ ${type} sync case conflict!\nServer expected path: ${expectedPath}\nLocal actually exists: ${actualPath}\nSince the OS is case-insensitive, please manually rename them to match.",
-  "ui.status.case_conflict.log": "Case conflict! Local actually exists: ${actualPath}",
+  "ui.status.case_conflict.title": "⚠️ File system case conflict detected!\n【${type} sync failed】\nServer expected path: ${expectedPath}\nLocal actual existing path: ${actualPath}\nSince the current file system is case-insensitive, this conflicting item cannot be created. Please resolve this issue manually.",
+  "ui.status.case_conflict.log": "File system case conflict detected! Local actual existing path: ${actualPath}",
 };

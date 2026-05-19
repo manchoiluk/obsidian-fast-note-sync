@@ -418,6 +418,6 @@ export default {
   "ui.system.websocketClients": "オンラインクライアント",
   "ui.system.wsNoClients": "オンラインクライアントはありません",
   "ui.system.wsStartTime": "接続時刻",
-  "ui.status.case_conflict.title": "⚠️ ${type}同期の大文字小文字の競合！\nサーバー期待パス: ${expectedPath}\nローカルに実在: ${actualPath}\nOSが大文字小文字を区別しないため、手動で名前を変更して一致させてください。",
-  "ui.status.case_conflict.log": "大文字小文字の競合！ローカルに実在：${actualPath}",
+  "ui.status.case_conflict.title": "⚠️ ファイルシステムの大文字小文字の競合を検出しました！\n【${type}同期に失敗しました】\nサーバー側の期待パス: ${expectedPath}\nローカルに既に存在するパス: ${actualPath}\n現在のファイルシステムは大文字小文字を区別しないため、この競合項目を作成できません。手動で解決してください。",
+  "ui.status.case_conflict.log": "ファイルシステムの大文字小文字の競合を検出しました！ローカルに既に存在するパス: ${actualPath}",
 };

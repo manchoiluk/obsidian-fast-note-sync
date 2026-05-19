@@ -418,6 +418,6 @@ export default {
   "ui.system.websocketClients": "在线客户端",
   "ui.system.wsNoClients": "暂无在线客户端",
   "ui.system.wsStartTime": "连接时间",
-  "ui.status.case_conflict.title": "⚠️ ${type}同步大小写冲突！\n服务端期望路径: ${expectedPath}\n本地实际已存在: ${actualPath}\n由于操作系统不区分大小写，请手动修改名称保持一致。",
-  "ui.status.case_conflict.log": "文件大小写冲突！本地实际存在：${actualPath}",
+  "ui.status.case_conflict.title": "⚠️ 检测到文件系统大小写冲突！\n【${type}同步失败】\n服务端期望路径: ${expectedPath}\n本地实际已存在: ${actualPath}\n由于当前文件系统不区分大小写，无法创建此冲突项目，需要您手动解决这个问题。",
+  "ui.status.case_conflict.log": "检测到文件系统大小写冲突！本地实际存在：${actualPath}",
 };

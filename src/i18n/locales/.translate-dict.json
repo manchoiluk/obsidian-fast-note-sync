@@ -385,5 +385,7 @@
   "setting.support.range_all": "0d066eae41e7fbecd62b77fd3d546b93",
   "setting.support.empty": "29c665d404c4441bb5b77c71dcc7b6cd",
   "setting.support.thanks": "ed95d0dc7054b7da302965d7edb16af9",
-  "setting.support.loading": "26b5bd4947df8be257c59dde927b400c"
+  "setting.support.loading": "26b5bd4947df8be257c59dde927b400c",
+  "ui.status.case_conflict.title": "ae11a70394bea87aad51c502a3954600",
+  "ui.status.case_conflict.log": "f30f97e1e9e464ba5291c57b85367685"
 }
