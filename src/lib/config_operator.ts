@@ -1,6 +1,7 @@
-import { normalizePath, Notice } from "obsidian";
+import { normalizePath, App } from "obsidian";
 
-import { hashContent, hashArrayBuffer, dump, configIsPathExcluded, configAddPathExcluded, getSafeCtime, isPathInConfigSyncDirs } from "./helps";
+import { hashContent, dump, dumpError, configIsPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync, checkAndNotifyCaseConflict } from "./helps";
+import { SyncLogManager } from "./sync_log_manager";
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "./types";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
@@ -9,7 +10,7 @@ import { $ } from "../i18n/lang";
 /**
  * 排除监听文件的常量（针对 .obsidian 根目录）
  */
-export const CONFIG_ROOT_FILES_EXCLUDE = ["workspace.json"]
+export const CONFIG_ROOT_FILES_EXCLUDE = ["workspace.json", "workspace-mobile.json"]
 export const CONFIG_PLUGIN_EXTS_TO_WATCH = [".json", ".js", ".css"]
 export const CONFIG_THEME_EXTS_TO_WATCH = [".css", ".json"]
 
@@ -18,7 +19,7 @@ export const CONFIG_THEME_EXTS_TO_WATCH = [".css", ".json"]
  * 配置操作函数导出
  */
 
-let reloadTimer: ReturnType<typeof setTimeout> | null = null
+let reloadTimer: number | null = null
 const pendingConfigUpdates: Map<string, string> = new Map()
 
 export const configModify = async function (path: string, plugin: FastSync, eventEnter: boolean = false, content?: string) {
@@ -51,15 +52,15 @@ export const configModify = async function (path: string, plugin: FastSync, even
             if (exists) {
                 const stat = await plugin.app.vault.adapter.stat(filePath)
                 if (stat) {
+                    contentHash = await hashFileAsync(plugin.app, filePath)
                     const contentBuf = await plugin.app.vault.adapter.readBinary(filePath)
                     contentStr = new TextDecoder().decode(contentBuf)
-                    contentHash = hashArrayBuffer(contentBuf)
                     mtime = stat.mtime
                     ctime = getSafeCtime(stat)
                 }
             }
         } catch (error) {
-            console.error("读取配置文件出错:", error)
+            dumpError("读取配置文件出错:", error)
         }
     }
 
@@ -77,7 +78,9 @@ export const configModify = async function (path: string, plugin: FastSync, even
     if (savedHash === contentHash && (lastSyncMtime !== undefined && lastSyncMtime === mtime)) {
         plugin.removeIgnoredConfigFile(path)
         // 顺便更新一下 ConfigManager 的状态，防止下次误判
-        plugin.configManager.updateFileState(normalizePath(path), mtime)
+        if (plugin.configManager) {
+            plugin.configManager.updateFileState(normalizePath(path), mtime)
+        }
         dump(`Config modify intercepted (hash & mtime match): ${path}`)
         return
     }
@@ -91,17 +94,18 @@ export const configModify = async function (path: string, plugin: FastSync, even
         mtime: mtime,
         ctime: ctime,
     }
-    plugin.websocket.SendMessage("SettingModify", data)
-
-    // 更新配置哈希表
-    if (plugin.configHashManager && plugin.configHashManager.isReady()) {
-        plugin.configHashManager.setFileHash(path, contentHash)
-    }
+    // 将 hash 暂存到 pending map，等待服务端 SettingModifyAck 后再写入 configHashManager
+    // Temporarily store hash in pending map, update configHashManager only after server SettingModifyAck
+    plugin.pendingConfigDeleteAcks.delete(path)
+    plugin.pendingConfigModifies.set(path, contentHash)
+    plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
+    await plugin.concurrencyManager.waitForSlot(path)
+    void plugin.websocket.SendMessage("SettingModify", data)
 
     plugin.removeIgnoredConfigFile(path)
 }
 
-export const configDelete = function (path: string, plugin: FastSync, eventEnter: boolean = false) {
+export const configDelete = async function (path: string, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.configSyncEnabled == false || plugin.settings.readonlySyncEnabled) return
     if (!isPathInConfigSyncDirs(path, plugin)) return
     if (eventEnter && !plugin.getWatchEnabled()) return
@@ -120,7 +124,12 @@ export const configDelete = function (path: string, plugin: FastSync, eventEnter
         path: path,
         pathHash: hashContent(path),
     }
-    plugin.websocket.SendMessage("SettingDelete", data)
+    await plugin.concurrencyManager.waitForSlot(path)
+    void plugin.websocket.SendMessage("SettingDelete", data, undefined, () => {
+        // 消息真正写入 TCP 缓冲区后加入 pending set，等待 SettingDeleteAck 再删 hash
+        // Add to pending set only after message is actually buffered; remove hash only on SettingDeleteAck
+        plugin.pendingConfigDeleteAcks.add(path)
+    })
     plugin.removeIgnoredConfigFile(path)
 }
 
@@ -165,7 +174,10 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
         const filePath = normalizePath(data.path)
         await plugin.app.vault.adapter.write(filePath, data.content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
     } catch (e) {
-        console.error("[writeConfigFile] error:", e)
+        dumpError("[writeConfigFile] error:", e)
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigModify')) {
+            SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        }
     }
 
     await configReload(data.path, plugin, false, data.content)
@@ -183,9 +195,16 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
 
     // 更新配置哈希表
     if (plugin.configHashManager && plugin.configHashManager.isReady()) {
-        plugin.configHashManager.setFileHash(data.path, data.contentHash)
+        const filePath = normalizePath(data.path);
+        const stat = isVirtual ? null : await plugin.app.vault.adapter.stat(filePath);
+        // 如果是虚拟路径，mtime 使用推送过来的，size 使用内容长度
+        // For virtual paths, use pushed mtime and content length as size
+        const size = isVirtual ? (data.content?.length || 0) : (stat?.size || 0);
+        const mtime = data.mtime || (stat?.mtime || 0);
+        
+        plugin.configHashManager.setFileHash(data.path, data.contentHash, mtime, size)
         // 记录 mtime
-        plugin.lastSyncMtime.set(data.path, data.mtime)
+        plugin.lastSyncMtime.set(data.path, mtime)
     }
 
     plugin.configSyncTasks.completed++
@@ -214,6 +233,7 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
 
     const filePath = normalizePath(data.path);
     let contentStr = "";
+    let contentHash = "";
     let contentBuf: ArrayBuffer | null = null;
     let mtime = 0;
     let ctime = 0;
@@ -223,14 +243,16 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
         if (exists) {
             const stat = await plugin.app.vault.adapter.stat(filePath);
             if (stat) {
-                contentBuf = await plugin.app.vault.adapter.readBinary(filePath);
-                contentStr = new TextDecoder().decode(contentBuf);
+                contentHash = await hashFileAsync(plugin.app, filePath);
+                const contentBufRead = await plugin.app.vault.adapter.readBinary(filePath);
+                contentStr = new TextDecoder().decode(contentBufRead);
+                contentBuf = contentBufRead; // 保持兼容性逻辑
                 mtime = stat.mtime;
                 ctime = getSafeCtime(stat);
             }
         }
     } catch (error) {
-        console.error("读取配置文件出错:", error);
+        dumpError("读取配置文件出错:", error);
         return
     }
 
@@ -246,18 +268,17 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
         path: data.path,
         pathHash: hashContent(data.path),
         content: contentStr,
-        contentHash: hashArrayBuffer(contentBuf),
+        contentHash: contentHash,
         mtime: mtime,
         ctime: ctime,
     };
-    plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
+    // 将 hash 暂存到 pending map，等待服务端 SettingModifyAck 后再写入 configHashManager
+    // Temporarily store hash in pending map, update configHashManager only after server SettingModifyAck
+    plugin.pendingConfigModifies.set(data.path, contentHash)
+    plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
+    await plugin.concurrencyManager.waitForSlot(data.path)
+    void plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
         plugin.removeIgnoredConfigFile(data.path);
-
-        // 更新配置哈希表
-        if (plugin.configHashManager && plugin.configHashManager.isReady()) {
-            plugin.configHashManager.setFileHash(data.path, sendData.contentHash);
-        }
-
         plugin.configSyncTasks.completed++;
     });
 };
@@ -281,7 +302,10 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
             await plugin.app.vault.adapter.writeBinary(filePath, content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
         }
     } catch (e) {
-        console.error("[updateConfigFileTime] error:", e)
+        dumpError("[updateConfigFileTime] error:", e)
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigMtime')) {
+            SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+        }
     }
     plugin.removeIgnoredConfigFile(data.path)
 
@@ -293,7 +317,7 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
     plugin.configSyncTasks.completed++
 }
 
-export const receiveConfigSyncDelete = async function (data: any, plugin: FastSync) {
+export const receiveConfigSyncDelete = async function (data: { path: string, lastTime?: number }, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) return
@@ -304,23 +328,28 @@ export const receiveConfigSyncDelete = async function (data: any, plugin: FastSy
     }
     if (plugin.ignoredConfigFiles.has(data.path)) return
 
-    const fullPath = normalizePath(data.path)
-    if (await plugin.app.vault.adapter.exists(fullPath)) {
-        // 记录删除路径
-        plugin.lastSyncPathDeleted.add(data.path)
-        try {
-            await plugin.app.vault.adapter.remove(fullPath)
-        } finally {
-            // 延时 500ms 清理
-            setTimeout(() => {
-                plugin.lastSyncPathDeleted.delete(data.path)
-            }, 500);
+    try {
+        const fullPath = normalizePath(data.path)
+        if (await plugin.app.vault.adapter.exists(fullPath)) {
+            // 记录删除路径
+            plugin.lastSyncPathDeleted.add(data.path)
+            try {
+                await plugin.app.vault.adapter.remove(fullPath)
+            } finally {
+                // 延时 500ms 清理
+                window.setTimeout(() => {
+                    plugin.lastSyncPathDeleted.delete(data.path)
+                }, 500);
+            }
         }
+    } catch (e) {
+        dumpError("[receiveConfigSyncDelete] error:", e)
+        SyncLogManager.getInstance().addLog('receive', 'ConfigDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
 
     // 更新 ConfigManager 的文件状态
     if (plugin.configManager) {
-        plugin.configManager.removeFileState(fullPath)
+        plugin.configManager.removeFileState(normalizePath(data.path))
     }
 
     // 从配置哈希表中删除
@@ -332,16 +361,22 @@ export const receiveConfigSyncDelete = async function (data: any, plugin: FastSy
     if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))) {
         plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
     }
+    if (data.path) { plugin.concurrencyManager.releaseSlot(data.path) }
 
     plugin.configSyncTasks.completed++
 }
 
-export const receiveConfigSyncEnd = async function (data: any, plugin: FastSync) {
+export const receiveConfigSyncEnd = async function (data: unknown, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
     dump(`Receive config sync end:`, data)
 
-    // 从 data 对象中提取任务统计信息
     const syncData = data as SyncEndData
+    // 更新任务统计信息，用于进度条计算 (Update task stats for progress bar)
+    plugin.configSyncTasks.needUpload = syncData.needUploadCount || 0
+    plugin.configSyncTasks.needModify = syncData.needModifyCount || 0
+    plugin.configSyncTasks.needSyncMtime = syncData.needSyncMtimeCount || 0
+    plugin.configSyncTasks.needDelete = syncData.needDeleteCount || 0
+
     const hasUpdates = (syncData.needUploadCount || 0) + (syncData.needModifyCount || 0) + (syncData.needSyncMtimeCount || 0) + (syncData.needDeleteCount || 0) > 0;
     if (hasUpdates) {
         plugin.localStorageManager.setMetadata("lastConfigSyncTime", syncData.lastTime)
@@ -349,15 +384,67 @@ export const receiveConfigSyncEnd = async function (data: any, plugin: FastSync)
     plugin.syncTypeCompleteCount++
 }
 
-export const receiveConfigSyncClear = async function (data: any, plugin: FastSync) {
+export const receiveConfigSyncClear = async function (data: unknown, plugin: FastSync) {
     plugin.localStorageManager.setMetadata("lastConfigSyncTime", 0)
-    new Notice($("ui.status.clear_success"))
+    showSyncNotice($("ui.status.clear_success"))
     plugin.configSyncTasks.completed++
 
     if (plugin.isWaitClearSync) {
         plugin.isWaitClearSync = false
         const { handleSync } = await import("./operator");
-        handleSync(plugin, false, "config")
+        void handleSync(plugin, false, "config")
+    }
+}
+
+/**
+ * 收到 SettingModifyAck，将 pending hash 转移到正式 configHashManager 并更新 lastConfigSyncTime
+ * Receive SettingModifyAck, move pending hash to formal configHashManager and update lastConfigSyncTime
+ */
+export const receiveConfigModifyAck = async function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
+    if (data.path) {
+        const contentHash = plugin.pendingConfigModifies.get(data.path)
+        if (contentHash !== undefined) {
+            if (plugin.configHashManager && plugin.configHashManager.isReady()) {
+                const isVirtual = data.path.startsWith(plugin.localStorageManager.syncPathPrefix)
+                let mtime = 0, size = 0
+                if (isVirtual) {
+                    mtime = Date.now() // LocalStorage 虚拟时间
+                    size = plugin.localStorageManager.getItemValue(plugin.localStorageManager.pathToKey(data.path) || "")?.length || 0
+                } else {
+                    const stat = await plugin.app.vault.adapter.stat(normalizePath(data.path));
+                    mtime = stat?.mtime || 0
+                    size = stat?.size || 0
+                }
+                plugin.configHashManager.setFileHash(data.path, contentHash, mtime, size)
+            }
+            plugin.pendingConfigModifies.delete(data.path)
+            plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
+        }
+    }
+    if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))) {
+        plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
+    }
+    if (data.path) {
+        plugin.concurrencyManager.releaseSlot(data.path)
+    }
+}
+
+/**
+ * 收到 SettingDeleteAck，仅当路径仍在 pending set 中时才从 configHashManager 移除并更新 lastConfigSyncTime
+ * Receive SettingDeleteAck; only remove from configHashManager if path is still pending and update lastConfigSyncTime
+ */
+export const receiveConfigDeleteAck = function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
+    if (data.path && plugin.pendingConfigDeleteAcks.has(data.path)) {
+        if (plugin.configHashManager && plugin.configHashManager.isReady()) {
+            plugin.configHashManager.removeFileHash(data.path)
+        }
+        plugin.pendingConfigDeleteAcks.delete(data.path)
+    }
+    if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))) {
+        plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
+    }
+    if (data.path) {
+        plugin.concurrencyManager.releaseSlot(data.path)
     }
 }
 
@@ -395,12 +482,23 @@ export const configAllPaths = async function (configDirs: string[], plugin: Fast
             // 解析目录名称，用于判断是否为自定义目录
             const normalizedConfigDir = configDir.replace(/\\/g, "/")
 
-            // 特殊处理 .obsidian 目录（为了向后兼容和针对插件/主题的特定扫描逻辑）
-            if (normalizedConfigDir.endsWith(".obsidian")) {
+            // 特殊处理配置目录（为了向后兼容和针对插件/主题的特定扫描逻辑）
+            if (normalizedConfigDir.endsWith(plugin.app.vault.configDir)) {
                 const rootItems = await adapter.list(normalizePath(configDir))
                 for (const file of rootItems.files) {
                     const fileName = file.split("/").pop() || ""
-                    if (fileName.endsWith(".json") && !CONFIG_ROOT_FILES_EXCLUDE.includes(fileName)) {
+                    if (fileName.endsWith(".json")) {
+                        // 1. 白名单最高优先级：命中则直接纳入，跳过所有后续排除规则
+                        // 1. Whitelist has highest priority: if matched, include unconditionally
+                        if (isInWhitelist(file, plugin)) {
+                            paths.push(file)
+                            continue
+                        }
+                        // 2. 硬编码排除（如 workspace.json）
+                        // 2. Hard exclude (e.g. workspace.json)
+                        if (CONFIG_ROOT_FILES_EXCLUDE.includes(fileName)) continue
+                        // 3. 用户自定义排除规则
+                        // 3. User-defined exclude rules
                         if (isExcluded(file)) continue
                         paths.push(file)
                     }
@@ -469,7 +567,7 @@ export const configEmptyFoldersClean = async function (configDir: string, plugin
                     await plugin.app.vault.adapter.rmdir(normalizePath(folder), true)
                 }
             }
-        } catch (e) { }
+        } catch { /* ignore */ }
     }
 }
 
@@ -480,16 +578,54 @@ export const configReload = async function (path: string, plugin: FastSync, even
 
     // 清除旧计时器
     if (reloadTimer) {
-        clearTimeout(reloadTimer)
+        window.clearTimeout(reloadTimer)
     }
 
     // 设置新计时器，延迟 1 秒
 
-    reloadTimer = setTimeout(async () => {
-        const app = plugin.app as any
+    const checkAndReload = async () => {
+        // 如果正在同步且配置同步尚未标记结束，或任务尚未全部完成，则继续等待
+        // If syncing and config sync not marked as end, or tasks not all completed, continue waiting
+        if (plugin.isSyncing) {
+            const tasks = plugin.configSyncTasks;
+            const totalTasks = tasks.needModify + tasks.needSyncMtime + tasks.needDelete;
+            if (!plugin.configSyncEnd || tasks.completed < totalTasks) {
+                reloadTimer = window.setTimeout(() => { void checkAndReload(); }, 500);
+                return;
+            }
+        }
+
+        const app = plugin.app as App & {
+            vault: {
+                reloadConfig?(): Promise<void>;
+                getConfig(key: string): unknown;
+                setConfig(key: string, value: unknown): void;
+            };
+            customCss?: {
+                themes: Record<string, unknown>;
+                theme: string;
+                setTheme(theme: string): void;
+                onConfigChange(): void;
+                readSnippets(): Promise<void>;
+            };
+            plugins: {
+                enabledPlugins: Set<string>;
+                disablePlugin(id: string): Promise<void>;
+                enablePlugin(id: string): Promise<void>;
+            };
+            hotkeys?: {
+                load(): Promise<void>;
+            };
+            setting?: {
+                activeTab?: {
+                    display(): void;
+                };
+            };
+        }
         const configDir = plugin.app.vault.configDir
 
         const updates = Array.from(pendingConfigUpdates.entries())
+        const communityPluginsUpdated = updates.some(([p]) => p === `${configDir}/community-plugins.json`)
         pendingConfigUpdates.clear()
         reloadTimer = null
 
@@ -499,22 +635,24 @@ export const configReload = async function (path: string, plugin: FastSync, even
         for (const [p, d] of updates) {
             if (p === `${configDir}/app.json` || p === `${configDir}/appearance.json`) {
                 try {
-                    const config = JSON.parse(d)
+                    const config = JSON.parse(d) as Record<string, unknown>;
                     // 仅在值确实改变时才设置，减少刷新频率
                     for (const key in config) {
-                        if (app.vault.getConfig(key) !== config[key]) {
-                            app.vault.setConfig(key, config[key])
+                        if (Object.prototype.hasOwnProperty.call(config, key)) {
+                            if (app.vault.getConfig(key) !== config[key]) {
+                                app.vault.setConfig(key, config[key]);
+                            }
                         }
                     }
 
                     if (p === `${configDir}/appearance.json` && app.customCss) {
                         // 修正属性名：社区主题使用的是 cssTheme
-                        const targetTheme = config.cssTheme;
+                        const targetTheme = config.cssTheme as string | undefined;
                         if (targetTheme !== undefined) {
                             // 核心检查：在切换主题前，先检查本地是否存在该主题文件
                             // 防止因为同步延迟导致主题文件夹还没下载完就切换，触发 Obsidian 的自动回落
-                            const themes = (app.customCss as any).themes || {};
-                            if (targetTheme === "" || themes.hasOwnProperty(targetTheme)) {
+                            const themes = (app.customCss as unknown as { themes?: Record<string, unknown> }).themes || {};
+                            if (targetTheme === "" || Object.prototype.hasOwnProperty.call(themes, targetTheme)) {
                                 if (app.customCss.theme !== targetTheme) {
                                     app.customCss.setTheme(targetTheme)
                                     app.customCss.onConfigChange()
@@ -525,15 +663,17 @@ export const configReload = async function (path: string, plugin: FastSync, even
                         }
                     }
                 } catch (e) {
-                    console.error(`[Sync] 处理 ${p} 失败:`, e);
+                    dumpError(`[Sync] 处理 ${p} 失败:`, e);
                 }
             } else if (p === `${configDir}/community-plugins.json`) {
                 try {
-                    const newP = JSON.parse(d)
-                    const oldP = Array.from(plugin.configManager.enabledPlugins)
+                    const newP = JSON.parse(d) as string[]
+                    const oldP = plugin.configManager ? Array.from(plugin.configManager.enabledPlugins) : []
                     const toE = newP.filter((p: string) => !oldP.includes(p))
                     const toD = oldP.filter((p: string) => !newP.includes(p))
-                    plugin.configManager.enabledPlugins = new Set(newP)
+                    if (plugin.configManager) {
+                        plugin.configManager.enabledPlugins = new Set(newP)
+                    }
                     for (const id of toE) {
                         if (id != "hot-reload" && id != "fast-note-sync") {
                             pluginsToReload.add(id)
@@ -542,7 +682,7 @@ export const configReload = async function (path: string, plugin: FastSync, even
                     for (const id of toD) {
                         if (id != "hot-reload" && id != "fast-note-sync") await app.plugins.disablePlugin(id)
                     }
-                } catch (e) { }
+                } catch { /* ignore */ }
             } else if (p === `${configDir}/hotkeys.json`) {
                 if (app.hotkeys) await app.hotkeys.load()
             } else if (p.startsWith(`${configDir}/snippets/`) && p.endsWith(".css")) {
@@ -558,7 +698,17 @@ export const configReload = async function (path: string, plugin: FastSync, even
         }
 
         // 统一处理插件重载
-        for (const id of pluginsToReload) {
+        // 将 fast-note-sync 移到最后处理，确保其他插件先重载
+        // Process fast-note-sync last to ensure other plugins reload first
+        const sortedPlugins = Array.from(pluginsToReload);
+        const selfId = "fast-note-sync";
+        if (sortedPlugins.includes(selfId)) {
+            const index = sortedPlugins.indexOf(selfId);
+            sortedPlugins.splice(index, 1);
+            sortedPlugins.push(selfId);
+        }
+
+        for (const id of sortedPlugins) {
             if (id === "hot-reload") continue
 
             const hasMainJsUpdate = updates.some(([p]) => p === `${configDir}/plugins/${id}/main.js`)
@@ -566,36 +716,46 @@ export const configReload = async function (path: string, plugin: FastSync, even
 
             // 特殊处理本插件的更新：
             // 如果 main.js 或 manifest.json 更新了，则进行正常的重载流程
-            // 否则（例如仅 data.json 更新），跳过重载以免影响插件运行1
-            if (id === "obsidian-fast-note-sync") {
+            // 否则（例如仅 data.json 更新），跳过重载以免影响插件运行
+            if (id === selfId) {
                 if (hasMainJsUpdate || hasManifestUpdate) {
                     dump(`[FastNoteSync] Detected critical update for self, triggering reload.`);
+                    plugin.websocket.unRegister();
                     // Fall through to reload logic
                 } else {
                     continue;
                 }
             }
 
-            if (plugin.configManager.enabledPlugins.has(id)) {
+            const isCurrentlyEnabled = app.plugins.enabledPlugins.has(id)
+            const shouldBeEnabled = plugin.configManager && plugin.configManager.enabledPlugins.has(id)
+
+            if (isCurrentlyEnabled) {
+                // 如果当前已启用，则执行重载逻辑（先停再开）
                 await app.plugins.disablePlugin(id)
+                await app.plugins.enablePlugin(id)
+            } else if (communityPluginsUpdated && shouldBeEnabled) {
+                // 如果当前未启用，仅当本次同步包含了最新的 community-plugins.json 且要求启用时才开启
                 await app.plugins.enablePlugin(id)
             }
         }
         if (app.setting?.activeTab) app.setting.activeTab.display()
-    }, 1000)
+    }
+
+    reloadTimer = window.setTimeout(() => { void checkAndReload(); }, 1000)
 }
 
 
 /**
  * 提取 Operator 映射
  */
-type ConfigOperator = (relativePath: string, plugin: FastSync, eventEnter?: boolean, data?: string) => void
-const configOperators: Map<string, ConfigOperator> = new Map([
-    ["ConfigModify", configModify],
-    ["ConfigDelete", configDelete],
-    ["ConfigEmptyFoldersClean", configEmptyFoldersClean],
-    ["ConfigReload", configReload],
-    ["ConfigAllPaths", configAllPaths as any],
-    ["ConfigIsPathExcluded", configIsPathExcluded],
-    ["ConfigAddPathExcluded", configAddPathExcluded],
-])
+// type ConfigOperator = (relativePath: string, plugin: FastSync, eventEnter?: boolean, data?: string) => void
+// const configOperators: Map<string, ConfigOperator> = new Map([
+//     ["ConfigModify", configModify],
+//     ["ConfigDelete", configDelete],
+//     ["ConfigEmptyFoldersClean", configEmptyFoldersClean],
+//     ["ConfigReload", configReload],
+//     ["ConfigAllPaths", configAllPaths as unknown as ConfigOperator],
+//     ["ConfigIsPathExcluded", configIsPathExcluded],
+//     ["ConfigAddPathExcluded", configAddPathExcluded],
+// ])

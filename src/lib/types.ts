@@ -1,3 +1,5 @@
+import { App, Menu, MenuItem } from "obsidian";
+
 export type SyncMode = "auto" | "note" | "config";
 
 export interface SnapFile {
@@ -35,7 +37,7 @@ export interface ReceiveMessage {
 
 export interface SyncMessage {
     action: string;
-    data: any;
+    data: unknown;
 }
 
 export interface ReceiveFileSyncUpdateMessage {
@@ -51,6 +53,7 @@ export interface ReceiveFileSyncUpdateMessage {
 
 export interface FileUploadMessage {
     path: string;
+    pathHash: string;
     ctime: number;
     mtime: number;
     sessionId: string;
@@ -59,6 +62,7 @@ export interface FileUploadMessage {
 
 export interface FileSyncChunkDownloadMessage {
     path: string;
+    contentHash?: string;
     ctime: number;
     mtime: number;
     sessionId: string;
@@ -69,13 +73,16 @@ export interface FileSyncChunkDownloadMessage {
 
 export interface FileDownloadSession {
     path: string;
+    contentHash?: string;
     ctime: number;
     mtime: number;
     lastTime: number;
     sessionId: string;
     totalChunks: number;
     size: number;
-    chunks: Map<number, ArrayBuffer>;
+    chunks?: Map<number, ArrayBuffer>;
+    tempDir?: string;
+    downloadedChunks?: Set<number>;
 }
 
 export interface ReceiveMtimeMessage {
@@ -141,6 +148,7 @@ export interface FolderSyncRenameMessage {
     mtime: number;
     oldPath: string;
     oldPathHash: string;
+    lastTime?: number;
 }
 
 export interface FolderSyncData {
@@ -150,4 +158,58 @@ export interface FolderSyncData {
     missingFolders: PathHashFile[];
     context?: string;
 }
+
+/**
+ * Internal Obsidian types for better type safety when accessing unofficial APIs.
+ */
+export interface AppWithInternal extends App {
+    setting?: {
+        open(): void;
+        openTabById(id: string): void;
+        activeTab?: {
+            display(): void;
+        };
+        containerEl: HTMLElement;
+        close(): void;
+    };
+    plugins?: {
+        enabledPlugins: Set<string>;
+        disablePlugin(id: string): Promise<void>;
+        enablePlugin(id: string): Promise<void>;
+        loadManifests(): Promise<void>;
+        manifests: Record<string, unknown>;
+        plugins: Record<string, unknown>;
+    };
+    internalPlugins?: {
+        getPluginById(id: string): unknown;
+        plugins: Record<string, unknown>;
+    };
+    hotkeys?: {
+        load(): Promise<void>;
+    };
+}
+
+export interface MenuItemWithDom {
+    dom: HTMLElement;
+}
+
+/**
+ * Obsidian Menu internal hide method type.
+ * Obsidian Menu 内部 hide 方法的类型定义。
+ */
+export interface MenuWithHide {
+    hide(): void;
+}
+
+export interface MenuItemWithInternal extends MenuItem {
+    setSubmenu(): Menu;
+    titleEl?: HTMLElement;
+}
+
+
+export interface WorkspaceWithInternal {
+    on(name: 'file-menu', callback: (menu: Menu, file: import("obsidian").TAbstractFile) => void, ctx?: unknown): import("obsidian").EventRef;
+    on(name: 'editor-menu', callback: (menu: Menu, editor: import("obsidian").Editor, view: import("obsidian").MarkdownView) => void, ctx?: unknown): import("obsidian").EventRef;
+}
+
 

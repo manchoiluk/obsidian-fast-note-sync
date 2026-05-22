@@ -1,19 +1,21 @@
 import { TAbstractFile, Platform, TFile, TFolder, Menu, MenuItem, normalizePath } from "obsidian";
 
+import { noteModify, noteDelete, noteRename, noteDeleteByPath } from "./note_operator";
+import { fileModify, fileDelete, fileRename, fileDeleteByPath } from "./file_operator";
 import { folderModify, folderDelete, folderRename } from "./folder_operator";
 import { NoteHistoryModal } from "../views/note-history/history-modal";
-import { noteModify, noteDelete, noteRename } from "./note_operator";
-import { fileModify, fileDelete, fileRename } from "./file_operator";
 import { dump, isPathInConfigSyncDirs } from "./helps";
+import { ShareModal } from "../views/share-modal";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
-import { ShareModal } from "../views/share-modal"
+
 
 export class EventManager {
   private plugin: FastSync
-  private rawEventTimers: Map<string, any> = new Map()
+  private rawEventTimers: Map<string, number> = new Map()
   //保存待处理的重命名文件的路径，用于跳过同时触发的 modify 事件
   private pendingRenamePaths: Set<string> = new Set()
+  private blurTimer: number | null = null
 
   constructor(plugin: FastSync) {
     this.plugin = plugin
@@ -48,13 +50,28 @@ export class EventManager {
 
     // 注册插件卸载时的清理逻辑
     this.plugin.register(() => {
-      dump("EventManager: removing window event listeners")
+      dump("EventManager: cleaning up")
+      this.stop() // 清除所有待处理任务定时器 (Clear all pending task timers)
       window.removeEventListener("focus", this.onWindowFocus)
       window.removeEventListener("blur", this.onWindowBlur)
       window.removeEventListener("visibilitychange", this.onVisibilityChange)
       window.removeEventListener("online", this.onOnline)
       window.removeEventListener("offline", this.onOffline)
     })
+  }
+
+  /**
+   * 停止所有定时器并清除任务状态
+   * Stop all timers and clear task status
+   */
+  public stop() {
+    this.rawEventTimers.forEach((timer) => window.clearTimeout(timer))
+    this.rawEventTimers.clear()
+    this.pendingRenamePaths.clear()
+    if (this.blurTimer) {
+      window.clearTimeout(this.blurTimer)
+      this.blurTimer = null
+    }
   }
 
   private onOnline = () => {
@@ -74,19 +91,36 @@ export class EventManager {
   private onWindowFocus = () => {
     if (Platform.isMobile) {
       dump("Obsidian Mobile Focus")
+      if (this.blurTimer) {
+        window.clearTimeout(this.blurTimer)
+        this.blurTimer = null
+        dump("Obsidian Mobile Focus (Timer cancelled)")
+      }
+      dump("Obsidian Mobile Plugin Focus (Enable)")
       this.plugin.enableWatch()
+      // 回到前台立即重置退避计数器并重连
+      // Reset backoff counter and reconnect immediately when returning to foreground
+      this.plugin.websocket?.triggerReconnect()
     }
   }
 
   private onWindowBlur = () => {
+    dump("Obsidian Mobile Blur")
     if (Platform.isMobile) {
-      dump("Obsidian Mobile Blur")
-      this.plugin.disableWatch()
+      if (this.plugin.settings.mobileBlurPauseEnabled) {
+        dump("Obsidian Mobile Plugin Blur (Waiting 30s)")
+        if (this.blurTimer) window.clearTimeout(this.blurTimer)
+        this.blurTimer = window.setTimeout(() => {
+          dump("Obsidian Mobile Blur (Executing)")
+          this.plugin.disableWatch()
+          this.blurTimer = null
+        }, 30000)
+      }
     }
   }
 
   private onVisibilityChange = () => {
-    if (document.visibilityState === "hidden") {
+    if (activeDocument.visibilityState === "hidden") {
       if (this.plugin.settings.autoPauseMinimized) {
         dump("Obsidian 已最小化，自动暂停同步")
         this.plugin.disableWatch()
@@ -99,13 +133,16 @@ export class EventManager {
         // 如果未开启自动暂停，确保恢复时监听也是开启的（增强鲁棒性）
         this.plugin.enableWatch()
       }
+      // 恢复可见时立即重置退避计数器并重连
+      // Reset backoff counter and reconnect immediately when becoming visible again
+      this.plugin.websocket?.triggerReconnect()
       // 恢复前台时刷新分享状态（覆盖短暂后台期间其他设备变更分享的场景）
       // Refresh share state on foreground resume (covers share changes by other devices during brief background)
-      this.plugin.shareIndicatorManager?.syncWithServer()
+      void this.plugin.shareIndicatorManager?.syncWithServer()
     }
   }
 
-  private watchModify = (file: TAbstractFile, ctx?: any) => {
+  private watchModify = (file: TAbstractFile, ctx?: unknown) => {
     // 检查 WebSocket 认证状态
     if (!this.plugin.websocket || !this.plugin.websocket.isAuth) {
       return
@@ -121,17 +158,17 @@ export class EventManager {
     this.runWithDelay(file.path, () => {
       if (file instanceof TFile) {
         if (file.path.endsWith(".md")) {
-          noteModify(file, this.plugin, true)
+          void noteModify(file, this.plugin, true)
         } else {
-          fileModify(file, this.plugin, true)
+          void fileModify(file, this.plugin, true)
         }
       } else if (file instanceof TFolder) {
-        folderModify(file, this.plugin, true)
+        void folderModify(file, this.plugin, true)
       }
     })
   }
 
-  private watchDelete = (file: TAbstractFile, ctx?: any) => {
+  private watchDelete = (file: TAbstractFile, ctx?: unknown) => {
     // 检查 WebSocket 认证状态
     if (!this.plugin.websocket || !this.plugin.websocket.isAuth) {
       return
@@ -141,17 +178,17 @@ export class EventManager {
     this.runWithDelay(file.path, () => {
       if (file instanceof TFile) {
         if (file.path.endsWith(".md")) {
-          noteDelete(file, this.plugin, true)
+          void noteDelete(file, this.plugin, true)
         } else {
-          fileDelete(file, this.plugin, true)
+          void fileDelete(file, this.plugin, true)
         }
       } else if (file instanceof TFolder) {
-        folderDelete(file, this.plugin, true)
+        void folderDelete(file, this.plugin, true)
       }
     })
   }
 
-  private watchRename = (file: TAbstractFile, oldFile: string, ctx?: any) => {
+  private watchRename = (file: TAbstractFile, oldFile: string, ctx?: unknown) => {
     // 检查 WebSocket 认证状态
     if (!this.plugin.websocket || !this.plugin.websocket.isAuth) {
       return
@@ -173,47 +210,37 @@ export class EventManager {
       try {
         if (file instanceof TFile) {
           //对比新文件名和旧文件名后缀是否一致，如果不一致，则认为是文件类型变更，需要发送文件删除和文件创建消息
-          const oldExt = oldFile.match(/\.([^.]+)$/)?.[1] ?? ''
+          const oldExt = oldFile.match(/\.([^.]+)$/)?.[1] ?? ""
           let isDiffFileType = file.extension !== oldExt
           if (isDiffFileType) {
-            //获取旧文件的TFile对象
-            const oldTFile = this.plugin.app.vault.getAbstractFileByPath(oldFile) as TAbstractFile
-            this.runWithDelay(oldTFile.path, () => {            
-              //如果旧文件是markdown文件，则发送笔记删除消息，否则发送文件删除消息
-              if(oldTFile.path.endsWith(".md"))
-              {
-                //dump(`rename,now delete old note.`,oldTFile.path)
-                noteDelete(oldTFile, this.plugin, true)
-              }
-              else{
-                //dump(`rename,now delete old file.`,oldTFile.path)
-                fileDelete(oldTFile, this.plugin, true)
-              }
-            },0)
+            // 修复：rename 完成后旧路径的 TFile 已不存在，直接使用路径字符串避免空指针崩溃
+            // Fix: TFile of old path no longer exists after rename completes, use path string to avoid null pointer crash
+            this.runWithDelay(
+              oldFile,
+              () => {
+                if (oldFile.endsWith(".md")) void noteDeleteByPath(oldFile, this.plugin)
+                else void fileDeleteByPath(oldFile, this.plugin)
+              },
+              0,
+            )
 
-            this.runWithDelay(file.path, () => {            
-              //如果新文件是markdown文件，则发送笔记创建消息，否则发送文件创建消息
-              if(file.path.endsWith(".md"))
-              {
-                //dump(`rename,now modify new note.`,oldTFile.path)
-                noteModify(file, this.plugin, true)
-              }
-              else
-              {
-                //dump(`rename,now modify new file.`,oldTFile.path)
-                fileModify(file, this.plugin, true)
-              }
-            },0)            
-          }
-          else{
+            this.runWithDelay(
+              file.path,
+              () => {
+                //如果新文件是markdown文件，则发送笔记创建消息，否则发送文件创建消息
+                if (file.path.endsWith(".md")) void noteModify(file, this.plugin, true)
+                else void fileModify(file, this.plugin, true)
+              },
+              0,
+            )
+          } else {
             if (file.path.endsWith(".md")) {
               await noteRename(file, oldFile, this.plugin, true)
             } else {
               await fileRename(file, oldFile, this.plugin, true)
-            }            
+            }
           }
-        }
-         else if (file instanceof TFolder) {
+        } else if (file instanceof TFolder) {
           await folderRename(file, oldFile, this.plugin, true)
         }
       } finally {
@@ -223,18 +250,17 @@ export class EventManager {
     }
 
     if (delay <= 0) {
-      executeRename()
+      void executeRename()
     } else {
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         this.rawEventTimers.delete(file.path)
-        executeRename()
+        void executeRename()
       }, delay)
       this.rawEventTimers.set(file.path, timer)
     }
   }
 
-  private watchRaw = (path: string, ctx?: any) => {
-
+  private watchRaw = (path: string, ctx?: unknown) => {
     if (!path) return
 
     // 检查 WebSocket 认证状态
@@ -242,13 +268,18 @@ export class EventManager {
       return
     }
     if (this.plugin.settings.manualSyncEnabled || this.plugin.settings.readonlySyncEnabled) return
-
     // 路径安全性校验
     if (!isPathInConfigSyncDirs(path, this.plugin)) return
 
-    this.runWithDelay(path, () => {
-      this.plugin.configManager.handleRawEvent(normalizePath(path), true)
-    }, 300)
+    this.runWithDelay(
+      path,
+      () => {
+        if (this.plugin.configManager) {
+          void this.plugin.configManager.handleRawEvent(normalizePath(path), true)
+        }
+      },
+      300,
+    )
   }
 
   /**
@@ -257,7 +288,7 @@ export class EventManager {
    */
   private clearTimer(key: string) {
     if (this.rawEventTimers.has(key)) {
-      clearTimeout(this.rawEventTimers.get(key))
+      window.clearTimeout(this.rawEventTimers.get(key))
       this.rawEventTimers.delete(key)
     }
   }
@@ -271,7 +302,7 @@ export class EventManager {
   private runWithDelay(key: string, task: () => void | Promise<void>, delayset: number = 0) {
     // 如果已有相同 key 的定时器，先清除
     if (this.rawEventTimers.has(key)) {
-      clearTimeout(this.rawEventTimers.get(key))
+      window.clearTimeout(this.rawEventTimers.get(key))
       this.rawEventTimers.delete(key)
     }
 
@@ -281,20 +312,30 @@ export class EventManager {
     if (delay <= 0) {
       // 立即执行也需要加锁，以防与其他异步任务冲突
       // 如果获取锁失败，尝试重试 3 次，每次 50ms
-      this.plugin.lockManager.withLock(key, async () => {
-        await task()
-      }, { maxRetries: 3, retryInterval: 50 })
+      void this.plugin.lockManager.withLock(
+        key,
+        async () => {
+          await task()
+        },
+        { maxRetries: 3, retryInterval: 50 },
+      )
       return
     }
 
-    const timer = setTimeout(async () => {
-      this.rawEventTimers.delete(key)
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        this.rawEventTimers.delete(key)
 
-      // 执行任务时加锁，并带重试逻辑
-      // 这里的重试是为了应对可能正好有远程同步在写该文件的情况
-      await this.plugin.lockManager.withLock(key, async () => {
-        await task()
-      }, { maxRetries: 5, retryInterval: 100 })
+        // 执行任务时加锁，并带重试逻辑
+        // 这里的重试是为了应对可能正好有远程同步在写该文件的情况
+        await this.plugin.lockManager.withLock(
+          key,
+          async () => {
+            await task()
+          },
+          { maxRetries: 5, retryInterval: 100 },
+        )
+      })()
     }, delay)
 
     this.rawEventTimers.set(key, timer)

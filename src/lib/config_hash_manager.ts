@@ -1,9 +1,18 @@
-import { Notice, normalizePath } from "obsidian";
+import { normalizePath } from "obsidian";
 
-import { hashContent, hashArrayBuffer, dump, configIsPathExcluded, getConfigSyncCustomDirs } from "./helps";
+import { hashContentAsync, dump, dumpError, configIsPathExcluded, getConfigSyncCustomDirs, showSyncNotice, hashFileAsync } from "./helps";
 import { configAllPaths } from "./config_operator";
 import type FastSync from "../main";
 
+
+/**
+ * 哈希缓存结构
+ */
+interface HashCache {
+    hash: string;
+    mtime: number;
+    size: number;
+}
 
 /**
  * 配置哈希管理器
@@ -11,7 +20,7 @@ import type FastSync from "../main";
  */
 export class ConfigHashManager {
     private plugin: FastSync;
-    private hashMap: Map<string, string> = new Map();
+    private hashMap: Map<string, HashCache> = new Map();
     private storageKey: string;
     private isInitialized: boolean = false;
 
@@ -19,7 +28,7 @@ export class ConfigHashManager {
         this.plugin = plugin;
         // 根据仓库名生成唯一的存储键
         const vaultName = this.plugin.app.vault.getName();
-        this.storageKey = `fast-note-sync-config-hash-map-${vaultName}`;
+        this.storageKey = `fns-${vaultName}-configHashMap`;
     }
 
     /**
@@ -50,7 +59,7 @@ export class ConfigHashManager {
     }
 
     private async buildConfigHashMap(): Promise<void> {
-        const notice = new Notice("正在初始化配置哈希映射...", 0);
+        const notice = showSyncNotice("正在初始化配置哈希映射...", 0);
 
         try {
             // 获取所有配置文件路径
@@ -80,10 +89,11 @@ export class ConfigHashManager {
                 if (path.startsWith(this.plugin.localStorageManager.syncPathPrefix)) {
                     const key = this.plugin.localStorageManager.pathToKey(path);
                     if (key) {
-                        const value = this.plugin.localStorageManager.getItemValue(key);
+                        let value: string | null = this.plugin.localStorageManager.getItemValue(key);
                         if (value) {
-                            contentHash = hashContent(value);
-                            this.hashMap.set(path, contentHash);
+                            contentHash = await hashContentAsync(value);
+                            this.hashMap.set(path, { hash: contentHash, mtime: 0, size: 0 });
+                            value = null; // 显式释放引用 (Explicitly release reference)
                         }
                     }
                 } else {
@@ -91,14 +101,13 @@ export class ConfigHashManager {
                     // 注意：configAllPaths 返回的已经是相对于 Vault 的路径，无需再拼接 configDir
                     const filePath = normalizePath(path);
                     try {
-                        const exists = await this.plugin.app.vault.adapter.exists(filePath);
-                        if (exists) {
-                            const contentBuf = await this.plugin.app.vault.adapter.readBinary(filePath);
-                            contentHash = hashArrayBuffer(contentBuf);
-                            this.hashMap.set(path, contentHash);
+                        const stat = await this.plugin.app.vault.adapter.stat(filePath);
+                        if (stat) {
+                            contentHash = await hashFileAsync(this.plugin.app, filePath);
+                            this.hashMap.set(path, { hash: contentHash, mtime: stat.mtime, size: stat.size });
                         }
                     } catch (error) {
-                        console.error("读取配置文件出错:", error);
+                        dumpError("读取配置文件出错:", error);
                     }
                 }
 
@@ -108,7 +117,7 @@ export class ConfigHashManager {
                 if (processedConfigs % 50 === 0) {
                     notice.setMessage(`正在初始化配置哈希映射... (${processedConfigs}/${totalConfigs})`);
                     // 让出主线程,避免阻塞 UI
-                    await new Promise(resolve => setTimeout(resolve, 0));
+                    await new Promise(resolve => window.setTimeout(resolve, 0));
                 }
             }
 
@@ -116,22 +125,35 @@ export class ConfigHashManager {
             this.saveToStorage();
 
             notice.setMessage(`配置哈希映射初始化完成! 共处理 ${totalConfigs} 个配置`);
-            setTimeout(() => notice.hide(), 3000);
+            window.setTimeout(() => notice.hide(), 3000);
 
             dump(`ConfigHashManager: 构建完成,共 ${totalConfigs} 个配置`);
         } catch (error) {
             notice.hide();
-            new Notice(`配置哈希映射初始化失败: ${error.message}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            showSyncNotice(`配置哈希映射初始化失败: ${errorMsg}`);
             dump("ConfigHashManager: 构建失败", error);
             throw error;
         }
     }
 
     /**
+     * 获取有效的哈希值
+     */
+    getValidHash(path: string, mtime: number, size: number): string | null {
+        const cache = this.hashMap.get(path);
+        // 如果 mtime 和 size 为 0，通常是虚拟路径或旧数据，强制重新校验
+        if (cache && cache.mtime === mtime && cache.size === size && mtime !== 0) {
+            return cache.hash;
+        }
+        return null;
+    }
+
+    /**
      * 获取指定路径的哈希值
      */
     getPathHash(path: string): string | null {
-        return this.hashMap.get(path) || null;
+        return this.hashMap.get(path)?.hash || null;
     }
 
     /**
@@ -144,9 +166,19 @@ export class ConfigHashManager {
     /**
      * 添加或更新单个配置的哈希
      */
-    setFileHash(path: string, hash: string): void {
-        this.hashMap.set(path, hash);
+    setFileHash(path: string, hash: string, mtime: number = 0, size: number = 0): void {
+        this.hashMap.set(path, { hash, mtime, size });
         this.saveToStorage();
+    }
+
+    async setFileHashes(entries: Iterable<[string, string]>, getStat?: (path: string) => Promise<{ mtime?: number; size?: number } | null | undefined> | { mtime?: number; size?: number } | null | undefined): Promise<void> {
+        let changed = false;
+        for (const [path, hash] of entries) {
+            const stat = await getStat?.(path);
+            this.hashMap.set(path, { hash, mtime: stat?.mtime || 0, size: stat?.size || 0 });
+            changed = true;
+        }
+        if (changed) this.saveToStorage();
     }
 
     /**
@@ -159,18 +191,65 @@ export class ConfigHashManager {
         }
     }
 
+    removeFileHashes(paths: Iterable<string>): void {
+        let changed = false;
+        for (const path of paths) {
+            changed = this.hashMap.delete(path) || changed;
+        }
+        if (changed) this.saveToStorage();
+    }
+
     /**
      * 从 localStorage 加载哈希映射
      */
     private loadFromStorage(): boolean {
         try {
-            const data = localStorage.getItem(this.storageKey);
+            let data = this.plugin.app.loadLocalStorage(this.storageKey) as string | null;
+
+            // 迁移逻辑：如果新键无数据，尝试读取旧键
             if (!data) {
-                return false;
+                const vaultName = this.plugin.app.vault.getName();
+
+                // 1. 尝试上一个格式: fast-note-sync-[Vault]-configHashMap
+                const prevKey1 = `fast-note-sync-${vaultName}-configHashMap`;
+                data = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
+
+                // 2. 尝试更早格式: fast-note-sync-[Vault]-config-hash-map
+                if (!data) {
+                    const prevKey2 = `fast-note-sync-${vaultName}-config-hash-map`;
+                    data = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
+                }
+
+                // 3. 尝试最原始格式: fast-note-sync-config-hash-map-[Vault]
+                if (!data) {
+                    const oldKey = `fast-note-sync-config-hash-map-${vaultName}`;
+                    data = this.plugin.app.loadLocalStorage(oldKey) as string | null;
+                }
+
+                if (data) {
+                    dump("ConfigHashManager: 发现旧版配置哈希数据，执行迁移");
+                    this.plugin.app.saveLocalStorage(this.storageKey, data);
+                } else {
+                    return false;
+                }
             }
 
-            const parsed = JSON.parse(data);
-            this.hashMap = new Map(Object.entries(parsed));
+            const parsed = JSON.parse(data) as Record<string, unknown>;
+            const migratedMap = new Map<string, HashCache>();
+            let needsSave = false;
+
+            for (const [path, value] of Object.entries(parsed)) {
+                if (typeof value === "string") {
+                    migratedMap.set(path, { hash: value, mtime: 0, size: 0 });
+                    needsSave = true;
+                } else {
+                    migratedMap.set(path, value as HashCache);
+                }
+            }
+
+            this.hashMap = migratedMap;
+            if (needsSave) this.saveToStorage();
+
             return true;
         } catch (error) {
             dump("ConfigHashManager: 从 localStorage 加载失败", error);
@@ -185,10 +264,11 @@ export class ConfigHashManager {
         try {
             const obj = Object.fromEntries(this.hashMap);
             const data = JSON.stringify(obj);
-            localStorage.setItem(this.storageKey, data);
+            this.plugin.app.saveLocalStorage(this.storageKey, data);
         } catch (error) {
             dump("ConfigHashManager: 保存到 localStorage 失败", error);
-            new Notice(`保存配置哈希映射失败: ${error.message}`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            showSyncNotice(`保存配置哈希映射失败: ${errorMsg}`);
         }
     }
 

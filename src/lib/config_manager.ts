@@ -1,6 +1,6 @@
-import { normalizePath, Plugin } from "obsidian";
+import { normalizePath } from "obsidian";
 
-import { dump, getFileName, getDirName, getDirNameOrEmpty, configAddPathExcluded, configIsPathExcluded, isPathInConfigSyncDirs, getConfigSyncCustomDirs } from "./helps";
+import { dump, dumpError, getFileName, getDirNameOrEmpty, configAddPathExcluded, isPathInConfigSyncDirs, getConfigSyncCustomDirs, isInWhitelist, getPluginDir } from "./helps";
 import { CONFIG_PLUGIN_EXTS_TO_WATCH, CONFIG_ROOT_FILES_EXCLUDE, CONFIG_THEME_EXTS_TO_WATCH, configModify, configDelete, configAllPaths } from "./config_operator";
 import type FastSync from "../main";
 
@@ -25,9 +25,12 @@ export class ConfigManager {
     this.pluginDir = this.pluginRealDir
 
     configAddPathExcluded(`${configDir}/plugins/hot-reload/`, this.plugin)
+    // 自动将本插件的 data.json 加入内置同步排除列表，防止同步敏感数据及配置冲突
+    // Automatically add this plugin's own data.json to built-in sync exclusion to prevent syncing sensitive data and config conflicts
+    configAddPathExcluded(`${getPluginDir(this.plugin)}/data.json`, this.plugin)
 
-    this.loadEnabledPlugins()
-    this.initializeFileStates()
+    void this.loadEnabledPlugins()
+    void this.initializeFileStates()
   }
 
   private async initializeFileStates() {
@@ -44,7 +47,7 @@ export class ConfigManager {
         if (stat && stat.type === "file") {
           this.fileStates.set(fullPath, stat.mtime)
         }
-      } catch (e) {
+      } catch {
         // 忽略读取不到的单个文件
       }
     }
@@ -62,11 +65,6 @@ export class ConfigManager {
 
     // 相对目录
     const relativePath = path
-    if (configIsPathExcluded(relativePath, this.plugin)) return
-    if (this.plugin.settings.logEnabled && relativePath.startsWith(this.pluginDir)) {
-      dump("plugin.settings.logEnabled true Skip", relativePath)
-      return
-    }
 
     const fileName = getFileName(path)
     let shouldCheck = false
@@ -75,49 +73,64 @@ export class ConfigManager {
     if (!path.startsWith(configDir + "/")) {
       shouldCheck = true
     } else {
-      // 核心配置目录内的路径，按照原有精细化规则分发
-      const relativePathInConfig = path.replace(configDir + "/", "")
-      const parts = relativePathInConfig.split("/")
-      const topDir = parts[0]
-
-      if (parts.length === 1) {
-        // 根配置：同步所有 JSON 文件，排除指定的名单
-        if (fileName.endsWith(".json") && !this.rootFilesExclude.includes(fileName)) shouldCheck = true
-      } else if (topDir === "plugins" || topDir === "themes") {
-        const nameDir = getDirNameOrEmpty(parts[1])
-        // 插件或主题
-        if (parts.length === 2 && nameDir != "" && fileName == "") {
-          // 目录变动
-          shouldCheck = true
-        } else if (parts.length === 3 && nameDir != "" && fileName != "") {
-          // 受监控文件变动
-          const isPluginFile = topDir === "plugins" && this.pluginExtsToWatch.some(ext => fileName.endsWith(ext))
-          const isThemeFile = topDir === "themes" && this.themeExtsToWatch.some(ext => fileName.endsWith(ext))
-          if (isPluginFile || isThemeFile) shouldCheck = true
-        }
-      } else if (topDir === "snippets" && parts.length === 2 && fileName.endsWith(".css")) {
+      // 白名单最高优先级：命中则直接放行，不受任何文件类型/目录结构限制
+      // Whitelist has highest priority: bypass all type/structure filtering if matched
+      if (isInWhitelist(path, this.plugin)) {
         shouldCheck = true
+      } else {
+        // 核心配置目录内的路径，按照原有精细化规则分发
+        const relativePathInConfig = path.replace(configDir + "/", "")
+        const parts = relativePathInConfig.split("/")
+        const topDir = parts[0]
+
+        if (parts.length === 1) {
+          // 根配置：仅同步 JSON，且不在硬编码排除名单内
+          // Root config: only sync JSON files not in the hard exclude list
+          if (fileName.endsWith(".json") && !this.rootFilesExclude.includes(fileName)) shouldCheck = true
+        } else if (topDir === "plugins" || topDir === "themes") {
+          const nameDir = getDirNameOrEmpty(parts[1])
+          // 插件或主题
+          if (parts.length === 2 && nameDir != "" && fileName == "") {
+            // 目录变动
+            shouldCheck = true
+          } else if (parts.length === 3 && nameDir != "" && fileName != "") {
+            // 受监控文件变动
+            const isPluginFile = topDir === "plugins" && this.pluginExtsToWatch.some(ext => fileName.endsWith(ext))
+            const isThemeFile = topDir === "themes" && this.themeExtsToWatch.some(ext => fileName.endsWith(ext))
+            if (isPluginFile || isThemeFile) shouldCheck = true
+          }
+        } else if (topDir === "snippets" && parts.length === 2 && fileName.endsWith(".css")) {
+          shouldCheck = true
+        }
       }
     }
 
     if (shouldCheck) {
-      // 特殊处理本插件的 manifest.json 更新 (本地修改场景)
+      // 1. 特殊处理 community-plugins.json 更新 (本地修改场景)
+      // 确保 enabledPlugins 集合与磁盘文件同步，防止后续 reload 逻辑误判
+      if (fileName === "community-plugins.json" && path === normalizePath(`${configDir}/community-plugins.json`)) {
+        await this.loadEnabledPlugins()
+      }
+
+      // 2. 特殊处理本插件的 manifest.json 更新 (本地修改场景)
       if (fileName === "manifest.json" && relativePath === `${this.pluginDir}/manifest.json`) {
-        setTimeout(async () => {
-          try {
-            const content = await this.plugin.app.vault.adapter.read(path)
-            const manifest = JSON.parse(content)
-            if (manifest.version && manifest.version !== this.plugin.manifest.version) {
-              this.plugin.manifest.version = manifest.version
-              dump(`[FastNoteSync] Local manifest updated to ${this.plugin.manifest.version}`)
+        window.setTimeout(() => {
+          void (async () => {
+            try {
+              const content = await this.plugin.app.vault.adapter.read(path)
+              const manifest = JSON.parse(content) as { version?: string }
+              if (manifest.version && manifest.version !== this.plugin.manifest.version) {
+                (this.plugin.manifest as { version: string }).version = manifest.version
+                dump(`[FastNoteSync] Local manifest updated to ${this.plugin.manifest.version}`)
+              }
+            } catch (e) {
+              dumpError("[FastNoteSync] Failed to read local manifest:", e)
             }
-          } catch (e) {
-            console.error("[FastNoteSync] Failed to read local manifest:", e)
-          }
+          })();
         }, 500) // 延迟读取确保写入完成
       }
 
-      this.checkFileChange(path, eventEnter)
+      void this.checkFileChange(path, eventEnter)
     }
   }
 
@@ -125,10 +138,12 @@ export class ConfigManager {
     try {
       const filePath = normalizePath(`${this.plugin.app.vault.configDir}/community-plugins.json`)
       if (await this.plugin.app.vault.adapter.exists(filePath)) {
-        const plugins = JSON.parse(await this.plugin.app.vault.adapter.read(filePath))
+        const plugins = JSON.parse(await this.plugin.app.vault.adapter.read(filePath)) as string[]
         if (Array.isArray(plugins)) this.enabledPlugins = new Set(plugins)
       }
-    } catch (e) { }
+    } catch {
+      // Ignore errors when loading community-plugins.json
+    }
   }
 
   private async checkFileChange(filePath: string, eventEnter: boolean = false, isFolder: boolean = false) {
@@ -141,14 +156,12 @@ export class ConfigManager {
       // 1. 处理删除 (包括目录递归删除)
       if (!stat) {
         const prefix = filePath + "/"
-        let foundMatch = false
         for (const cachedPath of this.fileStates.keys()) {
           if (cachedPath === filePath || cachedPath.startsWith(prefix)) {
             const rel = cachedPath
             this.fileStates.delete(cachedPath)
-            configDelete(rel, this.plugin, eventEnter)
+            void configDelete(rel, this.plugin, eventEnter)
             dump("Config Delete", rel)
-            foundMatch = true
           }
         }
         return
@@ -165,7 +178,7 @@ export class ConfigManager {
       if (lastMtime === undefined) {
         this.fileStates.set(filePath, stat.mtime)
         // 初始同步或新文件
-        configModify(relativePath, this.plugin, eventEnter)
+        void configModify(relativePath, this.plugin, eventEnter)
         dump("Config Modify", relativePath)
         return
       }
@@ -173,11 +186,12 @@ export class ConfigManager {
       if (stat.mtime !== lastMtime) {
         this.fileStates.set(filePath, stat.mtime)
         // 初始同步或新文件
-        configModify(relativePath, this.plugin, eventEnter)
+        void configModify(relativePath, this.plugin, eventEnter)
         dump("Config Modify", relativePath)
       }
-      dump("Config Modify mtime no change, skip", relativePath)
-    } catch (e) { }
+    } catch {
+      // Ignore stat errors
+    }
   }
 
   public updateFileState(filePath: string, mtime: number) {

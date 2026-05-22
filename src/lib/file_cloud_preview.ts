@@ -1,7 +1,7 @@
-import { MarkdownPostProcessorContext, parseLinktext, loadPdfJs, MarkdownView, requestUrl, setIcon, Notice, Platform } from "obsidian";
+import { MarkdownPostProcessorContext, parseLinktext, loadPdfJs, MarkdownView, requestUrl, setIcon, Platform } from "obsidian";
 import { ViewPlugin, ViewUpdate, EditorView } from "@codemirror/view";
 
-import { hashContent } from "./helps";
+import { hashContent, showSyncNotice, dumpError } from "./helps";
 import type FastSync from "../main";
 
 
@@ -9,16 +9,16 @@ import type FastSync from "../main";
  * Simple Event Bus to mimic pdfjsViewer.EventBus
  */
 class SimpleEventBus {
-  private listeners: Record<string, Function[]> = {};
+  private listeners: Record<string, ((data?: unknown) => void)[]> = {};
 
-  on(eventName: string, listener: Function) {
+  on(eventName: string, listener: (data?: unknown) => void) {
     if (!this.listeners[eventName]) {
       this.listeners[eventName] = [];
     }
     this.listeners[eventName].push(listener);
   }
 
-  off(eventName: string, listener: Function) {
+  off(eventName: string, listener: (data?: unknown) => void) {
     if (!this.listeners[eventName]) return;
     this.listeners[eventName].forEach((l, i) => {
       if (l === listener) {
@@ -27,13 +27,13 @@ class SimpleEventBus {
     });
   }
 
-  dispatch(eventName: string, data?: any) {
+  dispatch(eventName: string, data?: unknown) {
     if (!this.listeners[eventName]) return;
     this.listeners[eventName].forEach(listener => listener(data));
   }
 
   // Internal method for compatibility if needed
-  _on(eventName: string, listener: Function) {
+  _on(eventName: string, listener: (data?: unknown) => void) {
     this.on(eventName, listener);
   }
 }
@@ -42,6 +42,16 @@ class SimpleEventBus {
  * 嵌入元素预览处理器
  * 处理本地不存在但云端存在的附件预览
  */
+interface PDFPageProxy {
+  getViewport(options: { scale: number }): { width: number, height: number };
+  render(options: { canvasContext: CanvasRenderingContext2D | null, viewport: unknown }): { promise: Promise<void> };
+}
+
+interface PDFDocumentProxy {
+  numPages: number;
+  getPage(pageNumber: number): Promise<PDFPageProxy>;
+}
+
 export class FileCloudPreview {
   public static IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".wximage"];
   public static VIDEO_EXTS = [".mp4", ".webm", ".ogg", ".mov", ".avi"];
@@ -90,17 +100,17 @@ export class FileCloudPreview {
    */
   private registerLivePreviewProcessor() {
     if (!this.plugin.settings.cloudPreviewEnabled) return;
-    const self = this;
+    const handleUpdate = (view: EditorView) => this.handleLivePreviewUpdate(view);
     this.plugin.registerEditorExtension([
       ViewPlugin.fromClass(class {
         constructor(view: EditorView) {
           // 初始加载时也尝试处理一次，解决单行笔记或初次打开不触发 update 的问题
-          self.handleLivePreviewUpdate(view);
+          handleUpdate(view);
         }
         update(update: ViewUpdate) {
           // 只要文档变化、视口变化或插件状态变化，都尝试更新
           if (update.docChanged || update.viewportChanged || update.geometryChanged) {
-            self.handleLivePreviewUpdate(update.view);
+            handleUpdate(update.view);
           }
         }
       })
@@ -121,7 +131,7 @@ export class FileCloudPreview {
       const sourcePath = activeView?.file?.path || "";
 
       for (const embed of Array.from(embeds)) {
-        this.processEmbed(embed as HTMLElement, {
+        void this.processEmbed(embed as HTMLElement, {
           sourcePath,
           frontmatter: {}
         } as MarkdownPostProcessorContext);
@@ -161,7 +171,7 @@ export class FileCloudPreview {
     const previewElement = await this.createPreviewElement(filePath, cloudUrl, ext, subpath);
 
     if (previewElement) {
-      embed.innerHTML = "";
+      embed.empty();
 
       // 增加动态类名处理
       const classNames = this.getEmbedClass(ext);
@@ -175,8 +185,7 @@ export class FileCloudPreview {
       }
 
       // 修复双滚动条问题：确保 embed 容器本身不滚动，并消除底部空白
-      embed.style.overflow = "hidden";
-      embed.style.verticalAlign = "middle";
+      embed.addClass("fns-overflow-hidden", "fns-v-align-middle");
 
       embed.appendChild(previewElement);
 
@@ -226,14 +235,14 @@ export class FileCloudPreview {
   }
 
   private createImagePreview(cloudUrl: string, filePath: string): HTMLElement {
-    const img = document.createElement("img");
+    const img = createEl("img");
     img.src = cloudUrl;
     img.alt = filePath;
     return img;
   }
 
   private createVideoPreview(cloudUrl: string, subpath?: string): HTMLElement {
-    const video = document.createElement("video");
+    const video = createEl("video");
     video.src = cloudUrl;
     video.controls = true;
     video.preload = "metadata";
@@ -245,7 +254,7 @@ export class FileCloudPreview {
   }
 
   private createAudioPreview(cloudUrl: string, subpath?: string): HTMLElement {
-    const audio = document.createElement("audio");
+    const audio = createEl("audio");
     audio.src = cloudUrl;
     audio.controls = true;
     // @ts-ignore
@@ -263,76 +272,68 @@ export class FileCloudPreview {
 
     // use electron's native pdf viewer for desktop app
     if (Platform.isDesktopApp) {
-      const iframe = document.createElement("iframe");
+      const iframe = createEl("iframe");
       iframe.src = cloudUrl;
-      iframe.style.cssText =
-        "width: 100%; height: 100%; border: none; display: block;";
+      iframe.addClass("fns-iframe-full");
       return iframe;
     }
 
     // --- 1. DOM Structure (Matching Obsidian's Internal Structure) ---
-    const loadingContainer = document.createElement("div"); // The root wrapper we return
-    loadingContainer.addClass("pdf-preview-wrapper");
-    loadingContainer.style.cssText = `width: 100%; height: ${height}px; display: flex; flex-direction: column; background-color: var(--background-secondary); border-radius: 4px; overflow: hidden; position: relative;`;
+    const loadingContainer = createEl("div"); // The root wrapper we return
+    loadingContainer.addClass("pdf-preview-wrapper", "fns-pdf-preview-wrapper");
+    // Use setCssProps for dynamic height (PDF viewer container)
+    // 使用 setCssProps 设置 PDF 预览容器动态高度
+    loadingContainer.setCssProps({ height: `${height}px` });
 
     // Create PDF Main Container
-    const pdfContainer = loadingContainer.createDiv("pdf-container");
-    pdfContainer.style.cssText = "display: flex; flex-direction: column; flex: 1; overflow: hidden; position: relative; background-color: var(--background-primary);"; // Ensure it takes space
+    const pdfContainer = loadingContainer.createDiv("pdf-container fns-pdf-container");
 
     // Check Theme (Simulated)
-    const isThemed = this.plugin.app.loadLocalStorage("pdfjs-is-themed");
+    const isThemed = (this.plugin.app as unknown as { loadLocalStorage(key: string): unknown }).loadLocalStorage("pdfjs-is-themed");
     if (isThemed) {
       pdfContainer.addClass("mod-themed");
     }
 
     // Create Content Container1
-    const contentEl = pdfContainer.createDiv("pdf-content-container");
-    contentEl.style.cssText = "display: flex; flex: 1; overflow: hidden; position: relative;";
+    const contentEl = pdfContainer.createDiv("pdf-content-container fns-pdf-content-container");
 
     // Create Sidebar Container
-    const sidebarContainer = contentEl.createDiv("pdf-sidebar-container");
-    sidebarContainer.style.cssText = "width: 200px; display: none; flex-direction: column; border-right: 1px solid var(--background-modifier-border); background-color: var(--background-secondary); z-index: 1;"; // Hidden by default
+    const sidebarContainer = contentEl.createDiv("pdf-sidebar-container fns-pdf-sidebar-container fns-hidden");
     sidebarContainer.setAttribute("data-view", "thumbnail"); // Default view
 
-    const sidebarContentWrapper = sidebarContainer.createDiv("pdf-sidebar-content-wrapper");
-    sidebarContentWrapper.style.cssText = "flex: 1; overflow-y: auto; overflow-x: hidden;";
+    const sidebarContentWrapper = sidebarContainer.createDiv("pdf-sidebar-content-wrapper fns-pdf-sidebar-content-wrapper");
     const sidebarContent = sidebarContentWrapper.createDiv("pdf-sidebar-content");
 
     const thumbnailViewEl = sidebarContent.createDiv("pdf-thumbnail-view");
-    const outlineViewEl = sidebarContent.createDiv("pdf-outline-view hidden"); // hidden class usually means display: none
+    sidebarContent.createDiv("pdf-outline-view hidden"); // hidden class usually means display: none
 
     // Create Viewer Container
-    const viewerContainer = contentEl.createDiv("pdf-viewer-container");
-    viewerContainer.style.cssText = "flex: 1; overflow: auto; position: relative; display: flex; flex-direction: column; flex-start: center; padding: 20px;";
+    const viewerContainer = contentEl.createDiv("pdf-viewer-container fns-pdf-viewer-container");
 
     // Viewer Element (Where canvases go)
-    const viewerEl = viewerContainer.createDiv("pdfViewer");
-    viewerEl.style.cssText = "position: relative; width: max-content; min-height: 100%; display: flex; flex-direction: column; gap: 10px;";
+    const viewerEl = viewerContainer.createDiv("pdfViewer fns-pdf-viewer");
 
     // Event Bus
     const eventBus = new SimpleEventBus();
 
     // --- 2. Toolbar Implementation (Inline for now) ---
     // Toolbar is attached to loadingContainer (root) in Obsidian's code
-    const toolbar = loadingContainer.createDiv({ cls: "pdf-toolbar", prepend: true }); // Prepend to be at top
-    toolbar.style.cssText = "display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--background-modifier-border); padding: 4px; background-color: var(--background-secondary); flex-shrink: 0;";
+    const toolbar = loadingContainer.createDiv({ cls: "pdf-toolbar fns-pdf-toolbar", prepend: true }); // Prepend to be at top
 
     // Toolbar Left
-    const toolbarLeft = toolbar.createDiv({ cls: "pdf-toolbar-left" });
-    toolbarLeft.style.cssText = "display: flex; align-items: center; gap: 4px;";
+    const toolbarLeft = toolbar.createDiv({ cls: "pdf-toolbar-left fns-pdf-toolbar-left" });
 
     const sidebarToggle = toolbarLeft.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Toggle Sidebar" } });
     setIcon(sidebarToggle, "layout-list");
     sidebarToggle.onclick = () => {
-      const isHidden = sidebarContainer.style.display === "none";
-      sidebarContainer.style.display = isHidden ? "flex" : "none";
+      const isHidden = sidebarContainer.hasClass("fns-hidden");
+      sidebarContainer.toggleClass("fns-hidden", !isHidden);
       sidebarToggle.toggleClass("is-active", !isHidden); // Optional visual feedback
       eventBus.dispatch("sidebarviewchanged", { view: "thumbnail" });
     };
 
     // Spacer
-    const spacer1 = toolbarLeft.createDiv({ cls: "pdf-toolbar-spacer" });
-    spacer1.style.flex = "1";
+    toolbarLeft.createDiv({ cls: "pdf-toolbar-spacer fns-flex-1" });
 
     // Zoom Controls
     const zoomOutBtn = toolbarLeft.createDiv({ cls: "clickable-icon", attr: { "aria-label": "Zoom Out" } });
@@ -344,14 +345,12 @@ export class FileCloudPreview {
     zoomInBtn.onclick = () => eventBus.dispatch("zoomin");
 
     // Page Input
-    const pageInput = toolbarLeft.createEl("input", { type: "number", cls: "pdf-page-input" });
-    pageInput.style.cssText = "width: 40px; text-align: right; border: none; background: transparent; color: var(--text-normal); margin-left: 8px;";
+    const pageInput = toolbarLeft.createEl("input", { type: "number", cls: "pdf-page-input fns-pdf-page-input" });
     pageInput.value = "1";
     pageInput.min = "1";
 
-    const pageCountEl = toolbarLeft.createSpan({ cls: "pdf-page-numbers" });
+    const pageCountEl = toolbarLeft.createSpan({ cls: "pdf-page-numbers fns-muted-text" });
     pageCountEl.setText(" / --");
-    pageCountEl.style.color = "var(--text-muted)";
 
     pageInput.onchange = () => {
       const page = parseInt(pageInput.value);
@@ -367,14 +366,13 @@ export class FileCloudPreview {
 
     // --- 3. Viewer Logic (PDF.js) ---
     // State
-    let pdfDoc: any = null;
+    let pdfDoc: PDFDocumentProxy | null = null;
     let currentScale = 1.0;
     let isRendering = false;
 
     // Loading Indicator
-    const loadingText = viewerContainer.createDiv({ cls: "pdf-loading" });
+    const loadingText = viewerContainer.createDiv({ cls: "pdf-loading fns-pdf-loading" });
     loadingText.setText("Loading PDF...");
-    loadingText.style.cssText = "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-muted);";
 
     const renderPages = async () => {
       if (!pdfDoc || isRendering) return;
@@ -386,18 +384,19 @@ export class FileCloudPreview {
           const page = await pdfDoc.getPage(pageNum);
           const viewport = page.getViewport({ scale: currentScale });
 
-          const pageContainer = viewerEl.createDiv({ cls: "pdf-page-wrapper" });
+          const pageContainer = viewerEl.createDiv({ cls: "pdf-page-wrapper fns-pdf-page-wrapper" });
           pageContainer.setAttribute("data-page-number", pageNum.toString());
-          pageContainer.style.cssText = "position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; background-color: var(--background-primary);";
-          pageContainer.style.width = `${viewport.width}px`;
-          pageContainer.style.height = `${viewport.height}px`;
+          // Use setCssProps for dynamic page dimensions
+          // 使用 setCssProps 设置 PDF 页面动态尺寸
+          pageContainer.setCssProps({ width: `${viewport.width}px`, height: `${viewport.height}px` });
 
           const canvas = pageContainer.createEl("canvas");
           const context = canvas.getContext("2d");
           canvas.height = viewport.height;
           canvas.width = viewport.width;
-          canvas.style.width = "100%";
-          canvas.style.height = "100%";
+          // Use setCssProps instead of direct style assignment for theme compatibility
+          // 使用 setCssProps 替代直接内联样式赋值，以提升主题兼容性
+          canvas.setCssProps({ width: "100%", height: "100%" });
 
           const renderContext = {
             canvasContext: context,
@@ -406,8 +405,9 @@ export class FileCloudPreview {
           await page.render(renderContext).promise;
         }
       } catch (e) {
-        console.error("PDF Render Error", e);
-        new Notice("Error rendering PDF");
+        dumpError("PDF Render Error", e);
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        showSyncNotice(`Error rendering PDF: ${errorMsg}`);
       } finally {
         isRendering = false;
       }
@@ -417,18 +417,18 @@ export class FileCloudPreview {
     eventBus.on("zoomin", () => {
       if (currentScale < 5.0) {
         currentScale += 0.25;
-        renderPages();
+        void renderPages();
       }
     });
 
     eventBus.on("zoomout", () => {
       if (currentScale > 0.5) {
         currentScale -= 0.25;
-        renderPages();
+        void renderPages();
       }
     });
 
-    eventBus.on("pagechange", (data: any) => {
+    eventBus.on("pagechange", (data: { pageNumber: number }) => {
       const pageNum = data.pageNumber;
       if (pageNum >= 1 && pageNum <= (pdfDoc?.numPages || 1)) {
         const targetPage = viewerEl.querySelector(`.pdf-page-wrapper[data-page-number="${pageNum}"]`);
@@ -459,10 +459,17 @@ export class FileCloudPreview {
 
 
     // --- 4. Initialization ---
-    (async () => {
+    void (async () => {
       try {
-        const pdfjs = await loadPdfJs();
-        const response = await requestUrl({ url: cloudUrl });
+        const pdfjs = (await loadPdfJs()) as { getDocument(data: ArrayBuffer): { promise: Promise<PDFDocumentProxy> } };
+        const response = await requestUrl({
+          url: cloudUrl,
+          headers: {
+            "x-client": "obsidian",
+            "x-client-name": encodeURIComponent(this.plugin.getClientName()),
+            "x-client-version": this.plugin.manifest.version || ""
+          }
+        });
         const data = response.arrayBuffer;
 
         const loadingTask = pdfjs.getDocument(data);
@@ -470,7 +477,7 @@ export class FileCloudPreview {
 
         loadingText.remove();
         pageCountEl.setText(` / ${pdfDoc.numPages}`);
-        pageInput.max = pdfDoc.numPages;
+        pageInput.max = pdfDoc.numPages.toString();
 
         const firstPage = await pdfDoc.getPage(1);
         const viewport = firstPage.getViewport({ scale: 1 });
@@ -482,29 +489,31 @@ export class FileCloudPreview {
 
         // Render Thumbnails (Lazy or simple)
         // For now, simple implementation if sidebar is opened
-        eventBus.on("sidebarviewchanged", async () => {
-          if (sidebarContainer.style.display !== "none" && thumbnailViewEl.children.length === 0) {
-            // Render thumbnails
-            for (let i = 1; i <= pdfDoc.numPages; i++) {
-              const page = await pdfDoc.getPage(i);
-              const viewport = page.getViewport({ scale: 0.2 });
+        eventBus.on("sidebarviewchanged", () => {
+          void (async () => {
+            if (!sidebarContainer.hasClass("fns-hidden") && thumbnailViewEl.children.length === 0) {
+              // Render thumbnails
+              for (let i = 1; i <= pdfDoc!.numPages; i++) {
+                const page = await pdfDoc!.getPage(i);
+                const thumbViewport = page.getViewport({ scale: 0.2 });
 
-              const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail");
-              thumbContainer.style.cssText = "margin-bottom: 10px; cursor: pointer; display: flex; justify-content: center;";
-              thumbContainer.onclick = () => eventBus.dispatch("pagechange", { pageNumber: i });
+                const thumbContainer = thumbnailViewEl.createDiv("pdf-thumbnail fns-pdf-thumbnail");
+                thumbContainer.onclick = () => eventBus.dispatch("pagechange", { pageNumber: i });
 
-              const canvas = thumbContainer.createEl("canvas");
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
+                const canvas = thumbContainer.createEl("canvas");
+                canvas.height = thumbViewport.height;
+                canvas.width = thumbViewport.width;
 
-              await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+                await page.render({ canvasContext: canvas.getContext("2d"), viewport: thumbViewport }).promise;
+              }
             }
-          }
+          })();
         });
 
       } catch (e) {
-        console.error("PDF Load Error", e);
-        loadingText.setText("Failed to load PDF");
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        dumpError("PDF Load Error", errorMsg);
+        loadingText.setText(`Failed to load PDF: ${errorMsg}`);
       }
     })();
 
@@ -512,19 +521,13 @@ export class FileCloudPreview {
   }
 
   private createGenericPreview(filePath: string, cloudUrl: string): HTMLElement {
-    const container = document.createElement("div");
+    const container = createEl("div");
     container.addClass("file-embed-title");
 
     const fileName = filePath.split("/").pop() || filePath;
-    container.innerHTML = `
-        <span class="file-embed-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-file">
-            <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path>
-            <path d="M14 2v5a1 1 0 0 0 1 1h5"></path>
-          </svg>
-        </span>
-        ${fileName}
-    `;
+    const iconEl = container.createSpan({ cls: "file-embed-icon" });
+    setIcon(iconEl, "file");
+    container.appendText(` ${fileName}`);
 
     container.onclick = () => window.open(cloudUrl, "_blank");
     return container;
@@ -545,7 +548,19 @@ export class FileCloudPreview {
     const { api, vault, apiToken, cloudPreviewEnabled, cloudPreviewTypeRestricted, cloudPreviewRemoteUrl } = this.plugin.settings;
     if (!cloudPreviewEnabled || !api || !apiToken) return null;
 
-    const vaultPath = await this.plugin.app.fileManager.getAvailablePathForAttachment(filePath, sourcePath);
+    // Use the link path as written in the markdown. processEmbed() has already
+    // verified that getFirstLinkpathDest(filePath, sourcePath) returns null
+    // (i.e. the file is not present locally — typically because
+    // cloudPreviewAutoDeleteLocal removed it after upload), so the only
+    // authoritative location of the file is the path the user wrote in the
+    // link. getAvailablePathForAttachment() must NOT be used here: it returns
+    // the *destination path for a NEW attachment* based on the user's
+    // attachment-folder configuration, not the actual storage path of an
+    // existing file. For embeds like ![[attachment/yuque/X.mp3]] it would
+    // typically discard the directory and return just "X.mp3" (or worse,
+    // produce a path under the note's folder), causing the resulting cloud
+    // URL to 404 on the server.
+    const vaultPath = filePath;
     const ext = this.getFileExtension(vaultPath);
     if (!ext) return null;
 
@@ -626,4 +641,3 @@ export class FileCloudPreview {
     return lastDot === -1 ? "" : filePath.substring(lastDot).toLowerCase();
   }
 }
-

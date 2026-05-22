@@ -1,4 +1,4 @@
-import { TFolder, Notice } from "obsidian";
+import { TFolder } from "obsidian";
 
 import { dump, isPathExcluded } from "./helps";
 import type FastSync from "../main";
@@ -18,7 +18,7 @@ export class FolderSnapshotManager {
     constructor(plugin: FastSync) {
         this.plugin = plugin;
         const vaultName = this.plugin.app.vault.getName();
-        this.storageKey = `fast-note-sync-folder-snapshot-${vaultName}`;
+        this.storageKey = `fns-${vaultName}-folderSnapshot`;
     }
 
     /**
@@ -95,9 +95,36 @@ export class FolderSnapshotManager {
      */
     private loadFromStorage(): boolean {
         try {
-            const data = localStorage.getItem(this.storageKey);
-            if (!data) return false;
-            const parsed = JSON.parse(data);
+            let data = this.plugin.app.loadLocalStorage(this.storageKey) as string | null;
+
+            // 迁移逻辑：如果新键无数据，尝试读取旧键
+            if (!data) {
+                const vaultName = this.plugin.app.vault.getName();
+
+                // 1. 尝试上一个格式: fast-note-sync-[Vault]-folderSnapshot
+                const prevKey1 = `fast-note-sync-${vaultName}-folderSnapshot`;
+                data = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
+
+                // 2. 尝试更早格式: fast-note-sync-[Vault]-folder-snapshot
+                if (!data) {
+                    const prevKey2 = `fast-note-sync-${vaultName}-folder-snapshot`;
+                    data = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
+                }
+
+                // 3. 尝试最原始格式: fast-note-sync-folder-snapshot-[Vault]
+                if (!data) {
+                    const oldKey = `fast-note-sync-folder-snapshot-${vaultName}`;
+                    data = this.plugin.app.loadLocalStorage(oldKey) as string | null;
+                }
+
+                if (data) {
+                    dump("FolderSnapshotManager: 发现旧版快照数据，执行迁移");
+                    this.plugin.app.saveLocalStorage(this.storageKey, data);
+                } else {
+                    return false;
+                }
+            }
+            const parsed = JSON.parse(data) as Record<string, number>;
             this.snapshotMap = new Map(
                 Object.entries(parsed).map(([key, value]) => [key, Number(value)])
             );
@@ -114,7 +141,7 @@ export class FolderSnapshotManager {
     private saveToStorage(): void {
         try {
             const obj = Object.fromEntries(this.snapshotMap);
-            localStorage.setItem(this.storageKey, JSON.stringify(obj));
+            this.plugin.app.saveLocalStorage(this.storageKey, JSON.stringify(obj));
         } catch (error) {
             dump("FolderSnapshotManager: 保存快照失败", error);
         }

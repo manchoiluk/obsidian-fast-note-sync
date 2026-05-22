@@ -1,6 +1,7 @@
-import { moment, TFile } from "obsidian";
+import { moment } from "obsidian";
 
 import FastSync from "../main";
+import { dumpError } from "./helps";
 
 
 export type LogType = 'send' | 'receive' | 'info' | 'error';
@@ -18,12 +19,13 @@ export interface SyncLog {
     status: LogStatus;
     progress?: number;
     message?: string;
+    vault?: string;
 }
 
 export class SyncLogManager {
     private static instance: SyncLogManager;
     private logs: SyncLog[] = [];
-    private readonly MAX_LOGS = 200;
+    private readonly MAX_LOGS = 5000;
     private listeners: Set<(logs: SyncLog[]) => void> = new Set();
     private plugin: FastSync | null = null;
     private logFilePath: string = "";
@@ -79,11 +81,14 @@ export class SyncLogManager {
                 progress: targetProgress,
                 timestamp: existingLog.timestamp // Keep the original start time
             };
+
+            // --- 保持原有顺序，避免分页时由于状态更新导致记录在页面间跳变 ---
+            // --- Keep original order to prevent items jumping between pages during status updates ---
             this.logs[index] = updatedLog;
 
             // 仅在状态从 pending 变为 success/error 时记录到文件，避免进度更新刷屏
             if (statusChanged && targetStatus !== 'pending') {
-                this.persistToFile(updatedLog);
+                void this.persistToFile(updatedLog);
             }
         } else {
             // Add new log
@@ -96,7 +101,8 @@ export class SyncLogManager {
                 path: log.path,
                 status: log.status || 'success',
                 progress: log.progress,
-                message: log.message
+                message: log.message,
+                vault: log.vault
             };
             this.logs.unshift(newLog);
             if (this.logs.length > this.MAX_LOGS) {
@@ -105,13 +111,13 @@ export class SyncLogManager {
 
             // 新增记录时持久化到文件（除非是 pending 状态的进度条开头，这种通常之后会有 success）
             if (newLog.status !== 'pending') {
-                this.persistToFile(newLog);
+                void this.persistToFile(newLog);
             }
         }
         this.notify();
     }
 
-    public addLog(type: LogType, action: string, message?: string, status: LogStatus = 'success', path?: string) {
+    public addLog(type: LogType, action: string, message?: string, status: LogStatus = 'success', path?: string, vault?: string) {
         this.addOrUpdateLog({
             id: Math.random().toString(36).substring(2, 11),
             type,
@@ -119,6 +125,7 @@ export class SyncLogManager {
             message,
             status,
             path,
+            vault,
             timestamp: Date.now()
         });
     }
@@ -129,15 +136,23 @@ export class SyncLogManager {
      * @param data 消息数据
      * @param currentSyncType 当前同步类型
      */
-    public logReceivedMessage(action: string, data: any, currentSyncType: string): void {
+    public logReceivedMessage(action: string, data: unknown, currentSyncType: string): void {
         // 过滤不需要记录的消息类型
         const excludedActions = ["Pong", "Authorization", "ClientInfo", "FileUploadCheck", "FileChunkDownload", "NoteSyncNeedPush", "FileSyncUpdate", "FileSyncChunkDownload"];
         if (excludedActions.includes(action)) {
             return;
         }
 
+        const msgData = data as { 
+            data?: { Path?: string; path?: string; Vault?: string; vault?: string; sessionId?: string; SessionID?: string };
+            Path?: string; path?: string; Vault?: string; vault?: string; sessionId?: string; SessionID?: string;
+            code?: number; message?: string;
+        };
+
         // 提取路径信息
-        const logPath = data.data?.Path || data.Path || data.path || data.data?.path;
+        const logPath = msgData.data?.Path || msgData.Path || msgData.path || msgData.data?.path;
+        // 提取 Vault 信息
+        const logVault = msgData.Vault || msgData.vault || msgData.data?.Vault || msgData.data?.vault;
 
         // 根据消息类型调整 action 名称
         let logAction = action;
@@ -147,12 +162,12 @@ export class SyncLogManager {
         }
 
         // 提取 sessionId
-        const sessionId = data.sessionId || data.data?.sessionId || data.data?.SessionID;
+        const sessionId = msgData.sessionId || msgData.data?.sessionId || msgData.data?.SessionID;
 
         if (sessionId) {
             // 根据 code 判断状态
-            const hasCode = data.code !== undefined;
-            const isError = hasCode && (data.code === 0 || data.code > 200);
+            const hasCode = msgData.code !== undefined;
+            const isError = hasCode && (msgData.code === 0 || (msgData.code as number) > 200);
 
             let targetStatus: LogStatus = 'pending';
             if (isError) {
@@ -172,13 +187,14 @@ export class SyncLogManager {
                 action: logAction,
                 status: targetStatus,
                 path: logPath,
-                message: data.message || (data.code !== undefined ? `Code: ${data.code}` : undefined)
+                vault: logVault,
+                message: msgData.message || (msgData.code !== undefined ? `Code: ${msgData.code}` : undefined)
             });
         } else {
             // 没有 sessionId 的消息
-            const status = (data.code === 0 || data.code > 200) ? 'error' : 'success';
-            const message = data.message || (data.code !== undefined ? `Code: ${data.code}` : undefined);
-            this.addLog('receive', logAction, message, status, logPath);
+            const status = (msgData.code !== undefined && (msgData.code === 0 || (msgData.code) > 200)) ? 'error' : 'success';
+            const message = msgData.message || (msgData.code !== undefined ? `Code: ${msgData.code}` : undefined);
+            this.addLog('receive', logAction, message, status, logPath, logVault);
         }
     }
 
@@ -195,10 +211,13 @@ export class SyncLogManager {
             return;
         }
 
-        // 提取路径信息(仅当 data 是对象时)
+        // 提取路径和 Vault 信息(仅当 data 是对象时)
         let logPath: string | undefined = undefined;
+        let logVault: string | undefined = undefined;
         if (typeof data === "object" && data !== null) {
-            logPath = (data as any).Path || (data as any).path || (data as any).data?.Path || (data as any).data?.path;
+            const d = data as { Path?: string, path?: string, Vault?: string, vault?: string, data?: { Path?: string, path?: string, Vault?: string, vault?: string } };
+            logPath = d.Path || d.path || d.data?.Path || d.data?.path;
+            logVault = d.Vault || d.vault || d.data?.Vault || d.data?.vault;
         }
 
         // 根据消息类型调整 action 名称
@@ -211,7 +230,8 @@ export class SyncLogManager {
         const targetStatus: LogStatus = ['FileUpload', 'FileDownload', 'ConfigUpload'].includes(action) ? 'pending' : 'success';
 
         // 提取 sessionId
-        const sessionId = (data as any)?.sessionId || (data as any)?.SessionID || (data as any)?.data?.sessionId || (data as any)?.data?.SessionID;
+        const d = data as { sessionId?: string, SessionID?: string, data?: { sessionId?: string, SessionID?: string } };
+        const sessionId = d?.sessionId || d?.SessionID || d?.data?.sessionId || d?.data?.SessionID;
 
         if (sessionId) {
             this.addOrUpdateLog({
@@ -220,9 +240,10 @@ export class SyncLogManager {
                 action: logAction,
                 status: targetStatus,
                 path: logPath,
+                vault: logVault,
             });
         } else {
-            this.addLog('send', logAction, undefined, targetStatus, logPath);
+            this.addLog('send', logAction, undefined, targetStatus, logPath, logVault);
         }
     }
 
@@ -236,7 +257,7 @@ export class SyncLogManager {
             try {
                 await this.plugin.app.vault.adapter.write(this.logFilePath, "");
             } catch (e) {
-                console.error("Failed to clear sync log file:", e);
+                dumpError("Failed to clear sync log file:", e);
             }
         }
     }
@@ -272,7 +293,7 @@ export class SyncLogManager {
             // 使用 Obsidian API 追加文件
             await this.plugin.app.vault.adapter.append(this.logFilePath, line);
         } catch (e) {
-            console.error("Failed to write sync log to file:", e);
+            dumpError("Failed to write sync log to file:", e);
         }
     }
 }
