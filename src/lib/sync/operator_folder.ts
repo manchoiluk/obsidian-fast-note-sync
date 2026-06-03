@@ -11,7 +11,6 @@ import type FastSync from "../../main";
  */
 export const folderModify = async function (folder: TFolder, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
-    if (eventEnter && !plugin.getWatchEnabled()) return
     if (eventEnter && plugin.isIgnoredFile(folder.path)) return
     if (isPathExcluded(folder.path, plugin)) return
 
@@ -39,7 +38,6 @@ export const folderModify = async function (folder: TFolder, plugin: FastSync, e
  */
 export const folderDelete = async function (folder: TFolder, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
-    if (eventEnter && !plugin.getWatchEnabled()) return
     if (eventEnter && plugin.isIgnoredFile(folder.path)) return
     if (isPathExcluded(folder.path, plugin)) return
 
@@ -72,7 +70,6 @@ export const folderDelete = async function (folder: TFolder, plugin: FastSync, e
  */
 export const folderRename = async function (folder: TFolder, oldPath: string, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
-    if (eventEnter && !plugin.getWatchEnabled()) return
     if (eventEnter && plugin.isIgnoredFile(folder.path)) return
     if (isPathExcluded(folder.path, plugin)) return
 
