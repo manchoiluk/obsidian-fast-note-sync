@@ -19082,6 +19082,262 @@ export const proto = $root.proto = (() => {
             return SettingGetRequest;
         })();
 
+        v1.SettingClearRequest = (function() {
+
+            /**
+             * Properties of a SettingClearRequest.
+             * @typedef {Object} proto.v1.SettingClearRequest.$Properties
+             * @property {string|null} [vault] SettingClearRequest vault
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding
+             */
+
+            /**
+             * Properties of a SettingClearRequest.
+             * @memberof proto.v1
+             * @interface ISettingClearRequest
+             * @augments proto.v1.SettingClearRequest.$Properties
+             * @deprecated Use proto.v1.SettingClearRequest.$Properties instead.
+             */
+
+            /**
+             * Shape of a SettingClearRequest.
+             * @typedef {proto.v1.SettingClearRequest.$Properties} proto.v1.SettingClearRequest.$Shape
+             */
+
+            /**
+             * Constructs a new SettingClearRequest.
+             * @memberof proto.v1
+             * @classdesc Represents a SettingClearRequest.
+             * @constructor
+             * @param {proto.v1.SettingClearRequest.$Properties=} [properties] Properties to set
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding
+             */
+            function SettingClearRequest(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null && keys[i] !== "__proto__")
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * SettingClearRequest vault.
+             * @member {string} vault
+             * @memberof proto.v1.SettingClearRequest
+             * @instance
+             */
+            SettingClearRequest.prototype.vault = "";
+
+            /**
+             * Creates a new SettingClearRequest instance using the specified properties.
+             * @function create
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {proto.v1.SettingClearRequest.$Properties=} [properties] Properties to set
+             * @returns {proto.v1.SettingClearRequest} SettingClearRequest instance
+             * @type {{
+             *   (properties: proto.v1.SettingClearRequest.$Shape): proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape;
+             *   (properties?: proto.v1.SettingClearRequest.$Properties): proto.v1.SettingClearRequest;
+             * }}
+             */
+            SettingClearRequest.create = function create(properties) {
+                return new SettingClearRequest(properties);
+            };
+
+            /**
+             * Encodes the specified SettingClearRequest message. Does not implicitly {@link proto.v1.SettingClearRequest.verify|verify} messages.
+             * @function encode
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {proto.v1.SettingClearRequest.$Properties} message SettingClearRequest message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            SettingClearRequest.encode = function encode(message, writer, _depth) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (_depth === undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw Error("max depth exceeded");
+                if (message.vault != null && Object.hasOwnProperty.call(message, "vault"))
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
+                if (message.$unknowns != null && Object.hasOwnProperty.call(message, "$unknowns"))
+                    for (let i = 0; i < message.$unknowns.length; ++i)
+                        writer.raw(message.$unknowns[i]);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified SettingClearRequest message, length delimited. Does not implicitly {@link proto.v1.SettingClearRequest.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {proto.v1.SettingClearRequest.$Properties} message SettingClearRequest message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            SettingClearRequest.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+            };
+
+            /**
+             * Decodes a SettingClearRequest message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape} SettingClearRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            SettingClearRequest.decode = function decode(reader, length, _end, _depth, _target) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                if (_depth === undefined)
+                    _depth = 0;
+                if (_depth > $Reader.recursionLimit)
+                    throw Error("max depth exceeded");
+                let end = length === undefined ? reader.len : reader.pos + length, message = _target || new $root.proto.v1.SettingClearRequest(), value;
+                while (reader.pos < end) {
+                    let start = reader.pos;
+                    let tag = reader.tag();
+                    if (tag === _end) {
+                        _end = undefined;
+                        break;
+                    }
+                    let wireType = tag & 7;
+                    switch (tag >>>= 3) {
+                    case 1: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.string()).length)
+                                message.vault = value;
+                            else
+                                delete message.vault;
+                            continue;
+                        }
+                    }
+                    reader.skipType(wireType, _depth, tag);
+                    $util.makeProp(message, "$unknowns", false);
+                    (message.$unknowns || (message.$unknowns = [])).push(reader.raw(start, reader.pos));
+                }
+                if (_end !== undefined)
+                    throw Error("missing end group");
+                return message;
+            };
+
+            /**
+             * Decodes a SettingClearRequest message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape} SettingClearRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            SettingClearRequest.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a SettingClearRequest message.
+             * @function verify
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            SettingClearRequest.verify = function verify(message, _depth) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (_depth === undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    return "max depth exceeded";
+                if (message.vault != null && message.hasOwnProperty("vault"))
+                    if (!$util.isString(message.vault))
+                        return "vault: string expected";
+                return null;
+            };
+
+            /**
+             * Creates a SettingClearRequest message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.v1.SettingClearRequest} SettingClearRequest
+             */
+            SettingClearRequest.fromObject = function fromObject(object, _depth) {
+                if (object instanceof $root.proto.v1.SettingClearRequest)
+                    return object;
+                if (_depth === undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw Error("max depth exceeded");
+                let message = new $root.proto.v1.SettingClearRequest();
+                if (object.vault != null)
+                    if (typeof object.vault !== "string" || object.vault.length)
+                        message.vault = String(object.vault);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a SettingClearRequest message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {proto.v1.SettingClearRequest} message SettingClearRequest
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            SettingClearRequest.toObject = function toObject(message, options, _depth) {
+                if (!options)
+                    options = {};
+                if (_depth === undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw Error("max depth exceeded");
+                let object = {};
+                if (options.defaults)
+                    object.vault = "";
+                if (message.vault != null && message.hasOwnProperty("vault"))
+                    object.vault = message.vault;
+                return object;
+            };
+
+            /**
+             * Converts this SettingClearRequest to JSON.
+             * @function toJSON
+             * @memberof proto.v1.SettingClearRequest
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            SettingClearRequest.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the type url for SettingClearRequest
+             * @function getTypeUrl
+             * @memberof proto.v1.SettingClearRequest
+             * @static
+             * @param {string} [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns {string} The type url
+             */
+            SettingClearRequest.getTypeUrl = function getTypeUrl(prefix) {
+                if (prefix === undefined)
+                    prefix = "type.googleapis.com";
+                return prefix + "/proto.v1.SettingClearRequest";
+            };
+
+            return SettingClearRequest;
+        })();
+
         v1.SettingSyncModifyMessage = (function() {
 
             /**

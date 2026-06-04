@@ -80,10 +80,13 @@ function enSendDataPayload(action: WSAction.WSSendAction, payload: any): Uint8Ar
             const msg = proto.v1.SettingUpdateCheckRequest.create(payload);
             return proto.v1.SettingUpdateCheckRequest.encode(msg).finish();
         }
-        case WSAction.SettingReceiveDelete:
-        case WSAction.SettingReceiveClear: {
+        case WSAction.SettingReceiveDelete: {
             const msg = proto.v1.SettingDeleteRequest.create(payload);
             return proto.v1.SettingDeleteRequest.encode(msg).finish();
+        }
+        case WSAction.SettingReceiveClear: {
+            const msg = proto.v1.SettingClearRequest.create(payload);
+            return proto.v1.SettingClearRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveRePush: {
             const msg = proto.v1.SettingGetRequest.create(payload);
@@ -415,6 +418,9 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
             } catch {
                 return tryJsonDecode();
             }
+        }
+        case WSAction.SettingSyncClear: {
+            return null;
         }
         case WSAction.FolderSyncModify: {
             try {

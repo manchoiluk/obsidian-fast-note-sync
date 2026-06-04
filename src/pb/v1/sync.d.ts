@@ -6665,6 +6665,123 @@ export namespace proto {
         }
 
         /**
+         * Properties of a SettingClearRequest.
+         * @deprecated Use proto.v1.SettingClearRequest.$Properties instead.
+         */
+        interface ISettingClearRequest extends proto.v1.SettingClearRequest.$Properties {
+        }
+
+        /** Represents a SettingClearRequest. */
+        class SettingClearRequest {
+
+            /**
+             * Constructs a new SettingClearRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.SettingClearRequest.$Properties);
+
+            /** Unknown fields preserved while decoding */
+            $unknowns?: Uint8Array[];
+
+            /** SettingClearRequest vault. */
+            vault: string;
+
+            /**
+             * Creates a new SettingClearRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns SettingClearRequest instance
+             */
+            static create(properties: proto.v1.SettingClearRequest.$Shape): proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape;
+            static create(properties?: proto.v1.SettingClearRequest.$Properties): proto.v1.SettingClearRequest;
+
+            /**
+             * Encodes the specified SettingClearRequest message. Does not implicitly {@link proto.v1.SettingClearRequest.verify|verify} messages.
+             * @param message SettingClearRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.SettingClearRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified SettingClearRequest message, length delimited. Does not implicitly {@link proto.v1.SettingClearRequest.verify|verify} messages.
+             * @param message SettingClearRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.SettingClearRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a SettingClearRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape} SettingClearRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape;
+
+            /**
+             * Decodes a SettingClearRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape} SettingClearRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.SettingClearRequest & proto.v1.SettingClearRequest.$Shape;
+
+            /**
+             * Verifies a SettingClearRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a SettingClearRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns SettingClearRequest
+             */
+            static fromObject(object: { [k: string]: any }): proto.v1.SettingClearRequest;
+
+            /**
+             * Creates a plain object from a SettingClearRequest message. Also converts values to other types if specified.
+             * @param message SettingClearRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.SettingClearRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this SettingClearRequest to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the type url for SettingClearRequest
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace SettingClearRequest {
+
+            /** Properties of a SettingClearRequest. */
+            interface $Properties {
+
+                /** SettingClearRequest vault */
+                vault?: (string|null);
+
+                /** Unknown fields preserved while decoding */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a SettingClearRequest. */
+            type $Shape = proto.v1.SettingClearRequest.$Properties;
+        }
+
+        /**
          * Properties of a SettingSyncModifyMessage.
          * @deprecated Use proto.v1.SettingSyncModifyMessage.$Properties instead.
          */

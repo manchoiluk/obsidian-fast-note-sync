@@ -1,6 +1,6 @@
 {
   "name": "fast-note-sync",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "type": "module",
   "description": "Real-time sync of your vaults across server, mobile, and web; shareable with anyone; supports REST and MCP integrations to build your personal AI knowledge base.",
   "main": "main.js",
@@ -18,7 +18,7 @@
     "translate": "node scripts/translate-i18n.mjs --model Qwen/Qwen3.6-35B-A3B",
     "tl": "node scripts/translate-i18n.mjs --model Qwen/Qwen3.6-35B-A3B",
     "icons": "node scripts/obfuscate_icons.js --compress --width 300",
-    "proto": "pbjs -t static-module -w es6 -o src/pb/v1/sync.js c:/Users/haier/DevApps/@GoApps/fast-note-sync-service/internal/proto/v1/sync.proto && pbts -o src/pb/v1/sync.d.ts src/pb/v1/sync.js"
+    "proto": "pbjs -t static-module -w es6 -o src/pb/v1/sync.js ../../../../../@GoApps/fast-note-sync-service/internal/proto/v1/sync.proto && pbts -o src/pb/v1/sync.d.ts src/pb/v1/sync.js"
   },
   "keywords": [],
   "author": "",
