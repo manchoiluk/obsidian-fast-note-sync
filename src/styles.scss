@@ -1334,7 +1334,7 @@
     background-color: var(--background-secondary-alt);
     border: 1px solid var(--background-modifier-border);
     border-left: 4px solid #6367FF;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
 
     &.no-changes-card {
       /* 无变更时进一步压扁 / Flatten further when there are no changes */
@@ -1381,8 +1381,7 @@
 
     .fns-summary-rows {
       display: flex;
-      flex-direction: row; /* 横向并排 / Align horizontally */
-      flex-wrap: wrap;     /* 窄屏自动折行 / Auto-wrap on narrow screens */
+      flex-flow: row wrap; /* 横向并排，窄屏自动折行 / Align horizontally, Auto-wrap on narrow screens */
       gap: 12px;           /* 项目间距 / Item gap */
 
       .fns-summary-empty-text {
@@ -1426,7 +1425,7 @@
 
         .fns-summary-badge {
           font-size: 9px;
-          padding: 0px 4px;
+          padding: 0 4px;
           border-radius: 3px;
           font-weight: 600;
           display: flex;
