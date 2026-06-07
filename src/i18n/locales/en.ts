@@ -44,6 +44,9 @@ export default {
   "setting.remote.client_name_placeholder": "Enter client name",
   "setting.remote.auto_redirect": "Automatic Redirect for Remote Service Address",
   "setting.remote.auto_redirect_desc": "When enabled, automatically retrieves the correct service address by following 301/302 redirects. Disabled by default.",
+  "setting.remote.allowed_redirect_domains": "Allowed Redirect Domains (Whitelist)",
+  "setting.remote.allowed_redirect_domains_desc": "Allow automatic redirect to these domains during sync. One domain per line, e.g. '*.example.com' or 'backup.vault.cn'. Identical original domain is always allowed.",
+  "setting.remote.http_warning": "⚠️ Warning: You are using an unencrypted HTTP protocol. All synced data and tokens are transmitted in plain text and are vulnerable to interception. It is highly recommended to configure HTTPS and WSS for public network deployment.",
   "setting.remote.ws_pre_probe": "Remote Service WS Connection Pre-Check",
   "setting.remote.ws_pre_probe_desc": "When enabled, an API health check will be performed before establishing the WebSocket connection. If both this option and the automatic redirection option above are disabled, the health check before WS connection will be completely turned off. Enabled by default.",
   "setting.remote.mobile_status_dot_pos": "Mobile service connectivity status display",
@@ -449,4 +452,18 @@ export default {
   "setting.debug.version_installing_notice": "Installing specified version plugin...",
   "setting.debug.version_install_success": "Plugin installed and reloaded successfully",
   "setting.debug.version_install_fail": "Plugin installation failed",
+
+  // --- ui.sso ---
+  "ui.sso.banner_title_warning": "Remote Service Sync Config Import",
+  "ui.sso.banner_title_safe": "Remote Service Sync Config Import",
+  "ui.sso.banner_subtitle_warning": "An external link is attempting to configure an unknown sync server for you",
+  "ui.sso.banner_subtitle_safe": "Confirm to import the following sync server configuration",
+  "ui.sso.config_title": "Configuration to Import",
+  "ui.sso.server_url": "Server URL",
+  "ui.sso.vault": "Sync Vault",
+  "ui.sso.api_token": "API Token",
+  "ui.sso.default_vault": "Default (current Vault)",
+  "ui.sso.no_token": "(not provided)",
+  "ui.sso.risk_title": "Security Notice:",
+  "ui.sso.risk_desc": " Importing an untrusted server will cause all your notes to be sent to that server during auto-sync. Only confirm if you fully trust the source.",
 };

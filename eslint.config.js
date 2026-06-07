@@ -6,16 +6,17 @@ import { defineConfig } from "eslint/config";
 export default defineConfig([
   {
     ignores: [
-      "src/lib/helpers_obsidian_bypass.ts",
       "src/pb/**",
       "main.js",
       "styles.css",
-      "dist/**"
+      "dist/**",
+      "src/lib/helpers_obsidian_bypass.js"
     ],
   },
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
+    ignores: ["src/pb/**"],
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./tsconfig.json" },
@@ -30,7 +31,6 @@ export default defineConfig([
       "obsidianmd/sample-names": "off",
       // example: add a rule not in the recommended set and set its severity
       "obsidianmd/prefer-file-manager-trash-file": "error",
-      "@typescript-eslint/no-deprecated": "off",
     },
   },
 ]);

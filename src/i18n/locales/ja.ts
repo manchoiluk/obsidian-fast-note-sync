@@ -449,4 +449,18 @@ export default {
   "setting.debug.version_installing_notice": "指定バージョンのプラグインをインストールしています...",
   "setting.debug.version_install_success": "プラグインのインストールとリロードが成功しました",
   "setting.debug.version_install_fail": "プラグインのインストールに失敗しました",
+
+  // --- ui.sso ---
+  "ui.sso.banner_title_warning": "リモートサービス同期設定インポート",
+  "ui.sso.banner_title_safe": "リモートサービス同期設定インポート",
+  "ui.sso.banner_subtitle_warning": "外部リンクが未知の同期サーバーを設定しようとしています",
+  "ui.sso.banner_subtitle_safe": "確認をクリックすると、以下の同期サーバー設定がインポートされます",
+  "ui.sso.config_title": "インポートする設定情報",
+  "ui.sso.server_url": "サーバーアドレス",
+  "ui.sso.vault": "同期 Vault",
+  "ui.sso.api_token": "API Token",
+  "ui.sso.default_vault": "デフォルト（現在の Vault）",
+  "ui.sso.no_token": "（未提供）",
+  "ui.sso.risk_title": "セキュリティ警告：",
+  "ui.sso.risk_desc": " 信頼できないサーバーをインポートすると、自動同期時にすべてのノートがそのサーバーに送信される可能性があります。ソースを完全に信頼している場合のみ確認してください。",
 };

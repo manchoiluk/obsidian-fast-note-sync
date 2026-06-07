@@ -1203,8 +1203,7 @@
 }
 .fns-sync-log-container .fns-sync-summary-card .fns-summary-rows {
   display: flex;
-  flex-direction: row; /* 横向并排 / Align horizontally */
-  flex-wrap: wrap; /* 窄屏自动折行 / Auto-wrap on narrow screens */
+  flex-flow: row wrap; /* 横向并排，窄屏自动折行 / Align horizontally, Auto-wrap on narrow screens */
   gap: 12px; /* 项目间距 / Item gap */
 }
 .fns-sync-log-container .fns-sync-summary-card .fns-summary-rows .fns-summary-empty-text {
@@ -1249,7 +1248,7 @@
 }
 .fns-sync-log-container .fns-sync-summary-card .fns-summary-row .fns-summary-badges .fns-summary-badge {
   font-size: 9px;
-  padding: 0px 4px;
+  padding: 0 4px;
   border-radius: 3px;
   font-weight: 600;
   display: flex;
@@ -4017,6 +4016,232 @@ body .suggestion-container {
 .fns-sync-log-path.is-clickable:hover {
   color: var(--text-accent-hover);
   text-decoration: underline;
+}
+
+.fns-setting-warning {
+  color: var(--text-warning, #FF8C00);
+  font-size: 0.85em;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* ─── SSO 配置导入弹窗 / SSO import modal ──────────────────────────── */
+.fns-sso-modal .modal-content {
+  padding: 10px 20px 20px;
+}
+
+.fns-sso-title-icon--warning {
+  color: var(--color-red) !important;
+  background-color: color-mix(in srgb, var(--color-red) 8%, var(--background-primary)) !important;
+  border-color: color-mix(in srgb, var(--color-red) 25%, var(--background-modifier-border)) !important;
+}
+
+.fns-sso-title-icon--safe {
+  color: var(--interactive-accent) !important;
+  background-color: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary)) !important;
+  border-color: color-mix(in srgb, var(--interactive-accent) 25%, var(--background-modifier-border)) !important;
+}
+
+.fns-sso-badge--warning {
+  color: var(--color-red) !important;
+  background-color: color-mix(in srgb, var(--color-red) 8%, var(--background-secondary)) !important;
+  border-color: color-mix(in srgb, var(--color-red) 20%, var(--background-modifier-border-faint)) !important;
+}
+.fns-sso-badge--warning .fns-file-icon {
+  color: var(--color-red) !important;
+}
+
+.fns-sso-risk {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--color-orange) 6%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--color-orange) 20%, transparent);
+  border-left: 4px solid var(--color-orange);
+}
+.fns-sso-risk .fns-sso-risk-icon {
+  flex-shrink: 0;
+  color: var(--color-orange);
+  margin-top: 2px;
+}
+.fns-sso-risk .fns-sso-risk-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.fns-sso-risk .fns-sso-risk-text {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.fns-sso-risk .fns-sso-risk-text strong {
+  color: var(--color-orange);
+  font-weight: 600;
+}
+
+.fns-sso-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.fns-sso-btn {
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fns-sso-btn.fns-sso-btn-cancel {
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-muted);
+}
+.fns-sso-btn.fns-sso-btn-cancel:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+  transform: translateY(-1px);
+}
+.fns-sso-btn.fns-sso-btn-cancel:active {
+  transform: translateY(0);
+}
+.fns-sso-btn.fns-sso-btn-confirm--warning {
+  background-color: var(--color-red);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-red) 25%, transparent);
+}
+.fns-sso-btn.fns-sso-btn-confirm--warning:hover {
+  background-color: color-mix(in srgb, var(--color-red) 90%, #fff);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-red) 35%, transparent);
+}
+.fns-sso-btn.fns-sso-btn-confirm--warning:active {
+  transform: translateY(0);
+}
+.fns-sso-btn.fns-sso-btn-confirm--safe {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: transparent;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+.fns-sso-btn.fns-sso-btn-confirm--safe:hover {
+  background-color: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+}
+.fns-sso-btn.fns-sso-btn-confirm--safe:active {
+  transform: translateY(0);
+}
+
+.fns-setting-static-value {
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  user-select: all;
+  padding: 4px 8px;
+  background-color: var(--background-secondary-alt);
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border-faint);
+  display: inline-block;
+  word-break: break-all;
+}
+
+.fns-sso-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  table-layout: fixed;
+}
+.fns-sso-table tr {
+  border-bottom: 1px solid var(--background-modifier-border-faint);
+}
+.fns-sso-table tr:last-child {
+  border-bottom: none;
+}
+.fns-sso-table td {
+  padding: 12px 16px;
+  vertical-align: middle;
+}
+.fns-sso-table .fns-sso-table-label {
+  width: 30%;
+  font-weight: 500;
+  color: var(--text-normal);
+  border-right: 1px solid var(--background-modifier-border-faint);
+}
+.fns-sso-table .fns-sso-label-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.fns-sso-table .fns-sso-label-wrapper .fns-header-icon {
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+}
+.fns-sso-table .fns-sso-label-wrapper .fns-header-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.fns-sso-table .fns-sso-table-value {
+  width: 70%;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+  padding-left: 20px;
+  word-break: break-all;
+  text-align: right;
+}
+.fns-sso-table .fns-sso-static-text {
+  word-break: break-all;
+  white-space: normal;
+}
+.fns-sso-table .fns-sso-token-container {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.fns-sso-table .fns-sso-token-container .fns-sso-static-text {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+.fns-sso-table .fns-sso-token-masked {
+  letter-spacing: 2px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.fns-sso-table .fns-sso-eye-wrapper {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.fns-sso-table .fns-sso-eye-btn {
+  padding: 4px;
+  height: auto;
+  width: auto;
+  box-shadow: none;
+  background: transparent;
+  border: none;
+  opacity: 0.6;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.fns-sso-table .fns-sso-eye-btn:hover {
+  opacity: 1;
+  background: var(--background-modifier-hover);
 }
 
 /*# sourceMappingURL=styles.css.map */

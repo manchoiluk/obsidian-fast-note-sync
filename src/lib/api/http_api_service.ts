@@ -1,8 +1,9 @@
-import { requestUrl } from "obsidian";
 
-import { hashContent, addRandomParam, showSyncNotice, dump, dumpError, nativeFetch } from "../utils/helpers";
-import { getLocale } from "../../i18n/lang";
+
+import { requestUrl } from "obsidian";
+import { hashContent, addRandomParam, showSyncNotice, dump, dumpError, nativeFetch, isAllowedRedirect } from "../utils/helpers";
 import { CLIENT_TYPE } from "../utils/types";
+import { getLocale } from "../../i18n/lang";
 import type FastSync from "../../main";
 
 
@@ -156,7 +157,7 @@ export class HttpApiService {
             // 如果未开启自动重定向检测，使用标准请求检查健康状态
             if (!this.plugin.settings.autoRedirectEnabled) {
                 try {
-                    const { status } = await this.request("/api/health", { method: "GET", signal: controller.signal });
+                    const { status } = await this.request("/api/health", { method: "GET", signal: controller.signal, noAuth: true });
                     // 2xx 表示健康，404 表示旧版服务端（也允许连接）
                     const isOk = (status >= 200 && status < 300) || status === 404;
                     if (isOk) {
@@ -175,12 +176,12 @@ export class HttpApiService {
             const res = await nativeFetch(probeUrl, {
                 method: 'GET',
                 redirect: 'follow',
-                signal: controller.signal
+                signal: controller.signal,
             });
             if (res.url) {
                 dump("probeApiRedirect", res.url);
                 const healthIndex = res.url.indexOf("/api/health");
-                if (healthIndex !== -1) {
+                if (healthIndex !== -1 && isAllowedRedirect(probeUrl, res.url, this.plugin.settings.allowedRedirectDomains)) {
                     const newBase = res.url.substring(0, healthIndex).replace(/\/+$/, "");
                     this.plugin.updateRuntimeApi(newBase);
                 } else {
@@ -249,38 +250,20 @@ export class HttpApiService {
      */
     async checkHealth(signal?: AbortSignal): Promise<boolean> {
         try {
-            const { status } = await this.request("/api/health", { method: "GET", signal });
+            const { status } = await this.request("/api/health", { method: "GET", signal, noAuth: true });
             return (status >= 200 && status < 300) || status === 404;
         } catch {
             return false;
         }
     }
 
-    /**
-     * 下载二进制文件 (用于插件升级 Zip)
-     */
-    async downloadBinary(url: string): Promise<ArrayBuffer | null> {
-        try {
-            const response = await requestUrl({
-                url: url,
-                method: "GET",
-            });
-            if (response.status === 200) {
-                return response.arrayBuffer;
-            }
-            return null;
-        } catch (e) {
-            dumpError("downloadBinary error:", e);
-            return null;
-        }
-    }
 
     /**
      * 内部通用请求方法，支持网络库切换
      * @param endpoint 接口相对路径（如 /api/notes，不包含主机名）
      * @param options 请求选项
      */
-    private async request(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string, signal?: AbortSignal }): Promise<{ status: number, json: unknown, finalUrl: string }> {
+    private async request(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string, signal?: AbortSignal, noAuth?: boolean }): Promise<{ status: number, json: unknown, finalUrl: string }> {
         const networkLibrary = this.plugin.settings.networkLibrary;
         // 使用 runApi 作为基准
         const base = (this.plugin.runApi || this.plugin.settings.api).replace(/\/+$/, "");
@@ -294,7 +277,7 @@ export class HttpApiService {
             "x-client-version": (this.plugin.manifest as { version?: string }).version || ""
         };
 
-        if (this.plugin.settings.apiToken) {
+        if (this.plugin.settings.apiToken && !options.noAuth) {
             headers["Authorization"] = `Bearer ${this.plugin.settings.apiToken}`;
         }
 
@@ -342,17 +325,18 @@ export class HttpApiService {
 
             if (res.url && res.url !== url) {
                 try {
-                    const finalUrlObj = new URL(res.url);
-                    const originalUrlObj = new URL(url);
-                    if (finalUrlObj.origin !== originalUrlObj.origin) {
+                    if (!isAllowedRedirect(url, res.url, this.plugin.settings.allowedRedirectDomains)) {
+                        throw new Error(`Unsafe cross-domain redirect blocked. The destination domain "${new URL(res.url).hostname}" is not in your allowed redirect list. Please add it to the allowed list in settings if you trust it.`);
+                    } else {
                         const apiIndex = res.url.indexOf("/api/");
                         if (apiIndex !== -1) {
                             const newBase = res.url.substring(0, apiIndex).replace(/\/+$/, "");
                             this.plugin.updateRuntimeApi(newBase);
                         }
                     }
-                } catch {
-                    // ignore
+                } catch (e) {
+                    dumpError("Redirect origin check error:", e);
+                    throw e;
                 }
             }
 

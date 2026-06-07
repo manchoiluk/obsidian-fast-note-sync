@@ -44,6 +44,9 @@ export default {
   "setting.remote.client_name_placeholder": "输入客户端名称",
   "setting.remote.auto_redirect": "远端服务地址自动重定向",
   "setting.remote.auto_redirect_desc": "开启后，将通过探测服务地址的 301/302 重定向来自动获取正确的服务地址。默认关闭。",
+  "setting.remote.allowed_redirect_domains": "允许跳转的远端服务域名清单",
+  "setting.remote.allowed_redirect_domains_desc": "允许在同步过程中自动重定向至这些域名。每行一个域名，支持通配符，例如 '*.example.com' 或 'backup.vault.cn'。相同域名始终允许跳转。",
+  "setting.remote.http_warning": "⚠️ 警告：当前使用的是非加密的 HTTP 协议，所有的 同步数据与 token 在网络传输中都是明文，极易被监听窃取。强烈建议在公网部署时配置 HTTPS 和 wss。",
   "setting.remote.ws_pre_probe": "远端服务WS连接前探测",
   "setting.remote.ws_pre_probe_desc": "开启后，在 WebSocket 连接前将进行 API 健康检查探测。如果本项与上面的自动重定向选项均关闭，则彻底关闭 WS 连接前的健康探测。默认开启。",
   "setting.remote.mobile_status_dot_pos": "手机端服务连通状态显示",
@@ -449,4 +452,18 @@ export default {
   "setting.debug.version_installing_notice": "正在安装指定版本插件...",
   "setting.debug.version_install_success": "插件安装并重载成功",
   "setting.debug.version_install_fail": "插件安装失败",
+
+  // --- ui.sso ---
+  "ui.sso.banner_title_warning": "远端服务同步配置导入",
+  "ui.sso.banner_title_safe": "远端服务同步配置导入",
+  "ui.sso.banner_subtitle_warning": "检测到一个外部链接正尝试为您配置一个未知的同步服务器",
+  "ui.sso.banner_subtitle_safe": "点击确认后将导入以下同步服务器配置",
+  "ui.sso.config_title": "待导入配置信息",
+  "ui.sso.server_url": "服务器地址",
+  "ui.sso.vault": "同步 Vault",
+  "ui.sso.api_token": "API Token",
+  "ui.sso.default_vault": "默认（当前 Vault）",
+  "ui.sso.no_token": "（未提供）",
+  "ui.sso.risk_title": "安全提示：",
+  "ui.sso.risk_desc": " 导入非信任服务器将导致您的所有笔记在自动同步时发送至该服务器。请仅在您完全信任来源时确认。",
 };

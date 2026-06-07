@@ -1,4 +1,4 @@
-import { requestUrl } from "obsidian";
+import { requestUrl, normalizePath } from "obsidian";
 import { unzipSync } from "fflate";
 
 import { dump, getPluginDir, isVersionNew, showSyncNotice } from "./helpers";
@@ -151,6 +151,12 @@ export class VersionManager {
             throw new Error("Latest version information not found.");
         }
 
+        // 限制只允许标准的语义化版本号格式，防范 tag 劫持
+        const versionRegex = /^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$/;
+        if (!versionRegex.test(latest)) {
+            throw new Error(`Invalid update version format: "${latest}". Upgrade aborted.`);
+        }
+
         const source = plugin.settings.updateSource || 'github';
         const tag = latest;
 
@@ -212,6 +218,14 @@ export class VersionManager {
             if (!relativeFilename) continue;
 
             const path = `${pluginDir}/${relativeFilename}`;
+            
+            // Zip Slip 目录穿越安全校验
+            const normalizedPluginDir = normalizePath(pluginDir);
+            const normalizedTargetPath = normalizePath(path);
+            if (!normalizedTargetPath.startsWith(normalizedPluginDir + "/")) {
+                throw new Error(`Zip Slip path traversal attempt blocked: "${relativeFilename}"`);
+            }
+
             dump(`Extracting file: ${realFilename} -> ${path}`);
 
             // 递归确保父目录存在
@@ -227,7 +241,8 @@ export class VersionManager {
                 }
             }
 
-            await plugin.app.vault.adapter.writeBinary(path, content.buffer);
+            const uint8ArrayContent = content as Uint8Array;
+            await plugin.app.vault.adapter.writeBinary(path, uint8ArrayContent.buffer as ArrayBuffer);
         }
 
         dump("Plugin upgrade completed successfully, starting hot reload...");

@@ -828,12 +828,12 @@ export async function saveAutoRedirect(app: App, plugin: FastSync, enabled: bool
 }
 
 /**
- * 获取 自动重定向设置：从 LocalStorage 获取 (Load AutoRedirect setting from LocalStorage)
+ * 获取 自动重定向设置：从 LocalStorage 获取，如果不存在默认开启 (Load AutoRedirect setting from LocalStorage, default true)
  */
 export async function loadAutoRedirect(app: App, plugin: FastSync, dataJsonEnabled?: boolean): Promise<boolean> {
   const enabled = plugin.localStorageManager.getMetadata("autoRedirectEnabled")
-  if (enabled === "" && dataJsonEnabled !== undefined) {
-    return dataJsonEnabled
+  if (enabled === "") {
+    return dataJsonEnabled !== undefined ? dataJsonEnabled : true;
   }
   return enabled === true || enabled === "true"
 }
@@ -857,34 +857,123 @@ export async function loadWsPreProbe(app: App, plugin: FastSync, dataJsonEnabled
 }
 
 /**
- * 保存 ApiToken：直接使用 LocalStorage 明文存储
+ * 计算特定 Vault 的混淆 Key
  */
-export async function saveApiToken(app: App, plugin: FastSync, token: string): Promise<void> {
-  dump(`[ApiToken] Saving token (length: ${token?.length}) to LocalStorage...`)
-  plugin.localStorageManager.setMetadata("apiToken", token)
-  dump("[ApiToken] Saved to LocalStorage (plain text)")
+function getObfuscationKey(app: App): number {
+  const val = app.vault.getName() + "_" + app.vault.configDir;
+  let hash = 0;
+  for (let i = 0; i < val.length; i++) {
+    hash = (hash << 5) - hash + val.charCodeAt(i);
+    hash &= hash;
+  }
+  return Math.abs(hash) || 987654321;
 }
 
 /**
- * 获取 ApiToken：从 LocalStorage 获取，支持从旧的加密格式平滑回退
+ * 对 Token 进行基于当前 Vault 标识的混淆加密
+ */
+export function obfuscateToken(app: App, token: string): string {
+  if (!token) return "";
+  const key = getObfuscationKey(app);
+  let result = "";
+  for (let i = 0; i < token.length; i++) {
+    const charCode = token.charCodeAt(i) ^ (key % 256);
+    result += ("0" + charCode.toString(16)).slice(-2);
+  }
+  return "fns-enc:" + result;
+}
+
+/**
+ * 对混淆加密的 Token 进行解密
+ */
+export function deobfuscateToken(app: App, encryptedToken: string): string {
+  if (!encryptedToken || !encryptedToken.startsWith("fns-enc:")) return "";
+  const rawHex = encryptedToken.substring(8);
+  const key = getObfuscationKey(app);
+  let result = "";
+  for (let i = 0; i < rawHex.length; i += 2) {
+    const charCode = parseInt(rawHex.substring(i, i + 2), 16) ^ (key % 256);
+    result += String.fromCharCode(charCode);
+  }
+  return result;
+}
+
+/**
+ * 通配符域名匹配 (支持 *.example.com 格式)
+ */
+export function matchDomainWildcard(domain: string, pattern: string): boolean {
+  const d = domain.toLowerCase().trim();
+  const p = pattern.toLowerCase().trim();
+  if (d === p) return true;
+  if (p.startsWith("*.")) {
+    const suffix = p.substring(1); // e.g. .example.com
+    return d.endsWith(suffix) || d === p.substring(2);
+  }
+  return false;
+}
+
+/**
+ * 检查是否允许重定向至目标 URL
+ */
+export function isAllowedRedirect(originalUrl: string, targetUrl: string, whitelistString: string): boolean {
+  try {
+    const originalHost = new URL(originalUrl).hostname;
+    const targetHost = new URL(targetUrl).hostname;
+    if (originalHost === targetHost) return true; // 相同域名始终允许
+    
+    if (!whitelistString) return false;
+    
+    const patterns = whitelistString
+      .split(/[\n,;]+/)
+      .map(p => p.trim())
+      .filter(Boolean);
+      
+    return patterns.some(pattern => matchDomainWildcard(targetHost, pattern));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 保存 ApiToken：采用混淆加密存储
+ */
+export async function saveApiToken(app: App, plugin: FastSync, token: string): Promise<void> {
+  dump(`[ApiToken] Saving token (length: ${token?.length}) to LocalStorage...`)
+  const encrypted = obfuscateToken(app, token);
+  plugin.localStorageManager.setMetadata("apiToken", encrypted)
+  dump("[ApiToken] Saved to LocalStorage (obfuscated)")
+}
+
+/**
+ * 获取 ApiToken：从 LocalStorage 获取，支持向前兼容与自动升级混淆加密
  */
 export async function loadApiToken(app: App, plugin: FastSync, dataJsonToken?: string): Promise<string> {
   // 1. 优先尝试从 LocalStorage 获取
-  let token = plugin.localStorageManager.getMetadata("apiToken")
+  let token = plugin.localStorageManager.getMetadata("apiToken") as string;
 
   if (!token && dataJsonToken) {
     token = dataJsonToken;
   }
 
   if (token) {
-    const tokenStr = token as string;
-    // 如果是旧的加密格式，由于已移除 SafeStorage 特性，将无法解密。
-    // 返回空字符串引导用户重新输入，或直接返回（如果已经是明文）。
-    if (tokenStr.startsWith("encrypted:")) {
+    // 如果是旧的 SafeStorage 加密格式，由于已移除特性，将无法解密。
+    if (token.startsWith("encrypted:")) {
       dump("[ApiToken] Found legacy encrypted token, but SafeStorage is removed. Please re-input token.");
       return "";
     }
-    return tokenStr;
+    
+    // 如果已经是新版混淆加密格式，进行解密
+    if (token.startsWith("fns-enc:")) {
+      return deobfuscateToken(app, token);
+    }
+    
+    // 否则，说明是历史保存的明文 Token：
+    // 1. 兼容性读取
+    const plainToken = token;
+    dump("[ApiToken] Found legacy plain text token, automatically upgrading to obfuscated storage...");
+    // 2. 自动将其安全升级保存
+    void saveApiToken(app, plugin, plainToken);
+    return plainToken;
   }
 
   dump("[ApiToken] No token found in any storage")

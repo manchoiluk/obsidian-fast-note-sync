@@ -43,7 +43,12 @@ export class ConfirmModal extends Modal {
             .addButton((btn) => {
                 btn.setButtonText(this.confirmLabel)
                 if (this.isWarning) {
-                    btn.setWarning();
+                    if (typeof btn.setDestructive === "function") {
+                        btn.setDestructive();
+                    } else {
+                        // eslint-disable-next-line @typescript-eslint/no-deprecated
+                        btn.setWarning();
+                    }
                 } else {
                     btn.setCta();
                 }

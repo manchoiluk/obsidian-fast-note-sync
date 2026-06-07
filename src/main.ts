@@ -27,6 +27,7 @@ import { HttpApiService } from "./lib/api/http_api_service";
 import { SyncState } from "./lib/sync/sync_state";
 import { RuntimeConfig } from "./lib/sync/runtime_config";
 import { $ } from "./i18n/lang";
+import { SsoImportModal } from "./views/sso-import-modal";
 
 
 interface LegacySettings extends Partial<PluginSettings> {
@@ -342,17 +343,58 @@ export default class FastSync extends Plugin {
     try {
       this.registerObsidianProtocolHandler(ssoAction, async (data: Record<string, string>) => {
         if (data?.pushApi) {
-          this.settings.api = data.pushApi
-          this.settings.apiToken = data.pushApiToken
-          if (data?.pushVault) {
-            this.settings.vault = data.pushVault
-          }
-          this.wsSettingChange = true
-          this.localStorageManager.clearSyncTime()
-          await this.saveSettings()
-          showSyncNotice($("ui.status.config_imported"), 5000)
+          const getDomainOrHost = (urlStr: string): string => {
+            if (!urlStr) return "";
+            try {
+              let formattedUrl = urlStr.trim();
+              if (!/^[a-zA-Z]+:\/\//.test(formattedUrl)) {
+                formattedUrl = "http://" + formattedUrl;
+              }
+              return new URL(formattedUrl).hostname || "";
+            } catch {
+              let host = urlStr.trim();
+              host = host.replace(/^(https?:\/\/|wss?:\/\/)/i, "");
+              return host.split("/")[0].split(":")[0] || "";
+            }
+          };
+
+          const currentApi = (this.settings.api || "").trim();
+          const currentToken = (this.settings.apiToken || "").trim();
+          const isCurrentEmpty = !currentApi && !currentToken;
+
+          const importApi = (data.pushApi || "").trim();
+          const isSameOrSameDomain = !!currentApi && (
+            currentApi === importApi ||
+            getDomainOrHost(currentApi) === getDomainOrHost(importApi)
+          );
+
+          const isHighRisk = !(isCurrentEmpty || isSameOrSameDomain);
+
+          new SsoImportModal(
+            this.app,
+            {
+              pushApi: data.pushApi,
+              pushApiToken: data.pushApiToken,
+              pushVault: data.pushVault,
+            },
+            () => {
+              void (async () => {
+                this.settings.api = data.pushApi;
+                this.settings.apiToken = data.pushApiToken;
+                if (data?.pushVault) {
+                  this.settings.vault = data.pushVault;
+                }
+                this.wsSettingChange = true;
+                this.localStorageManager.clearSyncTime();
+                await this.saveSettings();
+                showSyncNotice($("ui.status.config_imported"), 5000);
+                void this.reloadServices();
+              })();
+            },
+            isHighRisk
+          ).open();
         }
-      })
+      });
     } catch (e) {
       console.warn(`Fast Note Sync: Protocol handler ${ssoAction} registration skipped or already exists. / 协议处理器注册跳过或已存在:`, e);
     }

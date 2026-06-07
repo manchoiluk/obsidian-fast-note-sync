@@ -11,108 +11,110 @@ import { proto } from "./v1/sync";
  * Encodes payload into specific Protobuf binary message depending on the action.
  * 根据动作类型将载荷编码为特定的 Protobuf 二进制消息。
  */
-function enSendDataPayload(action: WSAction.WSSendAction, payload: any): Uint8Array {
+function enSendDataPayload(action: WSAction.WSSendAction, payload: unknown): Uint8Array {
     if (payload === null || payload === undefined) {
         return new Uint8Array(0);
     }
+    const properties = payload as Record<string, unknown>;
     switch (action) {
         case WSAction.ClientReceiveInfo: {
-            const msg = proto.v1.ClientInfoMessage.create(payload);
+            const msg = proto.v1.ClientInfoMessage.create(properties);
             return proto.v1.ClientInfoMessage.encode(msg).finish();
         }
         case WSAction.NoteReceiveSync: {
-            const msg = proto.v1.NoteSyncRequest.create(payload);
+            const msg = proto.v1.NoteSyncRequest.create(properties);
             return proto.v1.NoteSyncRequest.encode(msg).finish();
         }
         case WSAction.NoteReceiveModify: {
-            const msg = proto.v1.NoteModifyOrCreateRequest.create(payload);
+            const msg = proto.v1.NoteModifyOrCreateRequest.create(properties);
             return proto.v1.NoteModifyOrCreateRequest.encode(msg).finish();
         }
         case WSAction.NoteReceiveCheck: {
-            const msg = proto.v1.NoteUpdateCheckRequest.create(payload);
+            const msg = proto.v1.NoteUpdateCheckRequest.create(properties);
             return proto.v1.NoteUpdateCheckRequest.encode(msg).finish();
         }
         case WSAction.NoteReceiveDelete: {
-            const msg = proto.v1.NoteDeleteRequest.create(payload);
+            const msg = proto.v1.NoteDeleteRequest.create(properties);
             return proto.v1.NoteDeleteRequest.encode(msg).finish();
         }
         case WSAction.NoteReceiveRename: {
-            const msg = proto.v1.NoteRenameRequest.create(payload);
+            const msg = proto.v1.NoteRenameRequest.create(properties);
             return proto.v1.NoteRenameRequest.encode(msg).finish();
         }
         case WSAction.NoteReceiveRePush: {
-            const msg = proto.v1.NoteGetRequest.create(payload);
+            const msg = proto.v1.NoteGetRequest.create(properties);
             return proto.v1.NoteGetRequest.encode(msg).finish();
         }
         case WSAction.FileReceiveSync: {
-            const msg = proto.v1.FileSyncRequest.create(payload);
+            const msg = proto.v1.FileSyncRequest.create(properties);
             return proto.v1.FileSyncRequest.encode(msg).finish();
         }
         case WSAction.FileReceiveUploadCheck: {
-            const msg = proto.v1.FileUploadCheckRequest.create(payload);
+            const msg = proto.v1.FileUploadCheckRequest.create(properties);
             return proto.v1.FileUploadCheckRequest.encode(msg).finish();
         }
         case WSAction.FileReceiveDelete: {
-            const msg = proto.v1.FileDeleteRequest.create(payload);
+            const msg = proto.v1.FileDeleteRequest.create(properties);
             return proto.v1.FileDeleteRequest.encode(msg).finish();
         }
         case WSAction.FileReceiveRename: {
-            const msg = proto.v1.FileRenameRequest.create(payload);
+            const msg = proto.v1.FileRenameRequest.create(properties);
             return proto.v1.FileRenameRequest.encode(msg).finish();
         }
         case WSAction.FileReceiveChunkDownload: {
-            const msg = proto.v1.FileChunkDownloadRequest.create(payload);
+            const msg = proto.v1.FileChunkDownloadRequest.create(properties);
             return proto.v1.FileChunkDownloadRequest.encode(msg).finish();
         }
         case WSAction.FileReceiveRePush: {
-            const msg = proto.v1.FileGetRequest.create(payload);
+            const msg = proto.v1.FileGetRequest.create(properties);
             return proto.v1.FileGetRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveSync: {
-            const msg = proto.v1.SettingSyncRequest.create(payload);
+            const msg = proto.v1.SettingSyncRequest.create(properties);
             return proto.v1.SettingSyncRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveModify: {
-            const msg = proto.v1.SettingModifyOrCreateRequest.create(payload);
+            const msg = proto.v1.SettingModifyOrCreateRequest.create(properties);
             return proto.v1.SettingModifyOrCreateRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveCheck: {
-            const msg = proto.v1.SettingUpdateCheckRequest.create(payload);
+            const msg = proto.v1.SettingUpdateCheckRequest.create(properties);
             return proto.v1.SettingUpdateCheckRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveDelete: {
-            const msg = proto.v1.SettingDeleteRequest.create(payload);
+            const msg = proto.v1.SettingDeleteRequest.create(properties);
             return proto.v1.SettingDeleteRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveClear: {
-            const msg = proto.v1.SettingClearRequest.create(payload);
+            const msg = proto.v1.SettingClearRequest.create(properties);
             return proto.v1.SettingClearRequest.encode(msg).finish();
         }
         case WSAction.SettingReceiveRePush: {
-            const msg = proto.v1.SettingGetRequest.create(payload);
+            const msg = proto.v1.SettingGetRequest.create(properties);
             return proto.v1.SettingGetRequest.encode(msg).finish();
         }
         case WSAction.FolderReceiveSync: {
-            const msg = proto.v1.FolderSyncRequest.create(payload);
+            const msg = proto.v1.FolderSyncRequest.create(properties);
             return proto.v1.FolderSyncRequest.encode(msg).finish();
         }
         case WSAction.FolderReceiveModify: {
-            const msg = proto.v1.FolderCreateRequest.create(payload);
+            const msg = proto.v1.FolderCreateRequest.create(properties);
             return proto.v1.FolderCreateRequest.encode(msg).finish();
         }
         case WSAction.FolderReceiveDelete: {
-            const msg = proto.v1.FolderDeleteRequest.create(payload);
+            const msg = proto.v1.FolderDeleteRequest.create(properties);
             return proto.v1.FolderDeleteRequest.encode(msg).finish();
         }
         case WSAction.FolderReceiveRename: {
-            const msg = proto.v1.FolderRenameRequest.create(payload);
+            const msg = proto.v1.FolderRenameRequest.create(properties);
             return proto.v1.FolderRenameRequest.encode(msg).finish();
         }
-        default:
+        default: {
             // Fallback to JSON encoding if not supported explicitly in proto definitions
             // 对于 proto 定义中未明确支持的消息，降级使用 JSON 编码
             const jsonStr = typeof payload === "string" ? payload : JSON.stringify(payload);
             return new TextEncoder().encode(jsonStr);
+        }
     }
 }
 
@@ -120,14 +122,14 @@ function enSendDataPayload(action: WSAction.WSSendAction, payload: any): Uint8Ar
  * Decodes specific Protobuf binary message depending on the action.
  * 根据动作类型解码特定的 Protobuf 二进制消息。
  */
-function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Array): any {
+function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Array): unknown {
     if (!data || data.length === 0) {
         return null;
     }
-    const tryJsonDecode = () => {
+    const tryJsonDecode = (): unknown => {
         try {
             const jsonStr = new TextDecoder().decode(data);
-            return JSON.parse(jsonStr);
+            return JSON.parse(jsonStr) as unknown;
         } catch {
             return null;
         }
@@ -288,7 +290,7 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
                 const pbObj = proto.v1.FileSyncUploadMessage.toObject(
                     proto.v1.FileSyncUploadMessage.decode(data),
                     { defaults: true, longs: Number }
-                );
+                ) as proto.v1.IFileSyncUploadMessage;
                 return {
                     path: pbObj.path,
                     pathHash: pbObj.pathHash,
@@ -304,7 +306,7 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
                 const pbObj = proto.v1.FileSyncDownloadMessage.toObject(
                     proto.v1.FileSyncDownloadMessage.decode(data),
                     { defaults: true, longs: Number }
-                );
+                ) as proto.v1.IFileSyncDownloadMessage;
                 return {
                     path: pbObj.path,
                     contentHash: pbObj.contentHash,
@@ -503,7 +505,7 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
  * Encodes DTO and action into a complete WSMessage Protobuf packet for sending.
  * 将 DTO 与动作编码为完整的 WSMessage Protobuf 报文以供发送。
  */
-export function enSendDTOToProtobuf(action: WSAction.WSSendAction, payload: any): Uint8Array {
+export function enSendDTOToProtobuf(action: WSAction.WSSendAction, payload: unknown): Uint8Array {
     const innerBytes = enSendDataPayload(action, payload);
     const wsMsg = proto.v1.WSMessage.create({
         type: action,
@@ -517,7 +519,7 @@ export interface DeserializedWSResponse {
     code: number;
     status: boolean;
     message: string;
-    data: any;
+    data: unknown;
     details: string;
     vault: string;
     context: string;

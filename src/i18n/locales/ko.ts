@@ -449,4 +449,18 @@ export default {
   "setting.debug.version_installing_notice": "지정 버전 플러그인 설치 중...",
   "setting.debug.version_install_success": "플러그인 설치 및 재로드 성공",
   "setting.debug.version_install_fail": "플러그인 설치 실패",
+
+  // --- ui.sso ---
+  "ui.sso.banner_title_warning": "원격 서비스 동기화 설정 가져오기",
+  "ui.sso.banner_title_safe": "원격 서비스 동기화 설정 가져오기",
+  "ui.sso.banner_subtitle_warning": "외부 링크가 알 수 없는 동기화 서버를 구성하려고 시도하고 있습니다",
+  "ui.sso.banner_subtitle_safe": "확인을 누르면 다음 동기화 서버 설정이 가져오기 됩니다",
+  "ui.sso.config_title": "가져올 설정 정보",
+  "ui.sso.server_url": "서버 주소",
+  "ui.sso.vault": "동기화 Vault",
+  "ui.sso.api_token": "API Token",
+  "ui.sso.default_vault": "기본값(현재 Vault)",
+  "ui.sso.no_token": "(제공되지 않음)",
+  "ui.sso.risk_title": "보안 경고:",
+  "ui.sso.risk_desc": " 신뢰할 수 없는 서버를 가져오면 자동 동기화 시 모든 노트가 해당 서버로 전송됩니다. 소스를 전적으로 신뢰하는 경우에만 확인하십시오.",
 };
