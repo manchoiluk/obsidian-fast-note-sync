@@ -905,8 +905,9 @@ export class SettingTab extends PluginSettingTab {
       .setDesc($("setting.sync.clear_remote_desc"))
       .setClass("fns-setting-item-vertical")
       .addButton((btn) => {
-        if (typeof btn.setDestructive === "function") {
-          btn.setDestructive();
+        const destBtn = btn as unknown as { setDestructive(): void };
+        if (typeof destBtn.setDestructive === "function") {
+          destBtn.setDestructive();
         } else {
           btn.setWarning();
         }

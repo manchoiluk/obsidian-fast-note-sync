@@ -43,8 +43,9 @@ export class ConfirmModal extends Modal {
             .addButton((btn) => {
                 btn.setButtonText(this.confirmLabel)
                 if (this.isWarning) {
-                    if (typeof btn.setDestructive === "function") {
-                        btn.setDestructive();
+                    const destBtn = btn as unknown as { setDestructive(): void };
+                    if (typeof destBtn.setDestructive === "function") {
+                        destBtn.setDestructive();
                     } else {
                         // eslint-disable-next-line @typescript-eslint/no-deprecated
                         btn.setWarning();
