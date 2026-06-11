@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
       actions: write    # 必须：允许修改 .github/workflows 下的文件
-      workflows: write  # 显式允许工作流修改
+      
 
 
     steps:
