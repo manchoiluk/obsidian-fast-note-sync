@@ -1,5 +1,5 @@
 import { App, Modal, Setting } from "obsidian";
-import { DebugLogManager } from "../lib/debug_log_manager";
+import { DebugLogManager } from "../lib/utils/debug_log_manager";
 import { $ } from "../i18n/lang";
 
 export class DebugLogModal extends Modal {

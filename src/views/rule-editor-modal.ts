@@ -1,5 +1,5 @@
 import { App, Modal } from "obsidian";
-import { SyncRule } from "../lib/helps";
+import { SyncRule } from "../lib/utils/helpers";
 import { RuleEditor } from "./rule-editor";
 import { PathSuggestOptions } from "./path-suggest";
 

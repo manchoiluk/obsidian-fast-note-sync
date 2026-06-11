@@ -1,7 +1,7 @@
 import { App, Modal, setIcon, ButtonComponent, setTooltip } from "obsidian";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
-import { showSyncNotice } from "../lib/helps";
+import { showSyncNotice } from "../lib/utils/helpers";
 
 export class ShareModal extends Modal {
     private plugin: FastSync;

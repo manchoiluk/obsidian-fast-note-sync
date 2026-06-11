@@ -1,12 +1,12 @@
 
 import * as React from "react";
 
-import { NoteHistoryItem, HttpApiService, NoteHistoryDetail as NoteHistoryDetailData } from "../../lib/api";
+import { NoteHistoryItem, HttpApiService, NoteHistoryDetail as NoteHistoryDetailData } from "../../lib/api/http_api_service";
 import { HistoryDetail } from "./history-detail";
 import { LucideIcon } from "./lucide-icon";
 import type FastSync from "../../main";
 import { $ } from "../../i18n/lang";
-import { showSyncNotice, dumpError } from "../../lib/helps";
+import { showSyncNotice, dumpError } from "../../lib/utils/helpers";
 import { ConfirmModal } from "../confirm-modal";
 
 

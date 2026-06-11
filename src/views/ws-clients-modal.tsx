@@ -5,8 +5,8 @@ import * as React from "react";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
 import { LucideIcon } from "./note-history/lucide-icon";
-import { WSClient } from "../lib/api";
-import { dumpError } from "../lib/helps";
+import { WSClient } from "../lib/api/http_api_service";
+import { dumpError } from "../lib/utils/helpers";
 
 export class WSClientsModal extends Modal {
     private root: Root | null = null;

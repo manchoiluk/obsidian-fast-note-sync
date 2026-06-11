@@ -1,8 +1,8 @@
 import { App, Modal, setIcon, ButtonComponent } from "obsidian";
 
 import { ConfirmModal } from "./confirm-modal";
-import { formatFileSize, showSyncNotice, dumpError } from "../lib/helps";
-import { HttpApiService } from "../lib/api";
+import { formatFileSize, showSyncNotice, dumpError } from "../lib/utils/helpers";
+import { HttpApiService } from "../lib/api/http_api_service";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
 

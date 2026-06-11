@@ -1,6 +1,6 @@
 import { App, MarkdownRenderer, Component, Platform } from "obsidian";
 import { PathSuggest, PathSuggestOptions } from "./path-suggest";
-import { SyncRule } from "../lib/helps";
+import { SyncRule } from "../lib/utils/helpers";
 import { $ } from "../i18n/lang";
 
 export class RuleEditor {

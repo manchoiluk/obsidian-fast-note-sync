@@ -1,14 +1,22 @@
+import obsidianmd from "eslint-plugin-obsidianmd";
 import tsparser from "@typescript-eslint/parser";
 import { defineConfig } from "eslint/config";
-import obsidianmd from "eslint-plugin-obsidianmd";
+
 
 export default defineConfig([
   {
-    ignores: ["src/lib/helps_obsidian_bypass.ts"],
+    ignores: [
+      "src/pb/**",
+      "main.js",
+      "styles.css",
+      "dist/**",
+      "src/lib/helpers_obsidian_bypass.js"
+    ],
   },
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
+    ignores: ["src/pb/**"],
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./tsconfig.json" },

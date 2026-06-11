@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { KofiImage, WXImage } from "src/lib/images";
+import { KofiImage, WXImage } from "src/lib/utils/helpers_image";
 import { createPortal } from "react-dom";
-import { dump } from "src/lib/helps";
+import { dump } from "src/lib/utils/helpers";
 import { setIcon } from "obsidian";
 import FastSync from "src/main";
 
-import { UserDTO, SupportRecord, SupportPager } from "../lib/api";
+import { UserDTO, SupportRecord, SupportPager } from "../lib/api/http_api_service";
 import { LucideIcon } from "./note-history/lucide-icon";
 import { $, getLocale } from "../i18n/lang";
 
@@ -22,11 +22,11 @@ async function getClipboardContent(plugin: FastSync): Promise<void> {
 
     plugin.localStorageManager.clearSyncTime()
     await plugin.saveAndReloadServices()
-    plugin.settingTab.display()
+    plugin.settingTab.refresh()
 
     window.setTimeout(() => {
       plugin.clipboardReadTip = ""
-      plugin.settingTab.display()
+      plugin.settingTab.refresh()
     }, 2000)
   }
 
@@ -35,11 +35,11 @@ async function getClipboardContent(plugin: FastSync): Promise<void> {
     plugin.clipboardReadTip = tip
 
     await plugin.saveAndReloadServices()
-    plugin.settingTab.display()
+    plugin.settingTab.refresh()
 
     window.setTimeout(() => {
       plugin.clipboardReadTip = ""
-      plugin.settingTab.display()
+      plugin.settingTab.refresh()
     }, 2000)
   }
 

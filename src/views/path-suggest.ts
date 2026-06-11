@@ -1,5 +1,5 @@
 import { App, AbstractInputSuggest, TFolder, setIcon } from "obsidian";
-import { dumpError } from "../lib/helps";
+import { dumpError } from "../lib/utils/helpers";
 
 
 export interface PathSuggestOptions {

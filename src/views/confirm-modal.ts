@@ -43,7 +43,13 @@ export class ConfirmModal extends Modal {
             .addButton((btn) => {
                 btn.setButtonText(this.confirmLabel)
                 if (this.isWarning) {
-                    btn.setWarning();
+                    const destBtn = btn as unknown as { setDestructive(): void };
+                    if (typeof destBtn.setDestructive === "function") {
+                        destBtn.setDestructive();
+                    } else {
+                        const legacyBtn = btn as unknown as { setWarning(): void };
+                        legacyBtn.setWarning();
+                    }
                 } else {
                     btn.setCta();
                 }
