@@ -88,9 +88,15 @@ export class ShareIndicatorManager {
                 if (targetEl.getAttribute('data-fns-shared') !== 'true') {
                     targetEl.setAttribute('data-fns-shared', 'true');
                 }
+                if (el.getAttribute('data-fns-shared') !== 'true') {
+                    el.setAttribute('data-fns-shared', 'true');
+                }
             } else {
                 if (targetEl.hasAttribute('data-fns-shared')) {
                     targetEl.removeAttribute('data-fns-shared');
+                }
+                if (el.hasAttribute('data-fns-shared')) {
+                    el.removeAttribute('data-fns-shared');
                 }
             }
         });

@@ -2785,9 +2785,7 @@ body .suggestion-container {
 }
 
 /* Share Indicator (Data Attribute based) */
-.nav-file[data-fns-shared=true] .nav-file-title-content::before,
 .nav-file-title[data-fns-shared=true] .nav-file-title-content::before,
-.nav-folder[data-fns-shared=true] .nav-folder-title-content::before,
 .nav-folder-title[data-fns-shared=true] .nav-folder-title-content::before,
 [data-drag-path][data-fns-shared=true] .nn-navitem-name::before,
 [data-drag-path][data-fns-shared=true] .nn-file-name::before {
