@@ -222,6 +222,7 @@ export default {
   "ui.menu.default_sync_desc": "检查上次同步以来的增量更新",
   "ui.menu.full_sync": "完整同步",
   "ui.menu.full_sync_desc": "会和服务端进行完整比对，同步所有文件，同时清理本地所有空文件夹",
+  "ui.menu.reconnecting": "正在重新连接，连接成功后将自动同步...",
   "ui.menu.enable_sync": "开启同步",
   "ui.menu.enable_sync_desc": "已经开启设置的所有同步",
   "ui.menu.disable_sync": "临时关闭同步",

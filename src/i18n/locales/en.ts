@@ -222,6 +222,7 @@ export default {
   "ui.menu.default_sync_desc": "Check incremental updates since the last sync",
   "ui.menu.full_sync": "Full Sync",
   "ui.menu.full_sync_desc": "Performs a full comparison with the server, syncs all files, and cleans up all empty local folders",
+  "ui.menu.reconnecting": "Reconnecting. Will automatically sync after connection is established...",
   "ui.menu.enable_sync": "Enable Sync",
   "ui.menu.enable_sync_desc": "All configured syncs are currently enabled.",
   "ui.menu.disable_sync": "Temporarily Disable Sync",

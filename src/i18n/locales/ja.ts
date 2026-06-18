@@ -222,6 +222,7 @@ export default {
   "ui.menu.default_sync_desc": "上次同期以降の増分更新を確認します",
   "ui.menu.full_sync": "完全同期",
   "ui.menu.full_sync_desc": "サーバーと完全に比較し、すべてのファイルを同期すると同時に、ローカルのすべての空フォルダを削除します",
+  "ui.menu.reconnecting": "再接続中、接続が完了すると自動的に同期されます...",
   "ui.menu.enable_sync": "同期を有効化",
   "ui.menu.enable_sync_desc": "設定で有効にしたすべての同期",
   "ui.menu.disable_sync": "一時的に同期を無効化",

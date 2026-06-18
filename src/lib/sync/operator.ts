@@ -418,7 +418,11 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.syncState.activeSyncContext = context; // 记录活跃的同步上下文 / Record the active sync context
     dump(`Sync context generated: ${context}`);
     if (!plugin.menuManager.ribbonIconStatus) {
-      showSyncNotice($("setting.remote.disconnected"));
+      // WebSocket 处于断开/退避状态，立即触发重连，连接成功后自动执行同步
+      // WebSocket is disconnected/in backoff, trigger immediate reconnect and auto-sync on connect
+      plugin.syncState.pendingSyncType = isLoadLastTime ? 'incremental' : 'full';
+      plugin.websocket.triggerReconnect();
+      showSyncNotice($("ui.menu.reconnecting"));
       plugin.syncState.activeSyncContext = null; // 早期退出，清空上下文 / Early return, reset the context
       return;
     }

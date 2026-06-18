@@ -1600,7 +1600,6 @@ export class SettingTab extends PluginSettingTab {
         slider
           .setLimits(1, 200, 1)
           .setValue(this.plugin.settings.maxConcurrentUploads)
-          .setDynamicTooltip()
           .onChange(async (value) => {
             if (value != this.plugin.settings.maxConcurrentUploads) {
               this.plugin.settings.maxConcurrentUploads = value

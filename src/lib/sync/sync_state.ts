@@ -34,6 +34,9 @@ export class SyncState {
   currentSyncType: "full" | "incremental" = "incremental";
   /** 当前活跃的同步上下文 UUID / Current active sync context UUID */
   activeSyncContext: string | null = null;
+  /** 用户通过 ribbon 手动触发的待执行同步类型（断开时暂存，重连成功后执行）
+   *  Pending sync type triggered manually via ribbon (stored when disconnected, executed after reconnect) */
+  pendingSyncType: 'incremental' | 'full' | null = null;
 
   // ─── Per-type sync task statistics ───────────────────────────────────────────
   noteSyncTasks: SyncTaskStats = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };

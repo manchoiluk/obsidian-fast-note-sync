@@ -435,5 +435,6 @@
   "ui.sso.default_vault": "d89b9f2d9e052731edae977816d09323",
   "ui.sso.no_token": "d41773f2e3dcf605ae8601846a51a797",
   "ui.sso.risk_title": "f48072dce44c39b5785db7443d888e82",
-  "ui.sso.risk_desc": "ef6c834ef03aae0b086432a21a11ff30"
+  "ui.sso.risk_desc": "ef6c834ef03aae0b086432a21a11ff30",
+  "ui.menu.reconnecting": "361f503e139d65418b5b2dcdaaf54ad9"
 }

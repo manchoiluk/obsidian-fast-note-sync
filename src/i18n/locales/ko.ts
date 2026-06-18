@@ -222,6 +222,7 @@ export default {
   "ui.menu.default_sync_desc": "마지막 동기화 이후의 증분 업데이트 확인",
   "ui.menu.full_sync": "전체 동기화",
   "ui.menu.full_sync_desc": "서버와 전체 비교를 수행하여 모든 파일을 동기화하고 로컬의 모든 빈 폴더를 정리합니다",
+  "ui.menu.reconnecting": "재연결 중이며, 연결이 성공하면 자동으로 동기화됩니다...",
   "ui.menu.enable_sync": "동기화 활성화",
   "ui.menu.enable_sync_desc": "설정된 모든 동기화가 활성화되어 있습니다.",
   "ui.menu.disable_sync": "동기화 일시 중지",

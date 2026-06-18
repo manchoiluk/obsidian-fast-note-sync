@@ -3,7 +3,7 @@ import { moment, Platform } from "obsidian";
 import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue } from "./operator_file";
 import { dump, addRandomParam, showSyncNotice, safeStringify } from "../utils/helpers";
 import { enSendDTOToProtobuf, deReceivePacket } from "../../pb/protobuf_mapper";
-import { receiveOperators, startupSync } from "./operator";
+import { receiveOperators, startupSync, startupFullSync } from "./operator";
 import { SyncLogManager } from "./sync_log_manager";
 import * as WSAction from "./websocket_action";
 import { WebSocketClient } from "./websocket_client";
@@ -343,12 +343,32 @@ export class WebSocketManager {
     this.plugin.isFirstSync = true;
     this.plugin.isWatchEnabled = true;
 
+    // 检查是否有用户手动触发的待执行同步 / Check if user manually triggered a pending sync
+    const pendingType = this.plugin.syncState.pendingSyncType;
+    this.plugin.syncState.pendingSyncType = null;
+
     if (this.plugin.settings.manualSyncEnabled) {
-      dump("Full Manual Sync Mode enabled, skipping startup sync");
+      // 如果用户手动触发了同步，即使 manualSyncEnabled 也执行一次
+      // If user manually triggered sync, execute once even with manualSyncEnabled
+      if (pendingType) {
+        if (pendingType === 'full') {
+          void startupFullSync(this.plugin);
+        } else {
+          void startupSync(this.plugin);
+        }
+      } else {
+        dump("Full Manual Sync Mode enabled, skipping startup sync");
+      }
       return;
     }
 
-    startupSync(this.plugin);
+    // 有 pending 同步请求时，使用 pending 的类型；否则走默认增量同步
+    // If pending sync requested, use its type; otherwise default incremental
+    if (pendingType === 'full') {
+      void startupFullSync(this.plugin);
+    } else {
+      void startupSync(this.plugin);
+    }
   }
 
   private handleConflictError(data: StructuredMessageData) {
