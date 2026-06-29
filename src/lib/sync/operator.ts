@@ -557,7 +557,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
 
       // --- PERF: Limit hash computations per sync cycle ---
       // Prevents V8 heap exhaustion on first full scan of large vaults.
-      const MAX_HASH_PER_CYCLE = 5000;
+      const MAX_HASH_PER_CYCLE = plugin.settings.hashSyncLimitEnabled !== false ? (plugin.settings.hashSyncLimit ?? 20000) : Infinity;
       let hashComputeCount = 0;
 
       for (const file of list) {

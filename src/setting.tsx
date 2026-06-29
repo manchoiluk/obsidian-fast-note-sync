@@ -106,6 +106,10 @@ export interface PluginSettings {
   noteSyncLimit: number
   /** 附件同步大小限制 (MB) / Attachment sync size limit (MB) */
   attachmentSyncLimit: number
+  /** 是否启用哈希计算数量限制 */
+  hashSyncLimitEnabled: boolean
+  /** 哈希计算数量限制 */
+  hashSyncLimit: number
 }
 
 /**
@@ -165,6 +169,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   protobufEnabled: true,
   noteSyncLimit: 20,
   attachmentSyncLimit: 50,
+  hashSyncLimitEnabled: true,
+  hashSyncLimit: 20000,
 }
 
 export type TabId = "GENERAL" | "DISPLAY" | "SHORTCUT" | "REMOTE" | "SYNC" | "CLOUD" | "DEBUG"
@@ -220,6 +226,9 @@ export class SettingTab extends PluginSettingTab {
   display(): void {
     this.component.load()
     const { containerEl: set } = this
+
+    // 记录当前的滚动位置 / Record current scroll position
+    const savedScrollTop = set.scrollTop
 
     // 1. 初始化基础布局结构 (仅在首次或容器被清空时)
     const headerEl = set.querySelector(".fns-setting-tab-header") as HTMLElement
@@ -306,6 +315,12 @@ export class SettingTab extends PluginSettingTab {
     if (this.searchQuery) {
       this.applySearchFilter(contentEl)
     }
+
+    // 还原滚动位置 / Restore scroll position
+    set.scrollTop = savedScrollTop
+    window.requestAnimationFrame(() => {
+      set.scrollTop = savedScrollTop
+    })
   }
 
   private updateHeaderSelection(headerEl: HTMLElement) {
@@ -1572,6 +1587,33 @@ export class SettingTab extends PluginSettingTab {
         }),
     )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.sync.note_limit_desc"))
+
+    new Setting(set).setName($("setting.sync.hash_limit_toggle")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
+      toggle.setValue(this.plugin.settings.hashSyncLimitEnabled !== false).onChange(async (value) => {
+        if (value != this.plugin.settings.hashSyncLimitEnabled) {
+          this.plugin.settings.hashSyncLimitEnabled = value
+          this.refresh()
+          await this.plugin.saveAndReloadServices()
+        }
+      }),
+    )
+    this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.sync.hash_limit_toggle_desc"))
+
+    if (this.plugin.settings.hashSyncLimitEnabled !== false) {
+      new Setting(set).setName($("setting.sync.hash_limit")).addText((text) =>
+        text
+          .setPlaceholder("20000")
+          .setValue((this.plugin.settings.hashSyncLimit ?? 20000).toString())
+          .onChange(async (value) => {
+            const numValue = parseInt(value)
+            if (!isNaN(numValue) && numValue >= 0) {
+              this.plugin.settings.hashSyncLimit = numValue
+              await this.plugin.saveAndReloadServices()
+            }
+          }),
+      )
+      this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.sync.hash_limit_desc"))
+    }
 
     new Setting(set).setName($("setting.sync.pdf_state")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
       toggle.setValue(this.plugin.settings.pdfSyncEnabled).onChange(async (value) => {
