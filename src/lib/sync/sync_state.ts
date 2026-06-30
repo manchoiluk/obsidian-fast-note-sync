@@ -39,10 +39,39 @@ export class SyncState {
   pendingSyncType: 'incremental' | 'full' | null = null;
 
   // ─── Per-type sync task statistics ───────────────────────────────────────────
-  noteSyncTasks: SyncTaskStats = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
-  fileSyncTasks: SyncTaskStats = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
-  configSyncTasks: SyncTaskStats = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
-  folderSyncTasks: SyncTaskStats = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
+  onCompletedChange?: (type: "note" | "file" | "setting" | "folder") => void;
+
+  private createStatsProxy(type: "note" | "file" | "setting" | "folder", initVal: SyncTaskStats): SyncTaskStats {
+    const self = this;
+    return new Proxy(initVal, {
+      set(target, prop, value, receiver) {
+        const oldVal = Reflect.get(target, prop, receiver);
+        const success = Reflect.set(target, prop, value, receiver);
+        if (success && prop === "completed" && value !== oldVal) {
+          if (self.onCompletedChange) {
+            self.onCompletedChange(type);
+          }
+        }
+        return success;
+      }
+    });
+  }
+
+  private _noteSyncTasks = this.createStatsProxy("note", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  get noteSyncTasks() { return this._noteSyncTasks; }
+  set noteSyncTasks(v: SyncTaskStats) { this._noteSyncTasks = this.createStatsProxy("note", v); }
+
+  private _fileSyncTasks = this.createStatsProxy("file", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  get fileSyncTasks() { return this._fileSyncTasks; }
+  set fileSyncTasks(v: SyncTaskStats) { this._fileSyncTasks = this.createStatsProxy("file", v); }
+
+  private _configSyncTasks = this.createStatsProxy("setting", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  get configSyncTasks() { return this._configSyncTasks; }
+  set configSyncTasks(v: SyncTaskStats) { this._configSyncTasks = this.createStatsProxy("setting", v); }
+
+  private _folderSyncTasks = this.createStatsProxy("folder", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  get folderSyncTasks() { return this._folderSyncTasks; }
+  set folderSyncTasks(v: SyncTaskStats) { this._folderSyncTasks = this.createStatsProxy("folder", v); }
 
   // ─── Overall progress counters ────────────────────────────────────────────────
   syncTypeCompleteCount = 0;  // 已完成同步的类型计数 / Completed sync type count

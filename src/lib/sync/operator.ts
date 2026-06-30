@@ -41,9 +41,9 @@ export const clearAllHashes = async (plugin: FastSync) => {
  * 检查同步是否完成
  */
 export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncStartTime?: number) {
-  // 超时保底：如果同步超过 30 秒仍未完成，强制结束并恢复 watch，防止因任务计数异常导致永远无法发送
-  // Safety timeout: if sync exceeds 30s, force completion and re-enable watch to prevent permanent send blockage
-  const SYNC_TIMEOUT_MS = 30000;
+  // 超时保底：调大为 300s 以支持超大库（多批次）的分批同步，防止误判超时终止
+  // Safety timeout: increased to 300s to support large vaults with many batches, preventing false timeout termination
+  const SYNC_TIMEOUT_MS = 300000;
   if (syncStartTime && Date.now() - syncStartTime > SYNC_TIMEOUT_MS) {
     if (intervalId) window.clearInterval(intervalId);
     dump(`Sync completion timeout after ${SYNC_TIMEOUT_MS}ms, force enabling watch. Tasks: note=${JSON.stringify(plugin.noteSyncTasks)}, file=${JSON.stringify(plugin.fileSyncTasks)}, folder=${JSON.stringify(plugin.folderSyncTasks)}, config=${JSON.stringify(plugin.configSyncTasks)}`)
@@ -286,8 +286,46 @@ export const receiveOperators: Map<WSAction.WSReceiveAction, OperatorHandler> = 
   [WSAction.FolderSyncDelete, receiveFolderSyncDelete],
   [WSAction.FolderSyncRename, receiveFolderSyncRename],
   [WSAction.FolderSyncEnd, (data, plugin) => receiveSyncEndWrapper(data, plugin, "folder")],
+  // --- 分批同步确认 BatchAck handlers ---
+  // Each handler emits the event on the websocket bus so sendInBatches can unblock the await.
+  [WSAction.NoteSyncBatchAck, (data, plugin) => { plugin.websocket.emit("NoteSyncBatchAck", data); }],
+  [WSAction.FileSyncBatchAck, (data, plugin) => { plugin.websocket.emit("FileSyncBatchAck", data); }],
+  [WSAction.SettingSyncBatchAck, (data, plugin) => { plugin.websocket.emit("SettingSyncBatchAck", data); }],
+  [WSAction.FolderSyncBatchAck, (data, plugin) => { plugin.websocket.emit("FolderSyncBatchAck", data); }],
   [WSAction.ShareSyncRefresh, receiveShareSyncRefresh],
+  [WSAction.FolderSyncPage, (data, plugin) => handleSyncPage(data, plugin, "folder")],
+  [WSAction.NoteSyncPage, (data, plugin) => handleSyncPage(data, plugin, "note")],
+  [WSAction.FileSyncPage, (data, plugin) => handleSyncPage(data, plugin, "file")],
+  [WSAction.SettingSyncPage, (data, plugin) => handleSyncPage(data, plugin, "setting")],
 ] as [WSAction.WSReceiveAction, OperatorHandler][]);
+
+/**
+ * 统一处理分页控制消息
+ */
+function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "file" | "setting" | "folder"): void {
+  const pageMsg = data as {
+    pageIndex: number;
+    pageSize: number;
+    totalCount: number;
+    isLast: boolean;
+    context: string;
+  };
+
+  dump(`[PageSync] Received page info for ${type}, pageIndex: ${pageMsg.pageIndex}, totalCount: ${pageMsg.totalCount}, isLast: ${pageMsg.isLast}`);
+
+  plugin.syncPageStateMap.set(type, {
+    pageIndex: pageMsg.pageIndex,
+    pageSize: pageMsg.pageSize,
+    totalCount: pageMsg.totalCount,
+    isLast: pageMsg.isLast,
+    completedCount: 0
+  });
+
+  if (pageMsg.totalCount === 0) {
+    dump(`[PageSync] Page ${pageMsg.pageIndex} for ${type} is empty. Sending ACK immediately.`);
+    plugin.sendSyncPageAck(type, pageMsg.pageIndex);
+  }
+}
 
 /**
  * 收到分享状态变更通知，全量刷新分享路径
@@ -856,19 +894,9 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
       folderTime = Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"));
     }
 
-    // --- FIX: Cap ALL sync arrays to prevent WebSocket message overflow ---
-    // Large vaults produce 50000+ note entries. Even though each is only ~200 bytes,
-    // 50000 entries × 200 bytes = 10MB+ JSON payload which silently fails on WebSocket send.
-    // Cap to 2000 items. Remaining items are already hash-cached and will sync on
-    // subsequent incremental syncs when modified.
-    const MAX_SYNC_ITEMS = 2000;
-    const MAX_SYNC_FOLDERS = 2000;
-    if (notes.length > MAX_SYNC_ITEMS || files.length > MAX_SYNC_ITEMS || folders.length > MAX_SYNC_FOLDERS) {
-      dump(`[Sync] Capping sync arrays: notes ${notes.length}→${Math.min(notes.length, MAX_SYNC_ITEMS)}, files ${files.length}→${Math.min(files.length, MAX_SYNC_ITEMS)}, folders ${folders.length}→${Math.min(folders.length, MAX_SYNC_FOLDERS)}`);
-    }
-    if (notes.length > MAX_SYNC_ITEMS) notes.length = MAX_SYNC_ITEMS;
-    if (files.length > MAX_SYNC_ITEMS) files.length = MAX_SYNC_ITEMS;
-    if (folders.length > MAX_SYNC_FOLDERS) folders.length = MAX_SYNC_FOLDERS;
+    // 分批发送方案替代原截断方案：不再对 sync 数组截断，所有数据通过 sendInBatches 分批发送
+    // Replaced truncation with batch-send: arrays are no longer capped; sendInBatches handles chunking
+    dump(`[Sync] Arrays ready: notes=${notes.length}, files=${files.length}, folders=${folders.length}, configs=${configs.length}`);
 
     const noteData: NoteSyncData = { lastTime: noteTime, notes, delNotes, missingNotes };
     const fileData: FileSyncData = { lastTime: fileTime, files, delFiles, missingFiles };
@@ -925,6 +953,61 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
 
 
 /**
+ * 串行分批发送 WebSocket 消息的通用辅助函数
+ * 对于中间批次，等待服务端返回 BatchAck 后再发送下一批；最后一批直接发出，交由原有的 SyncEnd 流程。
+ *
+ * Generic helper for serial batch-sending WebSocket messages.
+ * For non-final batches, waits for server BatchAck before sending the next batch.
+ * The final batch is sent directly, handled by the existing SyncEnd flow.
+ */
+async function sendInBatches<T extends Record<string, unknown>>(
+  plugin: FastSync,
+  action: string,
+  batchAckEvent: string,
+  items: T[],
+  buildPayload: (chunk: T[], batchIndex: number, totalBatches: number) => Record<string, unknown>,
+  onLastBatchAcked?: (allItems: T[]) => void,
+  chunkSize = 2000
+): Promise<void> {
+  const total = items.length;
+  const totalBatches = Math.max(1, Math.ceil(total / chunkSize));
+
+  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+    const start = batchIndex * chunkSize;
+    const chunk = total > 0 ? items.slice(start, start + chunkSize) : [];
+    const isLast = batchIndex === totalBatches - 1;
+    const payload = buildPayload(chunk, batchIndex, totalBatches);
+
+    if (!isLast) {
+      // 非最后批：发送并阻塞等待服务端 BatchAck，超时则抛出异常
+      // Non-final batch: send and await server BatchAck; throw on timeout
+      await new Promise<void>((resolve, reject) => {
+        const ackHandler = (data: unknown) => {
+          const d = data as { context?: string; batchIndex?: number };
+          if (d.context === payload.context && d.batchIndex === batchIndex) {
+            plugin.websocket.off(batchAckEvent, ackHandler);
+            resolve();
+          }
+        };
+        plugin.websocket.on(batchAckEvent, ackHandler);
+        plugin.websocket.SendMessage(action, payload);
+
+        window.setTimeout(() => {
+          plugin.websocket.off(batchAckEvent, ackHandler);
+          reject(new Error(`[BatchSync] ${action} batch ${batchIndex}/${totalBatches} ack timeout (15s)`));
+        }, 15000);
+      });
+    } else {
+      // 最后批：发送后调用回调，交由原有 SyncEnd 流程完成
+      // Final batch: send then invoke callback; existing SyncEnd flow handles completion
+      plugin.websocket.SendMessage(action, payload, undefined, () => {
+        onLastBatchAcked?.(items);
+      });
+    }
+  }
+}
+
+/**
  * 发送同步请求
  * 先发 FolderSync 并等待文件夹结构在本地落地，再发 NoteSync/FileSync，消除并发 createFolder 竞争
  * Send FolderSync first and wait for folder structure to be created locally before sending NoteSync/FileSync,
@@ -936,110 +1019,144 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
 
   if (plugin.settings.syncEnabled && shouldSyncNotes) {
 
-
-    const noteSyncData = {
-      vault: plugin.settings.vault,
-      lastTime: noteData.lastTime,
-      notes: noteData.notes,
-      context: noteData.context,
-      ...(plugin.settings.offlineDeleteSyncEnabled ? { delNotes: noteData.delNotes } : {}),
-      ...(noteData.missingNotes.length > 0 ? { missingNotes: noteData.missingNotes } : {}),
-    };
-
-    const fileSyncData = {
-      vault: plugin.settings.vault,
-      lastTime: fileData.lastTime,
-      files: fileData.files,
-      context: fileData.context,
-      ...(plugin.settings.offlineDeleteSyncEnabled ? { delFiles: fileData.delFiles } : {}),
-      ...(fileData.missingFiles.length > 0 ? { missingFiles: fileData.missingFiles } : {}),
-    };
-
-    const folderSyncData = {
-      vault: plugin.settings.vault,
-      lastTime: folderData.lastTime,
-      folders: folderData.folders,
-      context: folderData.context,
-      ...(plugin.settings.offlineDeleteSyncEnabled ? { delFolders: folderData.delFolders } : {}),
-      ...(folderData.missingFolders.length > 0 ? { missingFolders: folderData.missingFolders } : {}),
-    };
-
-    // 第一步：先发 FolderSync，确保文件夹结构先于笔记/附件在本地建立
-    // Step 1: Send FolderSync first to ensure folder structure is created before notes/files
-    dump(`[Sync] Sending: ${folderSyncData.folders.length} folders, ${noteSyncData.notes.length} notes, ${fileSyncData.files.length} files`);
-    void plugin.websocket.SendMessage("FolderSync", folderSyncData, undefined, () => {
-      for (const folder of folderSyncData.folders) {
-        plugin.folderSnapshotManager.setFolderMtime(folder.path, Date.now());
+    // 第一步：先分批发送 FolderSync，确保文件夹结构先于笔记/附件在本地建立
+    // Step 1: Batch-send FolderSync first to ensure folder structure is created before notes/files
+    dump(`[Sync] Starting batch send: ${folderData.folders.length} folders, ${noteData.notes.length} notes, ${fileData.files.length} files`);
+    await sendInBatches(
+      plugin,
+      "FolderSync",
+      "FolderSyncBatchAck",
+      folderData.folders as unknown as Record<string, unknown>[],
+      (chunk, batchIndex, totalBatches) => ({
+        vault: plugin.settings.vault,
+        lastTime: folderData.lastTime,
+        folders: chunk,
+        context: folderData.context,
+        batchIndex,
+        totalBatches,
+        // 每批都携带删除/缺失列表，服务端取最后一批的值（覆盖写），防止最后一批重传时丢失
+        // Carry del/missing in every batch; server overwrites with last batch's value to survive retransmission
+        ...(plugin.settings.offlineDeleteSyncEnabled ? { delFolders: folderData.delFolders } : {}),
+        ...(folderData.missingFolders.length > 0 ? { missingFolders: folderData.missingFolders } : {}),
+      }),
+      (allFolders) => {
+        for (const folder of allFolders as unknown as SnapFolder[]) {
+          plugin.folderSnapshotManager.setFolderMtime(folder.path, Date.now());
+        }
       }
-    });
+    );
 
     // 第二步：等待 folderSyncDone（FolderSyncEnd 已收到且所有文件夹任务已完成）
-    // 超时兜底：10s 后无论如何继续，避免网络异常时挂起
+    // 超时兜底：30s 后无论如何继续，避免网络异常时挂起
     // Step 2: Wait for folderSyncDone (FolderSyncEnd received and all folder tasks completed)
-    // Fallback timeout: continue after 10s regardless, to avoid hanging on network errors
+    // Fallback timeout: continue after 30s regardless, to avoid hanging on network errors
     await new Promise<void>((resolve) => {
-      const timeout = window.setTimeout(resolve, 10000)
+      const timeout = window.setTimeout(resolve, 30000);
       const checkInterval = window.setInterval(() => {
         if (!plugin.websocket?.isAuth) {
-          window.clearInterval(checkInterval)
-          window.clearTimeout(timeout)
-          resolve()
-          return
+          window.clearInterval(checkInterval);
+          window.clearTimeout(timeout);
+          resolve();
+          return;
         }
-        const folderSyncDone = plugin.folderSyncEnd && plugin.folderSyncTasks.completed >= (plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete)
+        const folderSyncDone = plugin.folderSyncEnd && plugin.folderSyncTasks.completed >= (plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete);
         if (folderSyncDone) {
-          window.clearInterval(checkInterval)
-          window.clearTimeout(timeout)
-          resolve()
+          window.clearInterval(checkInterval);
+          window.clearTimeout(timeout);
+          resolve();
         }
-      }, 50)
-    })
-
-    // 第三步：文件夹结构已就绪，发 NoteSync 和 FileSync
-    // Step 3: Folder structure is ready, now send NoteSync and FileSync
-    void plugin.websocket.SendMessage("NoteSync", noteSyncData, undefined, () => {
-      for (const note of noteSyncData.notes) {
-        plugin.pendingNoteModifies.set(note.path, note.contentHash);
-      }
-      plugin.localStorageManager.savePending('pendingNoteModifies', plugin.pendingNoteModifies)
+      }, 50);
     });
 
-    // 如果启用了云预览且未开启类型限制，则不发送 FileSync 请求，从而关闭启动时的 file 同步
-    // 若开启了类型限制，则需要发送以同步不受限类型的附件1
+    // 第三步：分批发送 NoteSync
+    // Step 3: Batch-send NoteSync
+    await sendInBatches(
+      plugin,
+      "NoteSync",
+      "NoteSyncBatchAck",
+      noteData.notes as unknown as Record<string, unknown>[],
+      (chunk, batchIndex, totalBatches) => ({
+        vault: plugin.settings.vault,
+        lastTime: noteData.lastTime,
+        notes: chunk,
+        context: noteData.context,
+        batchIndex,
+        totalBatches,
+        ...(plugin.settings.offlineDeleteSyncEnabled ? { delNotes: noteData.delNotes } : {}),
+        ...(noteData.missingNotes.length > 0 ? { missingNotes: noteData.missingNotes } : {}),
+      }),
+      (allNotes) => {
+        for (const note of allNotes as unknown as SnapFile[]) {
+          plugin.pendingNoteModifies.set(note.path, note.contentHash as string);
+        }
+        plugin.localStorageManager.savePending('pendingNoteModifies', plugin.pendingNoteModifies);
+      }
+    );
+
+    // 第四步：分批发送 FileSync（云预览模式且未开启类型限制时跳过）
+    // Step 4: Batch-send FileSync (skip when cloud-preview is on without type restriction)
     if (!plugin.settings.cloudPreviewEnabled || plugin.settings.cloudPreviewTypeRestricted) {
-      void plugin.websocket.SendMessage("FileSync", fileSyncData);
+      await sendInBatches(
+        plugin,
+        "FileSync",
+        "FileSyncBatchAck",
+        fileData.files as unknown as Record<string, unknown>[],
+        (chunk, batchIndex, totalBatches) => ({
+          vault: plugin.settings.vault,
+          lastTime: fileData.lastTime,
+          files: chunk,
+          context: fileData.context,
+          batchIndex,
+          totalBatches,
+          ...(plugin.settings.offlineDeleteSyncEnabled ? { delFiles: fileData.delFiles } : {}),
+          ...(fileData.missingFiles.length > 0 ? { missingFiles: fileData.missingFiles } : {}),
+        })
+      );
     }
 
     // 将已删除路径加入 pending set，等待 SyncEnd 确认服务端已处理后再从 hashManager 移除
     // Populate pending delete sets; remove from hashManager only after SyncEnd confirms server processed
     if (plugin.settings.offlineDeleteSyncEnabled) {
-      plugin.pendingDeleteNotePaths = new Set(noteData.delNotes.map(i => i.path))
-      plugin.pendingDeleteFilePaths = new Set(fileData.delFiles.map(i => i.path))
-      plugin.pendingDeleteFolderPaths = new Set(folderData.delFolders.map(i => i.path))
+      plugin.pendingDeleteNotePaths = new Set(noteData.delNotes.map(i => i.path));
+      plugin.pendingDeleteFilePaths = new Set(fileData.delFiles.map(i => i.path));
+      plugin.pendingDeleteFolderPaths = new Set(folderData.delFolders.map(i => i.path));
     }
   }
 
   if (plugin.settings.configSyncEnabled && shouldSyncConfigs) {
-    const configSyncData = {
-      vault: plugin.settings.vault,
-      lastTime: configData.lastTime,
-      settings: configData.configs,
-      cover: Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime")) == 0,
-      context: configData.context,
-      ...(plugin.settings.offlineDeleteSyncEnabled ? { delSettings: configData.delConfigs } : {}),
-      ...(configData.missingConfigs.length > 0 ? { missingSettings: configData.missingConfigs } : {}),
-    };
-    void plugin.websocket.SendMessage("SettingSync", configSyncData, undefined, () => {
-      for (const config of configSyncData.settings) {
-        plugin.pendingConfigModifies.set(config.path, config.contentHash);
+    // 第五步：分批发送 SettingSync（配置同步）
+    // Step 5: Batch-send SettingSync (config sync)
+    // 注意：客户端发送字段名为 settings / delSettings / missingSettings（非 configs）
+    // Note: client sends field names 'settings' / 'delSettings' / 'missingSettings' (not 'configs')
+    const isCover = Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime")) === 0;
+    await sendInBatches(
+      plugin,
+      "SettingSync",
+      "SettingSyncBatchAck",
+      configData.configs as unknown as Record<string, unknown>[],
+      (chunk, batchIndex, totalBatches) => ({
+        vault: plugin.settings.vault,
+        lastTime: configData.lastTime,
+        settings: chunk,
+        cover: isCover,
+        context: configData.context,
+        batchIndex,
+        totalBatches,
+        ...(plugin.settings.offlineDeleteSyncEnabled ? { delSettings: configData.delConfigs } : {}),
+        ...(configData.missingConfigs.length > 0 ? { missingSettings: configData.missingConfigs } : {}),
+      }),
+      (allConfigs) => {
+        for (const config of allConfigs as unknown as SnapFile[]) {
+          plugin.pendingConfigModifies.set(config.path, config.contentHash as string);
+        }
+        plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies);
       }
-      plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
-    });
+    );
 
     // 将已删除配置路径加入 pending set，等待 SettingSyncEnd 确认服务端已处理后再移除
     // Populate pending config delete set; remove from hashManager only after SettingSyncEnd
     if (plugin.settings.offlineDeleteSyncEnabled && plugin.configHashManager && plugin.configHashManager.isReady()) {
-      plugin.pendingDeleteConfigPaths = new Set(configData.delConfigs.map(i => i.path))
+      plugin.pendingDeleteConfigPaths = new Set(configData.delConfigs.map(i => i.path));
     }
   }
 };

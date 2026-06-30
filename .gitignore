@@ -26,6 +26,7 @@ sync.log
 # Claude Code
 CLAUDE.md
 .claude/
+Demo-Library/
 
 # env
 .env

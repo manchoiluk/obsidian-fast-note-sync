@@ -71,6 +71,43 @@ export class WebSocketManager {
   private plugin: FastSync;
   private currentStartHandleId = 0;
 
+  // --- 轻量事件总线，用于分批发送时等待服务端 BatchAck ---
+  // Lightweight event bus for awaiting server BatchAck during batch send
+  private _listeners: Map<string, Set<(...args: unknown[]) => void>> = new Map();
+
+  /**
+   * 订阅事件 / Subscribe to an event
+   */
+  public on(event: string, cb: (...args: unknown[]) => void): void {
+    if (!this._listeners.has(event)) {
+      this._listeners.set(event, new Set());
+    }
+    this._listeners.get(event)!.add(cb);
+  }
+
+  /**
+   * 取消订阅事件 / Unsubscribe from an event
+   */
+  public off(event: string, cb: (...args: unknown[]) => void): void {
+    const cbs = this._listeners.get(event);
+    if (cbs) {
+      cbs.delete(cb);
+      if (cbs.size === 0) {
+        this._listeners.delete(event);
+      }
+    }
+  }
+
+  /**
+   * 触发事件 / Emit an event
+   */
+  public emit(event: string, ...args: unknown[]): void {
+    const cbs = this._listeners.get(event);
+    if (cbs) {
+      cbs.forEach(cb => cb(...args));
+    }
+  }
+
   constructor(plugin: FastSync) {
     this.plugin = plugin;
     this.client = new WebSocketClient(this.plugin, {

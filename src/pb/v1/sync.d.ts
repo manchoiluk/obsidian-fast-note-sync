@@ -1,5 +1,5 @@
 import * as $protobuf from "protobufjs";
-import Long from "long";
+import Long = require("long");
 
 /** Namespace proto. */
 export namespace proto {
@@ -11,7 +11,8 @@ export namespace proto {
          * Properties of a WSMessage.
          * @deprecated Use proto.v1.WSMessage.$Properties instead.
          */
-        type IWSMessage = proto.v1.WSMessage.$Properties;
+        interface IWSMessage extends proto.v1.WSMessage.$Properties {
+        }
 
         /** Represents a WSMessage. */
         class WSMessage {
@@ -22,7 +23,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.WSMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** WSMessage type. */
@@ -121,7 +122,7 @@ export namespace proto {
                 /** WSMessage data */
                 data?: (Uint8Array|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -133,7 +134,8 @@ export namespace proto {
          * Properties of a WSResponse.
          * @deprecated Use proto.v1.WSResponse.$Properties instead.
          */
-        type IWSResponse = proto.v1.WSResponse.$Properties;
+        interface IWSResponse extends proto.v1.WSResponse.$Properties {
+        }
 
         /** Represents a WSResponse. */
         class WSResponse {
@@ -144,7 +146,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.WSResponse.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** WSResponse code. */
@@ -273,7 +275,7 @@ export namespace proto {
                 /** WSResponse context */
                 context?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -285,7 +287,8 @@ export namespace proto {
          * Properties of a ClientInfoMessage.
          * @deprecated Use proto.v1.ClientInfoMessage.$Properties instead.
          */
-        type IClientInfoMessage = proto.v1.ClientInfoMessage.$Properties;
+        interface IClientInfoMessage extends proto.v1.ClientInfoMessage.$Properties {
+        }
 
         /** Represents a ClientInfoMessage. */
         class ClientInfoMessage {
@@ -296,7 +299,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.ClientInfoMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** ClientInfoMessage name. */
@@ -455,7 +458,7 @@ export namespace proto {
                 /** ClientInfoMessage protobuf */
                 protobuf?: (boolean|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -467,7 +470,8 @@ export namespace proto {
          * Properties of a HistoricalVersion.
          * @deprecated Use proto.v1.HistoricalVersion.$Properties instead.
          */
-        type IHistoricalVersion = proto.v1.HistoricalVersion.$Properties;
+        interface IHistoricalVersion extends proto.v1.HistoricalVersion.$Properties {
+        }
 
         /** Represents a HistoricalVersion. */
         class HistoricalVersion {
@@ -478,7 +482,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.HistoricalVersion.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** HistoricalVersion version. */
@@ -577,7 +581,7 @@ export namespace proto {
                 /** HistoricalVersion changelogContent */
                 changelogContent?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -589,7 +593,8 @@ export namespace proto {
          * Properties of a CheckVersionInfo.
          * @deprecated Use proto.v1.CheckVersionInfo.$Properties instead.
          */
-        type ICheckVersionInfo = proto.v1.CheckVersionInfo.$Properties;
+        interface ICheckVersionInfo extends proto.v1.CheckVersionInfo.$Properties {
+        }
 
         /** Represents a CheckVersionInfo. */
         class CheckVersionInfo {
@@ -600,7 +605,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.CheckVersionInfo.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** CheckVersionInfo githubAvailable. */
@@ -765,7 +770,7 @@ export namespace proto {
                 /** CheckVersionInfo pluginVersionHistory */
                 pluginVersionHistory?: (proto.v1.HistoricalVersion.$Properties[]|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -777,7 +782,8 @@ export namespace proto {
          * Properties of a NoteSyncCheckRequest.
          * @deprecated Use proto.v1.NoteSyncCheckRequest.$Properties instead.
          */
-        type INoteSyncCheckRequest = proto.v1.NoteSyncCheckRequest.$Properties;
+        interface INoteSyncCheckRequest extends proto.v1.NoteSyncCheckRequest.$Properties {
+        }
 
         /** Represents a NoteSyncCheckRequest. */
         class NoteSyncCheckRequest {
@@ -788,7 +794,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncCheckRequest path. */
@@ -905,7 +911,7 @@ export namespace proto {
                 /** NoteSyncCheckRequest ctime */
                 ctime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -917,7 +923,8 @@ export namespace proto {
          * Properties of a NoteSyncDelNote.
          * @deprecated Use proto.v1.NoteSyncDelNote.$Properties instead.
          */
-        type INoteSyncDelNote = proto.v1.NoteSyncDelNote.$Properties;
+        interface INoteSyncDelNote extends proto.v1.NoteSyncDelNote.$Properties {
+        }
 
         /** Represents a NoteSyncDelNote. */
         class NoteSyncDelNote {
@@ -928,7 +935,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncDelNote.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncDelNote path. */
@@ -1027,7 +1034,7 @@ export namespace proto {
                 /** NoteSyncDelNote pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1039,7 +1046,8 @@ export namespace proto {
          * Properties of a NoteSyncRequest.
          * @deprecated Use proto.v1.NoteSyncRequest.$Properties instead.
          */
-        type INoteSyncRequest = proto.v1.NoteSyncRequest.$Properties;
+        interface INoteSyncRequest extends proto.v1.NoteSyncRequest.$Properties {
+        }
 
         /** Represents a NoteSyncRequest. */
         class NoteSyncRequest {
@@ -1050,7 +1058,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncRequest context. */
@@ -1070,6 +1078,12 @@ export namespace proto {
 
             /** NoteSyncRequest missingNotes. */
             missingNotes: proto.v1.NoteSyncDelNote.$Properties[];
+
+            /** NoteSyncRequest batchIndex. */
+            batchIndex: number;
+
+            /** NoteSyncRequest totalBatches. */
+            totalBatches: number;
 
             /**
              * Creates a new NoteSyncRequest instance using the specified properties.
@@ -1173,7 +1187,13 @@ export namespace proto {
                 /** NoteSyncRequest missingNotes */
                 missingNotes?: (proto.v1.NoteSyncDelNote.$Properties[]|null);
 
-                /** Unknown fields preserved while decoding */
+                /** NoteSyncRequest batchIndex */
+                batchIndex?: (number|null);
+
+                /** NoteSyncRequest totalBatches */
+                totalBatches?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1185,7 +1205,8 @@ export namespace proto {
          * Properties of a NoteModifyOrCreateRequest.
          * @deprecated Use proto.v1.NoteModifyOrCreateRequest.$Properties instead.
          */
-        type INoteModifyOrCreateRequest = proto.v1.NoteModifyOrCreateRequest.$Properties;
+        interface INoteModifyOrCreateRequest extends proto.v1.NoteModifyOrCreateRequest.$Properties {
+        }
 
         /** Represents a NoteModifyOrCreateRequest. */
         class NoteModifyOrCreateRequest {
@@ -1196,7 +1217,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteModifyOrCreateRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteModifyOrCreateRequest vault. */
@@ -1343,7 +1364,7 @@ export namespace proto {
                 /** NoteModifyOrCreateRequest createOnly */
                 createOnly?: (boolean|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1355,7 +1376,8 @@ export namespace proto {
          * Properties of a NoteUpdateCheckRequest.
          * @deprecated Use proto.v1.NoteUpdateCheckRequest.$Properties instead.
          */
-        type INoteUpdateCheckRequest = proto.v1.NoteUpdateCheckRequest.$Properties;
+        interface INoteUpdateCheckRequest extends proto.v1.NoteUpdateCheckRequest.$Properties {
+        }
 
         /** Represents a NoteUpdateCheckRequest. */
         class NoteUpdateCheckRequest {
@@ -1366,7 +1388,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteUpdateCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteUpdateCheckRequest vault. */
@@ -1489,7 +1511,7 @@ export namespace proto {
                 /** NoteUpdateCheckRequest mtime */
                 mtime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1501,7 +1523,8 @@ export namespace proto {
          * Properties of a NoteDeleteRequest.
          * @deprecated Use proto.v1.NoteDeleteRequest.$Properties instead.
          */
-        type INoteDeleteRequest = proto.v1.NoteDeleteRequest.$Properties;
+        interface INoteDeleteRequest extends proto.v1.NoteDeleteRequest.$Properties {
+        }
 
         /** Represents a NoteDeleteRequest. */
         class NoteDeleteRequest {
@@ -1512,7 +1535,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteDeleteRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteDeleteRequest vault. */
@@ -1617,7 +1640,7 @@ export namespace proto {
                 /** NoteDeleteRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1629,7 +1652,8 @@ export namespace proto {
          * Properties of a NoteRenameRequest.
          * @deprecated Use proto.v1.NoteRenameRequest.$Properties instead.
          */
-        type INoteRenameRequest = proto.v1.NoteRenameRequest.$Properties;
+        interface INoteRenameRequest extends proto.v1.NoteRenameRequest.$Properties {
+        }
 
         /** Represents a NoteRenameRequest. */
         class NoteRenameRequest {
@@ -1640,7 +1664,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteRenameRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteRenameRequest vault. */
@@ -1757,7 +1781,7 @@ export namespace proto {
                 /** NoteRenameRequest oldPathHash */
                 oldPathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1769,7 +1793,8 @@ export namespace proto {
          * Properties of a NoteGetRequest.
          * @deprecated Use proto.v1.NoteGetRequest.$Properties instead.
          */
-        type INoteGetRequest = proto.v1.NoteGetRequest.$Properties;
+        interface INoteGetRequest extends proto.v1.NoteGetRequest.$Properties {
+        }
 
         /** Represents a NoteGetRequest. */
         class NoteGetRequest {
@@ -1780,7 +1805,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteGetRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteGetRequest vault. */
@@ -1891,7 +1916,7 @@ export namespace proto {
                 /** NoteGetRequest isRecycle */
                 isRecycle?: (boolean|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -1903,7 +1928,8 @@ export namespace proto {
          * Properties of a NoteSyncModifyMessage.
          * @deprecated Use proto.v1.NoteSyncModifyMessage.$Properties instead.
          */
-        type INoteSyncModifyMessage = proto.v1.NoteSyncModifyMessage.$Properties;
+        interface INoteSyncModifyMessage extends proto.v1.NoteSyncModifyMessage.$Properties {
+        }
 
         /** Represents a NoteSyncModifyMessage. */
         class NoteSyncModifyMessage {
@@ -1914,7 +1940,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncModifyMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncModifyMessage path. */
@@ -2043,7 +2069,7 @@ export namespace proto {
                 /** NoteSyncModifyMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2055,7 +2081,8 @@ export namespace proto {
          * Properties of a NoteSyncDeleteMessage.
          * @deprecated Use proto.v1.NoteSyncDeleteMessage.$Properties instead.
          */
-        type INoteSyncDeleteMessage = proto.v1.NoteSyncDeleteMessage.$Properties;
+        interface INoteSyncDeleteMessage extends proto.v1.NoteSyncDeleteMessage.$Properties {
+        }
 
         /** Represents a NoteSyncDeleteMessage. */
         class NoteSyncDeleteMessage {
@@ -2066,7 +2093,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncDeleteMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncDeleteMessage path. */
@@ -2189,7 +2216,7 @@ export namespace proto {
                 /** NoteSyncDeleteMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2201,7 +2228,8 @@ export namespace proto {
          * Properties of a NoteSyncRenameMessage.
          * @deprecated Use proto.v1.NoteSyncRenameMessage.$Properties instead.
          */
-        type INoteSyncRenameMessage = proto.v1.NoteSyncRenameMessage.$Properties;
+        interface INoteSyncRenameMessage extends proto.v1.NoteSyncRenameMessage.$Properties {
+        }
 
         /** Represents a NoteSyncRenameMessage. */
         class NoteSyncRenameMessage {
@@ -2212,7 +2240,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncRenameMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncRenameMessage path. */
@@ -2353,7 +2381,7 @@ export namespace proto {
                 /** NoteSyncRenameMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2365,7 +2393,8 @@ export namespace proto {
          * Properties of a NoteSyncMtimeMessage.
          * @deprecated Use proto.v1.NoteSyncMtimeMessage.$Properties instead.
          */
-        type INoteSyncMtimeMessage = proto.v1.NoteSyncMtimeMessage.$Properties;
+        interface INoteSyncMtimeMessage extends proto.v1.NoteSyncMtimeMessage.$Properties {
+        }
 
         /** Represents a NoteSyncMtimeMessage. */
         class NoteSyncMtimeMessage {
@@ -2376,7 +2405,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncMtimeMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncMtimeMessage path. */
@@ -2487,7 +2516,7 @@ export namespace proto {
                 /** NoteSyncMtimeMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2499,7 +2528,8 @@ export namespace proto {
          * Properties of a NoteSyncEndMessage.
          * @deprecated Use proto.v1.NoteSyncEndMessage.$Properties instead.
          */
-        type INoteSyncEndMessage = proto.v1.NoteSyncEndMessage.$Properties;
+        interface INoteSyncEndMessage extends proto.v1.NoteSyncEndMessage.$Properties {
+        }
 
         /** Represents a NoteSyncEndMessage. */
         class NoteSyncEndMessage {
@@ -2510,7 +2540,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncEndMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncEndMessage lastTime. */
@@ -2627,7 +2657,7 @@ export namespace proto {
                 /** NoteSyncEndMessage needDeleteCount */
                 needDeleteCount?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2639,7 +2669,8 @@ export namespace proto {
          * Properties of a NoteSyncNeedPushMessage.
          * @deprecated Use proto.v1.NoteSyncNeedPushMessage.$Properties instead.
          */
-        type INoteSyncNeedPushMessage = proto.v1.NoteSyncNeedPushMessage.$Properties;
+        interface INoteSyncNeedPushMessage extends proto.v1.NoteSyncNeedPushMessage.$Properties {
+        }
 
         /** Represents a NoteSyncNeedPushMessage. */
         class NoteSyncNeedPushMessage {
@@ -2650,7 +2681,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteSyncNeedPushMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteSyncNeedPushMessage path. */
@@ -2749,7 +2780,7 @@ export namespace proto {
                 /** NoteSyncNeedPushMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2761,7 +2792,8 @@ export namespace proto {
          * Properties of a NoteModifyAckMessage.
          * @deprecated Use proto.v1.NoteModifyAckMessage.$Properties instead.
          */
-        type INoteModifyAckMessage = proto.v1.NoteModifyAckMessage.$Properties;
+        interface INoteModifyAckMessage extends proto.v1.NoteModifyAckMessage.$Properties {
+        }
 
         /** Represents a NoteModifyAckMessage. */
         class NoteModifyAckMessage {
@@ -2772,7 +2804,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteModifyAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteModifyAckMessage lastTime. */
@@ -2877,7 +2909,7 @@ export namespace proto {
                 /** NoteModifyAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -2889,7 +2921,8 @@ export namespace proto {
          * Properties of a NoteRenameAckMessage.
          * @deprecated Use proto.v1.NoteRenameAckMessage.$Properties instead.
          */
-        type INoteRenameAckMessage = proto.v1.NoteRenameAckMessage.$Properties;
+        interface INoteRenameAckMessage extends proto.v1.NoteRenameAckMessage.$Properties {
+        }
 
         /** Represents a NoteRenameAckMessage. */
         class NoteRenameAckMessage {
@@ -2900,7 +2933,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteRenameAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteRenameAckMessage lastTime. */
@@ -3005,7 +3038,7 @@ export namespace proto {
                 /** NoteRenameAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3017,7 +3050,8 @@ export namespace proto {
          * Properties of a NoteDeleteAckMessage.
          * @deprecated Use proto.v1.NoteDeleteAckMessage.$Properties instead.
          */
-        type INoteDeleteAckMessage = proto.v1.NoteDeleteAckMessage.$Properties;
+        interface INoteDeleteAckMessage extends proto.v1.NoteDeleteAckMessage.$Properties {
+        }
 
         /** Represents a NoteDeleteAckMessage. */
         class NoteDeleteAckMessage {
@@ -3028,7 +3062,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.NoteDeleteAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** NoteDeleteAckMessage lastTime. */
@@ -3133,7 +3167,7 @@ export namespace proto {
                 /** NoteDeleteAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3145,7 +3179,8 @@ export namespace proto {
          * Properties of a FileSyncRequest.
          * @deprecated Use proto.v1.FileSyncRequest.$Properties instead.
          */
-        type IFileSyncRequest = proto.v1.FileSyncRequest.$Properties;
+        interface IFileSyncRequest extends proto.v1.FileSyncRequest.$Properties {
+        }
 
         /** Represents a FileSyncRequest. */
         class FileSyncRequest {
@@ -3156,7 +3191,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncRequest context. */
@@ -3176,6 +3211,12 @@ export namespace proto {
 
             /** FileSyncRequest missingFiles. */
             missingFiles: proto.v1.FileSyncDelFile.$Properties[];
+
+            /** FileSyncRequest batchIndex. */
+            batchIndex: number;
+
+            /** FileSyncRequest totalBatches. */
+            totalBatches: number;
 
             /**
              * Creates a new FileSyncRequest instance using the specified properties.
@@ -3279,7 +3320,13 @@ export namespace proto {
                 /** FileSyncRequest missingFiles */
                 missingFiles?: (proto.v1.FileSyncDelFile.$Properties[]|null);
 
-                /** Unknown fields preserved while decoding */
+                /** FileSyncRequest batchIndex */
+                batchIndex?: (number|null);
+
+                /** FileSyncRequest totalBatches */
+                totalBatches?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3291,7 +3338,8 @@ export namespace proto {
          * Properties of a FileSyncCheckRequest.
          * @deprecated Use proto.v1.FileSyncCheckRequest.$Properties instead.
          */
-        type IFileSyncCheckRequest = proto.v1.FileSyncCheckRequest.$Properties;
+        interface IFileSyncCheckRequest extends proto.v1.FileSyncCheckRequest.$Properties {
+        }
 
         /** Represents a FileSyncCheckRequest. */
         class FileSyncCheckRequest {
@@ -3302,7 +3350,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncCheckRequest path. */
@@ -3425,7 +3473,7 @@ export namespace proto {
                 /** FileSyncCheckRequest ctime */
                 ctime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3437,7 +3485,8 @@ export namespace proto {
          * Properties of a FileSyncDelFile.
          * @deprecated Use proto.v1.FileSyncDelFile.$Properties instead.
          */
-        type IFileSyncDelFile = proto.v1.FileSyncDelFile.$Properties;
+        interface IFileSyncDelFile extends proto.v1.FileSyncDelFile.$Properties {
+        }
 
         /** Represents a FileSyncDelFile. */
         class FileSyncDelFile {
@@ -3448,7 +3497,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncDelFile.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncDelFile path. */
@@ -3547,7 +3596,7 @@ export namespace proto {
                 /** FileSyncDelFile pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3559,7 +3608,8 @@ export namespace proto {
          * Properties of a FileUploadCheckRequest.
          * @deprecated Use proto.v1.FileUploadCheckRequest.$Properties instead.
          */
-        type IFileUploadCheckRequest = proto.v1.FileUploadCheckRequest.$Properties;
+        interface IFileUploadCheckRequest extends proto.v1.FileUploadCheckRequest.$Properties {
+        }
 
         /** Represents a FileUploadCheckRequest. */
         class FileUploadCheckRequest {
@@ -3570,7 +3620,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileUploadCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileUploadCheckRequest vault. */
@@ -3699,7 +3749,7 @@ export namespace proto {
                 /** FileUploadCheckRequest mtime */
                 mtime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3711,7 +3761,8 @@ export namespace proto {
          * Properties of a FileDeleteRequest.
          * @deprecated Use proto.v1.FileDeleteRequest.$Properties instead.
          */
-        type IFileDeleteRequest = proto.v1.FileDeleteRequest.$Properties;
+        interface IFileDeleteRequest extends proto.v1.FileDeleteRequest.$Properties {
+        }
 
         /** Represents a FileDeleteRequest. */
         class FileDeleteRequest {
@@ -3722,7 +3773,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileDeleteRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileDeleteRequest vault. */
@@ -3827,7 +3878,7 @@ export namespace proto {
                 /** FileDeleteRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3839,7 +3890,8 @@ export namespace proto {
          * Properties of a FileRenameRequest.
          * @deprecated Use proto.v1.FileRenameRequest.$Properties instead.
          */
-        type IFileRenameRequest = proto.v1.FileRenameRequest.$Properties;
+        interface IFileRenameRequest extends proto.v1.FileRenameRequest.$Properties {
+        }
 
         /** Represents a FileRenameRequest. */
         class FileRenameRequest {
@@ -3850,7 +3902,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileRenameRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileRenameRequest vault. */
@@ -3967,7 +4019,7 @@ export namespace proto {
                 /** FileRenameRequest oldPathHash */
                 oldPathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -3979,7 +4031,8 @@ export namespace proto {
          * Properties of a FileChunkDownloadRequest.
          * @deprecated Use proto.v1.FileChunkDownloadRequest.$Properties instead.
          */
-        type IFileChunkDownloadRequest = proto.v1.FileChunkDownloadRequest.$Properties;
+        interface IFileChunkDownloadRequest extends proto.v1.FileChunkDownloadRequest.$Properties {
+        }
 
         /** Represents a FileChunkDownloadRequest. */
         class FileChunkDownloadRequest {
@@ -3990,7 +4043,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileChunkDownloadRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileChunkDownloadRequest vault. */
@@ -4107,7 +4160,7 @@ export namespace proto {
                 /** FileChunkDownloadRequest chunkIndex */
                 chunkIndex?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4119,7 +4172,8 @@ export namespace proto {
          * Properties of a FileGetRequest.
          * @deprecated Use proto.v1.FileGetRequest.$Properties instead.
          */
-        type IFileGetRequest = proto.v1.FileGetRequest.$Properties;
+        interface IFileGetRequest extends proto.v1.FileGetRequest.$Properties {
+        }
 
         /** Represents a FileGetRequest. */
         class FileGetRequest {
@@ -4130,7 +4184,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileGetRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileGetRequest vault. */
@@ -4235,7 +4289,7 @@ export namespace proto {
                 /** FileGetRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4247,7 +4301,8 @@ export namespace proto {
          * Properties of a FileSyncModifyMessage.
          * @deprecated Use proto.v1.FileSyncModifyMessage.$Properties instead.
          */
-        type IFileSyncModifyMessage = proto.v1.FileSyncModifyMessage.$Properties;
+        interface IFileSyncModifyMessage extends proto.v1.FileSyncModifyMessage.$Properties {
+        }
 
         /** Represents a FileSyncModifyMessage. */
         class FileSyncModifyMessage {
@@ -4258,7 +4313,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncModifyMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncModifyMessage path. */
@@ -4387,7 +4442,7 @@ export namespace proto {
                 /** FileSyncModifyMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4399,7 +4454,8 @@ export namespace proto {
          * Properties of a FileSyncDeleteMessage.
          * @deprecated Use proto.v1.FileSyncDeleteMessage.$Properties instead.
          */
-        type IFileSyncDeleteMessage = proto.v1.FileSyncDeleteMessage.$Properties;
+        interface IFileSyncDeleteMessage extends proto.v1.FileSyncDeleteMessage.$Properties {
+        }
 
         /** Represents a FileSyncDeleteMessage. */
         class FileSyncDeleteMessage {
@@ -4410,7 +4466,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncDeleteMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncDeleteMessage path. */
@@ -4533,7 +4589,7 @@ export namespace proto {
                 /** FileSyncDeleteMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4545,7 +4601,8 @@ export namespace proto {
          * Properties of a FileSyncRenameMessage.
          * @deprecated Use proto.v1.FileSyncRenameMessage.$Properties instead.
          */
-        type IFileSyncRenameMessage = proto.v1.FileSyncRenameMessage.$Properties;
+        interface IFileSyncRenameMessage extends proto.v1.FileSyncRenameMessage.$Properties {
+        }
 
         /** Represents a FileSyncRenameMessage. */
         class FileSyncRenameMessage {
@@ -4556,7 +4613,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncRenameMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncRenameMessage path. */
@@ -4697,7 +4754,7 @@ export namespace proto {
                 /** FileSyncRenameMessage oldPathHash */
                 oldPathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4709,7 +4766,8 @@ export namespace proto {
          * Properties of a FileSyncMtimeMessage.
          * @deprecated Use proto.v1.FileSyncMtimeMessage.$Properties instead.
          */
-        type IFileSyncMtimeMessage = proto.v1.FileSyncMtimeMessage.$Properties;
+        interface IFileSyncMtimeMessage extends proto.v1.FileSyncMtimeMessage.$Properties {
+        }
 
         /** Represents a FileSyncMtimeMessage. */
         class FileSyncMtimeMessage {
@@ -4720,7 +4778,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncMtimeMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncMtimeMessage path. */
@@ -4831,7 +4889,7 @@ export namespace proto {
                 /** FileSyncMtimeMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4843,7 +4901,8 @@ export namespace proto {
          * Properties of a FileSyncEndMessage.
          * @deprecated Use proto.v1.FileSyncEndMessage.$Properties instead.
          */
-        type IFileSyncEndMessage = proto.v1.FileSyncEndMessage.$Properties;
+        interface IFileSyncEndMessage extends proto.v1.FileSyncEndMessage.$Properties {
+        }
 
         /** Represents a FileSyncEndMessage. */
         class FileSyncEndMessage {
@@ -4854,7 +4913,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncEndMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncEndMessage lastTime. */
@@ -4971,7 +5030,7 @@ export namespace proto {
                 /** FileSyncEndMessage needDeleteCount */
                 needDeleteCount?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -4983,7 +5042,8 @@ export namespace proto {
          * Properties of a FileSyncUploadMessage.
          * @deprecated Use proto.v1.FileSyncUploadMessage.$Properties instead.
          */
-        type IFileSyncUploadMessage = proto.v1.FileSyncUploadMessage.$Properties;
+        interface IFileSyncUploadMessage extends proto.v1.FileSyncUploadMessage.$Properties {
+        }
 
         /** Represents a FileSyncUploadMessage. */
         class FileSyncUploadMessage {
@@ -4994,7 +5054,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncUploadMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncUploadMessage path. */
@@ -5105,7 +5165,7 @@ export namespace proto {
                 /** FileSyncUploadMessage chunkSize */
                 chunkSize?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5117,7 +5177,8 @@ export namespace proto {
          * Properties of a FileSyncDownloadMessage.
          * @deprecated Use proto.v1.FileSyncDownloadMessage.$Properties instead.
          */
-        type IFileSyncDownloadMessage = proto.v1.FileSyncDownloadMessage.$Properties;
+        interface IFileSyncDownloadMessage extends proto.v1.FileSyncDownloadMessage.$Properties {
+        }
 
         /** Represents a FileSyncDownloadMessage. */
         class FileSyncDownloadMessage {
@@ -5128,7 +5189,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileSyncDownloadMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileSyncDownloadMessage path. */
@@ -5263,7 +5324,7 @@ export namespace proto {
                 /** FileSyncDownloadMessage size */
                 size?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5275,7 +5336,8 @@ export namespace proto {
          * Properties of a FileRenameAckMessage.
          * @deprecated Use proto.v1.FileRenameAckMessage.$Properties instead.
          */
-        type IFileRenameAckMessage = proto.v1.FileRenameAckMessage.$Properties;
+        interface IFileRenameAckMessage extends proto.v1.FileRenameAckMessage.$Properties {
+        }
 
         /** Represents a FileRenameAckMessage. */
         class FileRenameAckMessage {
@@ -5286,7 +5348,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileRenameAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileRenameAckMessage lastTime. */
@@ -5391,7 +5453,7 @@ export namespace proto {
                 /** FileRenameAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5403,7 +5465,8 @@ export namespace proto {
          * Properties of a FileUploadAckMessage.
          * @deprecated Use proto.v1.FileUploadAckMessage.$Properties instead.
          */
-        type IFileUploadAckMessage = proto.v1.FileUploadAckMessage.$Properties;
+        interface IFileUploadAckMessage extends proto.v1.FileUploadAckMessage.$Properties {
+        }
 
         /** Represents a FileUploadAckMessage. */
         class FileUploadAckMessage {
@@ -5414,7 +5477,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileUploadAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileUploadAckMessage lastTime. */
@@ -5519,7 +5582,7 @@ export namespace proto {
                 /** FileUploadAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5531,7 +5594,8 @@ export namespace proto {
          * Properties of a FileDeleteAckMessage.
          * @deprecated Use proto.v1.FileDeleteAckMessage.$Properties instead.
          */
-        type IFileDeleteAckMessage = proto.v1.FileDeleteAckMessage.$Properties;
+        interface IFileDeleteAckMessage extends proto.v1.FileDeleteAckMessage.$Properties {
+        }
 
         /** Represents a FileDeleteAckMessage. */
         class FileDeleteAckMessage {
@@ -5542,7 +5606,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FileDeleteAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FileDeleteAckMessage lastTime. */
@@ -5647,7 +5711,7 @@ export namespace proto {
                 /** FileDeleteAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5659,7 +5723,8 @@ export namespace proto {
          * Properties of a SettingSyncRequest.
          * @deprecated Use proto.v1.SettingSyncRequest.$Properties instead.
          */
-        type ISettingSyncRequest = proto.v1.SettingSyncRequest.$Properties;
+        interface ISettingSyncRequest extends proto.v1.SettingSyncRequest.$Properties {
+        }
 
         /** Represents a SettingSyncRequest. */
         class SettingSyncRequest {
@@ -5670,7 +5735,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncRequest context. */
@@ -5690,6 +5755,12 @@ export namespace proto {
 
             /** SettingSyncRequest missingSettings. */
             missingSettings: proto.v1.SettingSyncDelSetting.$Properties[];
+
+            /** SettingSyncRequest batchIndex. */
+            batchIndex: number;
+
+            /** SettingSyncRequest totalBatches. */
+            totalBatches: number;
 
             /**
              * Creates a new SettingSyncRequest instance using the specified properties.
@@ -5793,7 +5864,13 @@ export namespace proto {
                 /** SettingSyncRequest missingSettings */
                 missingSettings?: (proto.v1.SettingSyncDelSetting.$Properties[]|null);
 
-                /** Unknown fields preserved while decoding */
+                /** SettingSyncRequest batchIndex */
+                batchIndex?: (number|null);
+
+                /** SettingSyncRequest totalBatches */
+                totalBatches?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5805,7 +5882,8 @@ export namespace proto {
          * Properties of a SettingSyncCheckRequest.
          * @deprecated Use proto.v1.SettingSyncCheckRequest.$Properties instead.
          */
-        type ISettingSyncCheckRequest = proto.v1.SettingSyncCheckRequest.$Properties;
+        interface ISettingSyncCheckRequest extends proto.v1.SettingSyncCheckRequest.$Properties {
+        }
 
         /** Represents a SettingSyncCheckRequest. */
         class SettingSyncCheckRequest {
@@ -5816,7 +5894,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncCheckRequest path. */
@@ -5933,7 +6011,7 @@ export namespace proto {
                 /** SettingSyncCheckRequest ctime */
                 ctime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -5945,7 +6023,8 @@ export namespace proto {
          * Properties of a SettingSyncDelSetting.
          * @deprecated Use proto.v1.SettingSyncDelSetting.$Properties instead.
          */
-        type ISettingSyncDelSetting = proto.v1.SettingSyncDelSetting.$Properties;
+        interface ISettingSyncDelSetting extends proto.v1.SettingSyncDelSetting.$Properties {
+        }
 
         /** Represents a SettingSyncDelSetting. */
         class SettingSyncDelSetting {
@@ -5956,7 +6035,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncDelSetting.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncDelSetting path. */
@@ -6055,7 +6134,7 @@ export namespace proto {
                 /** SettingSyncDelSetting pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6067,7 +6146,8 @@ export namespace proto {
          * Properties of a SettingModifyOrCreateRequest.
          * @deprecated Use proto.v1.SettingModifyOrCreateRequest.$Properties instead.
          */
-        type ISettingModifyOrCreateRequest = proto.v1.SettingModifyOrCreateRequest.$Properties;
+        interface ISettingModifyOrCreateRequest extends proto.v1.SettingModifyOrCreateRequest.$Properties {
+        }
 
         /** Represents a SettingModifyOrCreateRequest. */
         class SettingModifyOrCreateRequest {
@@ -6078,7 +6158,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingModifyOrCreateRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingModifyOrCreateRequest vault. */
@@ -6207,7 +6287,7 @@ export namespace proto {
                 /** SettingModifyOrCreateRequest mtime */
                 mtime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6219,7 +6299,8 @@ export namespace proto {
          * Properties of a SettingUpdateCheckRequest.
          * @deprecated Use proto.v1.SettingUpdateCheckRequest.$Properties instead.
          */
-        type ISettingUpdateCheckRequest = proto.v1.SettingUpdateCheckRequest.$Properties;
+        interface ISettingUpdateCheckRequest extends proto.v1.SettingUpdateCheckRequest.$Properties {
+        }
 
         /** Represents a SettingUpdateCheckRequest. */
         class SettingUpdateCheckRequest {
@@ -6230,7 +6311,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingUpdateCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingUpdateCheckRequest vault. */
@@ -6353,7 +6434,7 @@ export namespace proto {
                 /** SettingUpdateCheckRequest mtime */
                 mtime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6365,7 +6446,8 @@ export namespace proto {
          * Properties of a SettingDeleteRequest.
          * @deprecated Use proto.v1.SettingDeleteRequest.$Properties instead.
          */
-        type ISettingDeleteRequest = proto.v1.SettingDeleteRequest.$Properties;
+        interface ISettingDeleteRequest extends proto.v1.SettingDeleteRequest.$Properties {
+        }
 
         /** Represents a SettingDeleteRequest. */
         class SettingDeleteRequest {
@@ -6376,7 +6458,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingDeleteRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingDeleteRequest vault. */
@@ -6481,7 +6563,7 @@ export namespace proto {
                 /** SettingDeleteRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6493,7 +6575,8 @@ export namespace proto {
          * Properties of a SettingGetRequest.
          * @deprecated Use proto.v1.SettingGetRequest.$Properties instead.
          */
-        type ISettingGetRequest = proto.v1.SettingGetRequest.$Properties;
+        interface ISettingGetRequest extends proto.v1.SettingGetRequest.$Properties {
+        }
 
         /** Represents a SettingGetRequest. */
         class SettingGetRequest {
@@ -6504,7 +6587,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingGetRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingGetRequest vault. */
@@ -6609,7 +6692,7 @@ export namespace proto {
                 /** SettingGetRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6621,7 +6704,8 @@ export namespace proto {
          * Properties of a SettingClearRequest.
          * @deprecated Use proto.v1.SettingClearRequest.$Properties instead.
          */
-        type ISettingClearRequest = proto.v1.SettingClearRequest.$Properties;
+        interface ISettingClearRequest extends proto.v1.SettingClearRequest.$Properties {
+        }
 
         /** Represents a SettingClearRequest. */
         class SettingClearRequest {
@@ -6632,7 +6716,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingClearRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingClearRequest vault. */
@@ -6725,7 +6809,7 @@ export namespace proto {
                 /** SettingClearRequest vault */
                 vault?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6737,7 +6821,8 @@ export namespace proto {
          * Properties of a SettingSyncModifyMessage.
          * @deprecated Use proto.v1.SettingSyncModifyMessage.$Properties instead.
          */
-        type ISettingSyncModifyMessage = proto.v1.SettingSyncModifyMessage.$Properties;
+        interface ISettingSyncModifyMessage extends proto.v1.SettingSyncModifyMessage.$Properties {
+        }
 
         /** Represents a SettingSyncModifyMessage. */
         class SettingSyncModifyMessage {
@@ -6748,7 +6833,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncModifyMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncModifyMessage vault. */
@@ -6883,7 +6968,7 @@ export namespace proto {
                 /** SettingSyncModifyMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -6895,7 +6980,8 @@ export namespace proto {
          * Properties of a SettingSyncDeleteMessage.
          * @deprecated Use proto.v1.SettingSyncDeleteMessage.$Properties instead.
          */
-        type ISettingSyncDeleteMessage = proto.v1.SettingSyncDeleteMessage.$Properties;
+        interface ISettingSyncDeleteMessage extends proto.v1.SettingSyncDeleteMessage.$Properties {
+        }
 
         /** Represents a SettingSyncDeleteMessage. */
         class SettingSyncDeleteMessage {
@@ -6906,7 +6992,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncDeleteMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncDeleteMessage path. */
@@ -7023,7 +7109,7 @@ export namespace proto {
                 /** SettingSyncDeleteMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7035,7 +7121,8 @@ export namespace proto {
          * Properties of a SettingSyncMtimeMessage.
          * @deprecated Use proto.v1.SettingSyncMtimeMessage.$Properties instead.
          */
-        type ISettingSyncMtimeMessage = proto.v1.SettingSyncMtimeMessage.$Properties;
+        interface ISettingSyncMtimeMessage extends proto.v1.SettingSyncMtimeMessage.$Properties {
+        }
 
         /** Represents a SettingSyncMtimeMessage. */
         class SettingSyncMtimeMessage {
@@ -7046,7 +7133,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncMtimeMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncMtimeMessage path. */
@@ -7157,7 +7244,7 @@ export namespace proto {
                 /** SettingSyncMtimeMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7169,7 +7256,8 @@ export namespace proto {
          * Properties of a SettingSyncEndMessage.
          * @deprecated Use proto.v1.SettingSyncEndMessage.$Properties instead.
          */
-        type ISettingSyncEndMessage = proto.v1.SettingSyncEndMessage.$Properties;
+        interface ISettingSyncEndMessage extends proto.v1.SettingSyncEndMessage.$Properties {
+        }
 
         /** Represents a SettingSyncEndMessage. */
         class SettingSyncEndMessage {
@@ -7180,7 +7268,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncEndMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncEndMessage lastTime. */
@@ -7297,7 +7385,7 @@ export namespace proto {
                 /** SettingSyncEndMessage needDeleteCount */
                 needDeleteCount?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7309,7 +7397,8 @@ export namespace proto {
          * Properties of a SettingSyncNeedUploadMessage.
          * @deprecated Use proto.v1.SettingSyncNeedUploadMessage.$Properties instead.
          */
-        type ISettingSyncNeedUploadMessage = proto.v1.SettingSyncNeedUploadMessage.$Properties;
+        interface ISettingSyncNeedUploadMessage extends proto.v1.SettingSyncNeedUploadMessage.$Properties {
+        }
 
         /** Represents a SettingSyncNeedUploadMessage. */
         class SettingSyncNeedUploadMessage {
@@ -7320,7 +7409,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingSyncNeedUploadMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingSyncNeedUploadMessage path. */
@@ -7413,7 +7502,7 @@ export namespace proto {
                 /** SettingSyncNeedUploadMessage path */
                 path?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7425,7 +7514,8 @@ export namespace proto {
          * Properties of a SettingModifyAckMessage.
          * @deprecated Use proto.v1.SettingModifyAckMessage.$Properties instead.
          */
-        type ISettingModifyAckMessage = proto.v1.SettingModifyAckMessage.$Properties;
+        interface ISettingModifyAckMessage extends proto.v1.SettingModifyAckMessage.$Properties {
+        }
 
         /** Represents a SettingModifyAckMessage. */
         class SettingModifyAckMessage {
@@ -7436,7 +7526,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingModifyAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingModifyAckMessage lastTime. */
@@ -7541,7 +7631,7 @@ export namespace proto {
                 /** SettingModifyAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7553,7 +7643,8 @@ export namespace proto {
          * Properties of a SettingDeleteAckMessage.
          * @deprecated Use proto.v1.SettingDeleteAckMessage.$Properties instead.
          */
-        type ISettingDeleteAckMessage = proto.v1.SettingDeleteAckMessage.$Properties;
+        interface ISettingDeleteAckMessage extends proto.v1.SettingDeleteAckMessage.$Properties {
+        }
 
         /** Represents a SettingDeleteAckMessage. */
         class SettingDeleteAckMessage {
@@ -7564,7 +7655,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.SettingDeleteAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** SettingDeleteAckMessage lastTime. */
@@ -7669,7 +7760,7 @@ export namespace proto {
                 /** SettingDeleteAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7681,7 +7772,8 @@ export namespace proto {
          * Properties of a FolderSyncCheckRequest.
          * @deprecated Use proto.v1.FolderSyncCheckRequest.$Properties instead.
          */
-        type IFolderSyncCheckRequest = proto.v1.FolderSyncCheckRequest.$Properties;
+        interface IFolderSyncCheckRequest extends proto.v1.FolderSyncCheckRequest.$Properties {
+        }
 
         /** Represents a FolderSyncCheckRequest. */
         class FolderSyncCheckRequest {
@@ -7692,7 +7784,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncCheckRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncCheckRequest path. */
@@ -7797,7 +7889,7 @@ export namespace proto {
                 /** FolderSyncCheckRequest mtime */
                 mtime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7809,7 +7901,8 @@ export namespace proto {
          * Properties of a FolderSyncDelFolder.
          * @deprecated Use proto.v1.FolderSyncDelFolder.$Properties instead.
          */
-        type IFolderSyncDelFolder = proto.v1.FolderSyncDelFolder.$Properties;
+        interface IFolderSyncDelFolder extends proto.v1.FolderSyncDelFolder.$Properties {
+        }
 
         /** Represents a FolderSyncDelFolder. */
         class FolderSyncDelFolder {
@@ -7820,7 +7913,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncDelFolder.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncDelFolder path. */
@@ -7919,7 +8012,7 @@ export namespace proto {
                 /** FolderSyncDelFolder pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -7931,7 +8024,8 @@ export namespace proto {
          * Properties of a FolderSyncRequest.
          * @deprecated Use proto.v1.FolderSyncRequest.$Properties instead.
          */
-        type IFolderSyncRequest = proto.v1.FolderSyncRequest.$Properties;
+        interface IFolderSyncRequest extends proto.v1.FolderSyncRequest.$Properties {
+        }
 
         /** Represents a FolderSyncRequest. */
         class FolderSyncRequest {
@@ -7942,7 +8036,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncRequest context. */
@@ -7962,6 +8056,12 @@ export namespace proto {
 
             /** FolderSyncRequest missingFolders. */
             missingFolders: proto.v1.FolderSyncDelFolder.$Properties[];
+
+            /** FolderSyncRequest batchIndex. */
+            batchIndex: number;
+
+            /** FolderSyncRequest totalBatches. */
+            totalBatches: number;
 
             /**
              * Creates a new FolderSyncRequest instance using the specified properties.
@@ -8065,7 +8165,13 @@ export namespace proto {
                 /** FolderSyncRequest missingFolders */
                 missingFolders?: (proto.v1.FolderSyncDelFolder.$Properties[]|null);
 
-                /** Unknown fields preserved while decoding */
+                /** FolderSyncRequest batchIndex */
+                batchIndex?: (number|null);
+
+                /** FolderSyncRequest totalBatches */
+                totalBatches?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8077,7 +8183,8 @@ export namespace proto {
          * Properties of a FolderCreateRequest.
          * @deprecated Use proto.v1.FolderCreateRequest.$Properties instead.
          */
-        type IFolderCreateRequest = proto.v1.FolderCreateRequest.$Properties;
+        interface IFolderCreateRequest extends proto.v1.FolderCreateRequest.$Properties {
+        }
 
         /** Represents a FolderCreateRequest. */
         class FolderCreateRequest {
@@ -8088,7 +8195,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderCreateRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderCreateRequest vault. */
@@ -8193,7 +8300,7 @@ export namespace proto {
                 /** FolderCreateRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8205,7 +8312,8 @@ export namespace proto {
          * Properties of a FolderDeleteRequest.
          * @deprecated Use proto.v1.FolderDeleteRequest.$Properties instead.
          */
-        type IFolderDeleteRequest = proto.v1.FolderDeleteRequest.$Properties;
+        interface IFolderDeleteRequest extends proto.v1.FolderDeleteRequest.$Properties {
+        }
 
         /** Represents a FolderDeleteRequest. */
         class FolderDeleteRequest {
@@ -8216,7 +8324,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderDeleteRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderDeleteRequest vault. */
@@ -8321,7 +8429,7 @@ export namespace proto {
                 /** FolderDeleteRequest pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8333,7 +8441,8 @@ export namespace proto {
          * Properties of a FolderRenameRequest.
          * @deprecated Use proto.v1.FolderRenameRequest.$Properties instead.
          */
-        type IFolderRenameRequest = proto.v1.FolderRenameRequest.$Properties;
+        interface IFolderRenameRequest extends proto.v1.FolderRenameRequest.$Properties {
+        }
 
         /** Represents a FolderRenameRequest. */
         class FolderRenameRequest {
@@ -8344,7 +8453,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderRenameRequest.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderRenameRequest vault. */
@@ -8461,7 +8570,7 @@ export namespace proto {
                 /** FolderRenameRequest oldPathHash */
                 oldPathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8473,7 +8582,8 @@ export namespace proto {
          * Properties of a FolderSyncModifyMessage.
          * @deprecated Use proto.v1.FolderSyncModifyMessage.$Properties instead.
          */
-        type IFolderSyncModifyMessage = proto.v1.FolderSyncModifyMessage.$Properties;
+        interface IFolderSyncModifyMessage extends proto.v1.FolderSyncModifyMessage.$Properties {
+        }
 
         /** Represents a FolderSyncModifyMessage. */
         class FolderSyncModifyMessage {
@@ -8484,7 +8594,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncModifyMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncModifyMessage path. */
@@ -8601,7 +8711,7 @@ export namespace proto {
                 /** FolderSyncModifyMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8613,7 +8723,8 @@ export namespace proto {
          * Properties of a FolderSyncDeleteMessage.
          * @deprecated Use proto.v1.FolderSyncDeleteMessage.$Properties instead.
          */
-        type IFolderSyncDeleteMessage = proto.v1.FolderSyncDeleteMessage.$Properties;
+        interface IFolderSyncDeleteMessage extends proto.v1.FolderSyncDeleteMessage.$Properties {
+        }
 
         /** Represents a FolderSyncDeleteMessage. */
         class FolderSyncDeleteMessage {
@@ -8624,7 +8735,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncDeleteMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncDeleteMessage path. */
@@ -8741,7 +8852,7 @@ export namespace proto {
                 /** FolderSyncDeleteMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8753,7 +8864,8 @@ export namespace proto {
          * Properties of a FolderSyncRenameMessage.
          * @deprecated Use proto.v1.FolderSyncRenameMessage.$Properties instead.
          */
-        type IFolderSyncRenameMessage = proto.v1.FolderSyncRenameMessage.$Properties;
+        interface IFolderSyncRenameMessage extends proto.v1.FolderSyncRenameMessage.$Properties {
+        }
 
         /** Represents a FolderSyncRenameMessage. */
         class FolderSyncRenameMessage {
@@ -8764,7 +8876,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncRenameMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncRenameMessage path. */
@@ -8893,7 +9005,7 @@ export namespace proto {
                 /** FolderSyncRenameMessage lastTime */
                 lastTime?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -8905,7 +9017,8 @@ export namespace proto {
          * Properties of a FolderSyncEndMessage.
          * @deprecated Use proto.v1.FolderSyncEndMessage.$Properties instead.
          */
-        type IFolderSyncEndMessage = proto.v1.FolderSyncEndMessage.$Properties;
+        interface IFolderSyncEndMessage extends proto.v1.FolderSyncEndMessage.$Properties {
+        }
 
         /** Represents a FolderSyncEndMessage. */
         class FolderSyncEndMessage {
@@ -8916,7 +9029,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderSyncEndMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderSyncEndMessage lastTime. */
@@ -9021,7 +9134,7 @@ export namespace proto {
                 /** FolderSyncEndMessage needDeleteCount */
                 needDeleteCount?: (number|Long|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -9033,7 +9146,8 @@ export namespace proto {
          * Properties of a FolderModifyAckMessage.
          * @deprecated Use proto.v1.FolderModifyAckMessage.$Properties instead.
          */
-        type IFolderModifyAckMessage = proto.v1.FolderModifyAckMessage.$Properties;
+        interface IFolderModifyAckMessage extends proto.v1.FolderModifyAckMessage.$Properties {
+        }
 
         /** Represents a FolderModifyAckMessage. */
         class FolderModifyAckMessage {
@@ -9044,7 +9158,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderModifyAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderModifyAckMessage lastTime. */
@@ -9149,7 +9263,7 @@ export namespace proto {
                 /** FolderModifyAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -9161,7 +9275,8 @@ export namespace proto {
          * Properties of a FolderRenameAckMessage.
          * @deprecated Use proto.v1.FolderRenameAckMessage.$Properties instead.
          */
-        type IFolderRenameAckMessage = proto.v1.FolderRenameAckMessage.$Properties;
+        interface IFolderRenameAckMessage extends proto.v1.FolderRenameAckMessage.$Properties {
+        }
 
         /** Represents a FolderRenameAckMessage. */
         class FolderRenameAckMessage {
@@ -9172,7 +9287,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderRenameAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderRenameAckMessage lastTime. */
@@ -9277,7 +9392,7 @@ export namespace proto {
                 /** FolderRenameAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
@@ -9289,7 +9404,8 @@ export namespace proto {
          * Properties of a FolderDeleteAckMessage.
          * @deprecated Use proto.v1.FolderDeleteAckMessage.$Properties instead.
          */
-        type IFolderDeleteAckMessage = proto.v1.FolderDeleteAckMessage.$Properties;
+        interface IFolderDeleteAckMessage extends proto.v1.FolderDeleteAckMessage.$Properties {
+        }
 
         /** Represents a FolderDeleteAckMessage. */
         class FolderDeleteAckMessage {
@@ -9300,7 +9416,7 @@ export namespace proto {
              */
             constructor(properties?: proto.v1.FolderDeleteAckMessage.$Properties);
 
-            /** Unknown fields preserved while decoding */
+            /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
             /** FolderDeleteAckMessage lastTime. */
@@ -9405,12 +9521,1092 @@ export namespace proto {
                 /** FolderDeleteAckMessage pathHash */
                 pathHash?: (string|null);
 
-                /** Unknown fields preserved while decoding */
+                /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
             /** Shape of a FolderDeleteAckMessage. */
             type $Shape = proto.v1.FolderDeleteAckMessage.$Properties;
+        }
+
+        /**
+         * Properties of a NoteSyncPageMessage.
+         * @deprecated Use proto.v1.NoteSyncPageMessage.$Properties instead.
+         */
+        interface INoteSyncPageMessage extends proto.v1.NoteSyncPageMessage.$Properties {
+        }
+
+        /** Represents a NoteSyncPageMessage. */
+        class NoteSyncPageMessage {
+
+            /**
+             * Constructs a new NoteSyncPageMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.NoteSyncPageMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** NoteSyncPageMessage context. */
+            context: string;
+
+            /** NoteSyncPageMessage pageIndex. */
+            pageIndex: number;
+
+            /** NoteSyncPageMessage pageSize. */
+            pageSize: number;
+
+            /** NoteSyncPageMessage totalCount. */
+            totalCount: number;
+
+            /** NoteSyncPageMessage isLast. */
+            isLast: boolean;
+
+            /**
+             * Creates a new NoteSyncPageMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns NoteSyncPageMessage instance
+             */
+            static create(properties: proto.v1.NoteSyncPageMessage.$Shape): proto.v1.NoteSyncPageMessage & proto.v1.NoteSyncPageMessage.$Shape;
+            static create(properties?: proto.v1.NoteSyncPageMessage.$Properties): proto.v1.NoteSyncPageMessage;
+
+            /**
+             * Encodes the specified NoteSyncPageMessage message. Does not implicitly {@link proto.v1.NoteSyncPageMessage.verify|verify} messages.
+             * @param message NoteSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.NoteSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified NoteSyncPageMessage message, length delimited. Does not implicitly {@link proto.v1.NoteSyncPageMessage.verify|verify} messages.
+             * @param message NoteSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.NoteSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a NoteSyncPageMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.NoteSyncPageMessage & proto.v1.NoteSyncPageMessage.$Shape} NoteSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.NoteSyncPageMessage & proto.v1.NoteSyncPageMessage.$Shape;
+
+            /**
+             * Decodes a NoteSyncPageMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.NoteSyncPageMessage & proto.v1.NoteSyncPageMessage.$Shape} NoteSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.NoteSyncPageMessage & proto.v1.NoteSyncPageMessage.$Shape;
+
+            /**
+             * Verifies a NoteSyncPageMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a NoteSyncPageMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns NoteSyncPageMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.NoteSyncPageMessage;
+
+            /**
+             * Creates a plain object from a NoteSyncPageMessage message. Also converts values to other types if specified.
+             * @param message NoteSyncPageMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.NoteSyncPageMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this NoteSyncPageMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for NoteSyncPageMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace NoteSyncPageMessage {
+
+            /** Properties of a NoteSyncPageMessage. */
+            interface $Properties {
+
+                /** NoteSyncPageMessage context */
+                context?: (string|null);
+
+                /** NoteSyncPageMessage pageIndex */
+                pageIndex?: (number|null);
+
+                /** NoteSyncPageMessage pageSize */
+                pageSize?: (number|null);
+
+                /** NoteSyncPageMessage totalCount */
+                totalCount?: (number|null);
+
+                /** NoteSyncPageMessage isLast */
+                isLast?: (boolean|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a NoteSyncPageMessage. */
+            type $Shape = proto.v1.NoteSyncPageMessage.$Properties;
+        }
+
+        /**
+         * Properties of a NoteSyncPageAckRequest.
+         * @deprecated Use proto.v1.NoteSyncPageAckRequest.$Properties instead.
+         */
+        interface INoteSyncPageAckRequest extends proto.v1.NoteSyncPageAckRequest.$Properties {
+        }
+
+        /** Represents a NoteSyncPageAckRequest. */
+        class NoteSyncPageAckRequest {
+
+            /**
+             * Constructs a new NoteSyncPageAckRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.NoteSyncPageAckRequest.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** NoteSyncPageAckRequest context. */
+            context: string;
+
+            /** NoteSyncPageAckRequest vault. */
+            vault: string;
+
+            /** NoteSyncPageAckRequest pageIndex. */
+            pageIndex: number;
+
+            /**
+             * Creates a new NoteSyncPageAckRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns NoteSyncPageAckRequest instance
+             */
+            static create(properties: proto.v1.NoteSyncPageAckRequest.$Shape): proto.v1.NoteSyncPageAckRequest & proto.v1.NoteSyncPageAckRequest.$Shape;
+            static create(properties?: proto.v1.NoteSyncPageAckRequest.$Properties): proto.v1.NoteSyncPageAckRequest;
+
+            /**
+             * Encodes the specified NoteSyncPageAckRequest message. Does not implicitly {@link proto.v1.NoteSyncPageAckRequest.verify|verify} messages.
+             * @param message NoteSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.NoteSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified NoteSyncPageAckRequest message, length delimited. Does not implicitly {@link proto.v1.NoteSyncPageAckRequest.verify|verify} messages.
+             * @param message NoteSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.NoteSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a NoteSyncPageAckRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.NoteSyncPageAckRequest & proto.v1.NoteSyncPageAckRequest.$Shape} NoteSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.NoteSyncPageAckRequest & proto.v1.NoteSyncPageAckRequest.$Shape;
+
+            /**
+             * Decodes a NoteSyncPageAckRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.NoteSyncPageAckRequest & proto.v1.NoteSyncPageAckRequest.$Shape} NoteSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.NoteSyncPageAckRequest & proto.v1.NoteSyncPageAckRequest.$Shape;
+
+            /**
+             * Verifies a NoteSyncPageAckRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a NoteSyncPageAckRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns NoteSyncPageAckRequest
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.NoteSyncPageAckRequest;
+
+            /**
+             * Creates a plain object from a NoteSyncPageAckRequest message. Also converts values to other types if specified.
+             * @param message NoteSyncPageAckRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.NoteSyncPageAckRequest, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this NoteSyncPageAckRequest to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for NoteSyncPageAckRequest
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace NoteSyncPageAckRequest {
+
+            /** Properties of a NoteSyncPageAckRequest. */
+            interface $Properties {
+
+                /** NoteSyncPageAckRequest context */
+                context?: (string|null);
+
+                /** NoteSyncPageAckRequest vault */
+                vault?: (string|null);
+
+                /** NoteSyncPageAckRequest pageIndex */
+                pageIndex?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a NoteSyncPageAckRequest. */
+            type $Shape = proto.v1.NoteSyncPageAckRequest.$Properties;
+        }
+
+        /**
+         * Properties of a FileSyncPageMessage.
+         * @deprecated Use proto.v1.FileSyncPageMessage.$Properties instead.
+         */
+        interface IFileSyncPageMessage extends proto.v1.FileSyncPageMessage.$Properties {
+        }
+
+        /** Represents a FileSyncPageMessage. */
+        class FileSyncPageMessage {
+
+            /**
+             * Constructs a new FileSyncPageMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FileSyncPageMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FileSyncPageMessage context. */
+            context: string;
+
+            /** FileSyncPageMessage pageIndex. */
+            pageIndex: number;
+
+            /** FileSyncPageMessage pageSize. */
+            pageSize: number;
+
+            /** FileSyncPageMessage totalCount. */
+            totalCount: number;
+
+            /** FileSyncPageMessage isLast. */
+            isLast: boolean;
+
+            /**
+             * Creates a new FileSyncPageMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FileSyncPageMessage instance
+             */
+            static create(properties: proto.v1.FileSyncPageMessage.$Shape): proto.v1.FileSyncPageMessage & proto.v1.FileSyncPageMessage.$Shape;
+            static create(properties?: proto.v1.FileSyncPageMessage.$Properties): proto.v1.FileSyncPageMessage;
+
+            /**
+             * Encodes the specified FileSyncPageMessage message. Does not implicitly {@link proto.v1.FileSyncPageMessage.verify|verify} messages.
+             * @param message FileSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FileSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FileSyncPageMessage message, length delimited. Does not implicitly {@link proto.v1.FileSyncPageMessage.verify|verify} messages.
+             * @param message FileSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FileSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FileSyncPageMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FileSyncPageMessage & proto.v1.FileSyncPageMessage.$Shape} FileSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FileSyncPageMessage & proto.v1.FileSyncPageMessage.$Shape;
+
+            /**
+             * Decodes a FileSyncPageMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FileSyncPageMessage & proto.v1.FileSyncPageMessage.$Shape} FileSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FileSyncPageMessage & proto.v1.FileSyncPageMessage.$Shape;
+
+            /**
+             * Verifies a FileSyncPageMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FileSyncPageMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FileSyncPageMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FileSyncPageMessage;
+
+            /**
+             * Creates a plain object from a FileSyncPageMessage message. Also converts values to other types if specified.
+             * @param message FileSyncPageMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FileSyncPageMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FileSyncPageMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FileSyncPageMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FileSyncPageMessage {
+
+            /** Properties of a FileSyncPageMessage. */
+            interface $Properties {
+
+                /** FileSyncPageMessage context */
+                context?: (string|null);
+
+                /** FileSyncPageMessage pageIndex */
+                pageIndex?: (number|null);
+
+                /** FileSyncPageMessage pageSize */
+                pageSize?: (number|null);
+
+                /** FileSyncPageMessage totalCount */
+                totalCount?: (number|null);
+
+                /** FileSyncPageMessage isLast */
+                isLast?: (boolean|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FileSyncPageMessage. */
+            type $Shape = proto.v1.FileSyncPageMessage.$Properties;
+        }
+
+        /**
+         * Properties of a FileSyncPageAckRequest.
+         * @deprecated Use proto.v1.FileSyncPageAckRequest.$Properties instead.
+         */
+        interface IFileSyncPageAckRequest extends proto.v1.FileSyncPageAckRequest.$Properties {
+        }
+
+        /** Represents a FileSyncPageAckRequest. */
+        class FileSyncPageAckRequest {
+
+            /**
+             * Constructs a new FileSyncPageAckRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FileSyncPageAckRequest.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FileSyncPageAckRequest context. */
+            context: string;
+
+            /** FileSyncPageAckRequest vault. */
+            vault: string;
+
+            /** FileSyncPageAckRequest pageIndex. */
+            pageIndex: number;
+
+            /**
+             * Creates a new FileSyncPageAckRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FileSyncPageAckRequest instance
+             */
+            static create(properties: proto.v1.FileSyncPageAckRequest.$Shape): proto.v1.FileSyncPageAckRequest & proto.v1.FileSyncPageAckRequest.$Shape;
+            static create(properties?: proto.v1.FileSyncPageAckRequest.$Properties): proto.v1.FileSyncPageAckRequest;
+
+            /**
+             * Encodes the specified FileSyncPageAckRequest message. Does not implicitly {@link proto.v1.FileSyncPageAckRequest.verify|verify} messages.
+             * @param message FileSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FileSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FileSyncPageAckRequest message, length delimited. Does not implicitly {@link proto.v1.FileSyncPageAckRequest.verify|verify} messages.
+             * @param message FileSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FileSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FileSyncPageAckRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FileSyncPageAckRequest & proto.v1.FileSyncPageAckRequest.$Shape} FileSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FileSyncPageAckRequest & proto.v1.FileSyncPageAckRequest.$Shape;
+
+            /**
+             * Decodes a FileSyncPageAckRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FileSyncPageAckRequest & proto.v1.FileSyncPageAckRequest.$Shape} FileSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FileSyncPageAckRequest & proto.v1.FileSyncPageAckRequest.$Shape;
+
+            /**
+             * Verifies a FileSyncPageAckRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FileSyncPageAckRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FileSyncPageAckRequest
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FileSyncPageAckRequest;
+
+            /**
+             * Creates a plain object from a FileSyncPageAckRequest message. Also converts values to other types if specified.
+             * @param message FileSyncPageAckRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FileSyncPageAckRequest, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FileSyncPageAckRequest to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FileSyncPageAckRequest
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FileSyncPageAckRequest {
+
+            /** Properties of a FileSyncPageAckRequest. */
+            interface $Properties {
+
+                /** FileSyncPageAckRequest context */
+                context?: (string|null);
+
+                /** FileSyncPageAckRequest vault */
+                vault?: (string|null);
+
+                /** FileSyncPageAckRequest pageIndex */
+                pageIndex?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FileSyncPageAckRequest. */
+            type $Shape = proto.v1.FileSyncPageAckRequest.$Properties;
+        }
+
+        /**
+         * Properties of a SettingSyncPageMessage.
+         * @deprecated Use proto.v1.SettingSyncPageMessage.$Properties instead.
+         */
+        interface ISettingSyncPageMessage extends proto.v1.SettingSyncPageMessage.$Properties {
+        }
+
+        /** Represents a SettingSyncPageMessage. */
+        class SettingSyncPageMessage {
+
+            /**
+             * Constructs a new SettingSyncPageMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.SettingSyncPageMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** SettingSyncPageMessage context. */
+            context: string;
+
+            /** SettingSyncPageMessage pageIndex. */
+            pageIndex: number;
+
+            /** SettingSyncPageMessage pageSize. */
+            pageSize: number;
+
+            /** SettingSyncPageMessage totalCount. */
+            totalCount: number;
+
+            /** SettingSyncPageMessage isLast. */
+            isLast: boolean;
+
+            /**
+             * Creates a new SettingSyncPageMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns SettingSyncPageMessage instance
+             */
+            static create(properties: proto.v1.SettingSyncPageMessage.$Shape): proto.v1.SettingSyncPageMessage & proto.v1.SettingSyncPageMessage.$Shape;
+            static create(properties?: proto.v1.SettingSyncPageMessage.$Properties): proto.v1.SettingSyncPageMessage;
+
+            /**
+             * Encodes the specified SettingSyncPageMessage message. Does not implicitly {@link proto.v1.SettingSyncPageMessage.verify|verify} messages.
+             * @param message SettingSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.SettingSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified SettingSyncPageMessage message, length delimited. Does not implicitly {@link proto.v1.SettingSyncPageMessage.verify|verify} messages.
+             * @param message SettingSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.SettingSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a SettingSyncPageMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.SettingSyncPageMessage & proto.v1.SettingSyncPageMessage.$Shape} SettingSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.SettingSyncPageMessage & proto.v1.SettingSyncPageMessage.$Shape;
+
+            /**
+             * Decodes a SettingSyncPageMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.SettingSyncPageMessage & proto.v1.SettingSyncPageMessage.$Shape} SettingSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.SettingSyncPageMessage & proto.v1.SettingSyncPageMessage.$Shape;
+
+            /**
+             * Verifies a SettingSyncPageMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a SettingSyncPageMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns SettingSyncPageMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.SettingSyncPageMessage;
+
+            /**
+             * Creates a plain object from a SettingSyncPageMessage message. Also converts values to other types if specified.
+             * @param message SettingSyncPageMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.SettingSyncPageMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this SettingSyncPageMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for SettingSyncPageMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace SettingSyncPageMessage {
+
+            /** Properties of a SettingSyncPageMessage. */
+            interface $Properties {
+
+                /** SettingSyncPageMessage context */
+                context?: (string|null);
+
+                /** SettingSyncPageMessage pageIndex */
+                pageIndex?: (number|null);
+
+                /** SettingSyncPageMessage pageSize */
+                pageSize?: (number|null);
+
+                /** SettingSyncPageMessage totalCount */
+                totalCount?: (number|null);
+
+                /** SettingSyncPageMessage isLast */
+                isLast?: (boolean|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a SettingSyncPageMessage. */
+            type $Shape = proto.v1.SettingSyncPageMessage.$Properties;
+        }
+
+        /**
+         * Properties of a SettingSyncPageAckRequest.
+         * @deprecated Use proto.v1.SettingSyncPageAckRequest.$Properties instead.
+         */
+        interface ISettingSyncPageAckRequest extends proto.v1.SettingSyncPageAckRequest.$Properties {
+        }
+
+        /** Represents a SettingSyncPageAckRequest. */
+        class SettingSyncPageAckRequest {
+
+            /**
+             * Constructs a new SettingSyncPageAckRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.SettingSyncPageAckRequest.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** SettingSyncPageAckRequest context. */
+            context: string;
+
+            /** SettingSyncPageAckRequest vault. */
+            vault: string;
+
+            /** SettingSyncPageAckRequest pageIndex. */
+            pageIndex: number;
+
+            /**
+             * Creates a new SettingSyncPageAckRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns SettingSyncPageAckRequest instance
+             */
+            static create(properties: proto.v1.SettingSyncPageAckRequest.$Shape): proto.v1.SettingSyncPageAckRequest & proto.v1.SettingSyncPageAckRequest.$Shape;
+            static create(properties?: proto.v1.SettingSyncPageAckRequest.$Properties): proto.v1.SettingSyncPageAckRequest;
+
+            /**
+             * Encodes the specified SettingSyncPageAckRequest message. Does not implicitly {@link proto.v1.SettingSyncPageAckRequest.verify|verify} messages.
+             * @param message SettingSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.SettingSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified SettingSyncPageAckRequest message, length delimited. Does not implicitly {@link proto.v1.SettingSyncPageAckRequest.verify|verify} messages.
+             * @param message SettingSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.SettingSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a SettingSyncPageAckRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.SettingSyncPageAckRequest & proto.v1.SettingSyncPageAckRequest.$Shape} SettingSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.SettingSyncPageAckRequest & proto.v1.SettingSyncPageAckRequest.$Shape;
+
+            /**
+             * Decodes a SettingSyncPageAckRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.SettingSyncPageAckRequest & proto.v1.SettingSyncPageAckRequest.$Shape} SettingSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.SettingSyncPageAckRequest & proto.v1.SettingSyncPageAckRequest.$Shape;
+
+            /**
+             * Verifies a SettingSyncPageAckRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a SettingSyncPageAckRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns SettingSyncPageAckRequest
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.SettingSyncPageAckRequest;
+
+            /**
+             * Creates a plain object from a SettingSyncPageAckRequest message. Also converts values to other types if specified.
+             * @param message SettingSyncPageAckRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.SettingSyncPageAckRequest, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this SettingSyncPageAckRequest to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for SettingSyncPageAckRequest
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace SettingSyncPageAckRequest {
+
+            /** Properties of a SettingSyncPageAckRequest. */
+            interface $Properties {
+
+                /** SettingSyncPageAckRequest context */
+                context?: (string|null);
+
+                /** SettingSyncPageAckRequest vault */
+                vault?: (string|null);
+
+                /** SettingSyncPageAckRequest pageIndex */
+                pageIndex?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a SettingSyncPageAckRequest. */
+            type $Shape = proto.v1.SettingSyncPageAckRequest.$Properties;
+        }
+
+        /**
+         * Properties of a FolderSyncPageMessage.
+         * @deprecated Use proto.v1.FolderSyncPageMessage.$Properties instead.
+         */
+        interface IFolderSyncPageMessage extends proto.v1.FolderSyncPageMessage.$Properties {
+        }
+
+        /** Represents a FolderSyncPageMessage. */
+        class FolderSyncPageMessage {
+
+            /**
+             * Constructs a new FolderSyncPageMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FolderSyncPageMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FolderSyncPageMessage context. */
+            context: string;
+
+            /** FolderSyncPageMessage pageIndex. */
+            pageIndex: number;
+
+            /** FolderSyncPageMessage pageSize. */
+            pageSize: number;
+
+            /** FolderSyncPageMessage totalCount. */
+            totalCount: number;
+
+            /** FolderSyncPageMessage isLast. */
+            isLast: boolean;
+
+            /**
+             * Creates a new FolderSyncPageMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FolderSyncPageMessage instance
+             */
+            static create(properties: proto.v1.FolderSyncPageMessage.$Shape): proto.v1.FolderSyncPageMessage & proto.v1.FolderSyncPageMessage.$Shape;
+            static create(properties?: proto.v1.FolderSyncPageMessage.$Properties): proto.v1.FolderSyncPageMessage;
+
+            /**
+             * Encodes the specified FolderSyncPageMessage message. Does not implicitly {@link proto.v1.FolderSyncPageMessage.verify|verify} messages.
+             * @param message FolderSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FolderSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FolderSyncPageMessage message, length delimited. Does not implicitly {@link proto.v1.FolderSyncPageMessage.verify|verify} messages.
+             * @param message FolderSyncPageMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FolderSyncPageMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FolderSyncPageMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FolderSyncPageMessage & proto.v1.FolderSyncPageMessage.$Shape} FolderSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FolderSyncPageMessage & proto.v1.FolderSyncPageMessage.$Shape;
+
+            /**
+             * Decodes a FolderSyncPageMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FolderSyncPageMessage & proto.v1.FolderSyncPageMessage.$Shape} FolderSyncPageMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FolderSyncPageMessage & proto.v1.FolderSyncPageMessage.$Shape;
+
+            /**
+             * Verifies a FolderSyncPageMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FolderSyncPageMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FolderSyncPageMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FolderSyncPageMessage;
+
+            /**
+             * Creates a plain object from a FolderSyncPageMessage message. Also converts values to other types if specified.
+             * @param message FolderSyncPageMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FolderSyncPageMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FolderSyncPageMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FolderSyncPageMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FolderSyncPageMessage {
+
+            /** Properties of a FolderSyncPageMessage. */
+            interface $Properties {
+
+                /** FolderSyncPageMessage context */
+                context?: (string|null);
+
+                /** FolderSyncPageMessage pageIndex */
+                pageIndex?: (number|null);
+
+                /** FolderSyncPageMessage pageSize */
+                pageSize?: (number|null);
+
+                /** FolderSyncPageMessage totalCount */
+                totalCount?: (number|null);
+
+                /** FolderSyncPageMessage isLast */
+                isLast?: (boolean|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FolderSyncPageMessage. */
+            type $Shape = proto.v1.FolderSyncPageMessage.$Properties;
+        }
+
+        /**
+         * Properties of a FolderSyncPageAckRequest.
+         * @deprecated Use proto.v1.FolderSyncPageAckRequest.$Properties instead.
+         */
+        interface IFolderSyncPageAckRequest extends proto.v1.FolderSyncPageAckRequest.$Properties {
+        }
+
+        /** Represents a FolderSyncPageAckRequest. */
+        class FolderSyncPageAckRequest {
+
+            /**
+             * Constructs a new FolderSyncPageAckRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FolderSyncPageAckRequest.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FolderSyncPageAckRequest context. */
+            context: string;
+
+            /** FolderSyncPageAckRequest vault. */
+            vault: string;
+
+            /** FolderSyncPageAckRequest pageIndex. */
+            pageIndex: number;
+
+            /**
+             * Creates a new FolderSyncPageAckRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FolderSyncPageAckRequest instance
+             */
+            static create(properties: proto.v1.FolderSyncPageAckRequest.$Shape): proto.v1.FolderSyncPageAckRequest & proto.v1.FolderSyncPageAckRequest.$Shape;
+            static create(properties?: proto.v1.FolderSyncPageAckRequest.$Properties): proto.v1.FolderSyncPageAckRequest;
+
+            /**
+             * Encodes the specified FolderSyncPageAckRequest message. Does not implicitly {@link proto.v1.FolderSyncPageAckRequest.verify|verify} messages.
+             * @param message FolderSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FolderSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FolderSyncPageAckRequest message, length delimited. Does not implicitly {@link proto.v1.FolderSyncPageAckRequest.verify|verify} messages.
+             * @param message FolderSyncPageAckRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FolderSyncPageAckRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FolderSyncPageAckRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FolderSyncPageAckRequest & proto.v1.FolderSyncPageAckRequest.$Shape} FolderSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FolderSyncPageAckRequest & proto.v1.FolderSyncPageAckRequest.$Shape;
+
+            /**
+             * Decodes a FolderSyncPageAckRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FolderSyncPageAckRequest & proto.v1.FolderSyncPageAckRequest.$Shape} FolderSyncPageAckRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FolderSyncPageAckRequest & proto.v1.FolderSyncPageAckRequest.$Shape;
+
+            /**
+             * Verifies a FolderSyncPageAckRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FolderSyncPageAckRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FolderSyncPageAckRequest
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FolderSyncPageAckRequest;
+
+            /**
+             * Creates a plain object from a FolderSyncPageAckRequest message. Also converts values to other types if specified.
+             * @param message FolderSyncPageAckRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FolderSyncPageAckRequest, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FolderSyncPageAckRequest to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FolderSyncPageAckRequest
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FolderSyncPageAckRequest {
+
+            /** Properties of a FolderSyncPageAckRequest. */
+            interface $Properties {
+
+                /** FolderSyncPageAckRequest context */
+                context?: (string|null);
+
+                /** FolderSyncPageAckRequest vault */
+                vault?: (string|null);
+
+                /** FolderSyncPageAckRequest pageIndex */
+                pageIndex?: (number|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FolderSyncPageAckRequest. */
+            type $Shape = proto.v1.FolderSyncPageAckRequest.$Properties;
         }
     }
 }

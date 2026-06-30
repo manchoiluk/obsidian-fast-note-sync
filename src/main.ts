@@ -66,6 +66,49 @@ export default class FastSync extends Plugin {
   // ─── Aggregated state objects (replaces 30+ scattered fields) ────────────────
   /** 同步会话运行时状态 / Sync-session runtime state */
   readonly syncState = new SyncState()
+
+  // ─── Sync page state tracking ───────────────────────────────────────────────
+  /**
+   * 追踪每个同步类型的当前下载分页状态
+   */
+  readonly syncPageStateMap = new Map<string, {
+    pageIndex: number;
+    pageSize: number;
+    totalCount: number;
+    isLast: boolean;
+    completedCount: number;
+  }>();
+
+  onDownloadTaskCompleted(type: "note" | "file" | "setting" | "folder") {
+    const pageState = this.syncPageStateMap.get(type);
+    if (!pageState) return;
+
+    pageState.completedCount++;
+    dump(`[PageSync] Task completed for type: ${type}, pageState: ${pageState.pageIndex}, completedCount: ${pageState.completedCount}, totalCount: ${pageState.totalCount}`);
+
+    if (pageState.completedCount >= pageState.totalCount) {
+      dump(`[PageSync] Page completed for type: ${type}, pageIndex: ${pageState.pageIndex}. Sending ACK.`);
+      this.sendSyncPageAck(type, pageState.pageIndex);
+    }
+  }
+
+  sendSyncPageAck(type: "note" | "file" | "setting" | "folder", pageIndex: number) {
+    let action = "";
+    if (type === "note") action = "NoteSyncPageAck";
+    else if (type === "file") action = "FileSyncPageAck";
+    else if (type === "setting") action = "SettingSyncPageAck";
+    else if (type === "folder") action = "FolderSyncPageAck";
+
+    if (!action) return;
+
+    this.websocket.Send(action, {
+      context: this.syncState.activeSyncContext || "",
+      vault: this.settings.vault,
+      pageIndex: pageIndex
+    });
+
+    this.syncPageStateMap.delete(type);
+  }
   /** 运行时 API 配置 / Runtime API configuration */
   readonly runtimeConfig = new RuntimeConfig()
 
@@ -314,6 +357,9 @@ export default class FastSync extends Plugin {
       addIcon(`fns-dot-${key}`, `<circle cx="50" cy="50" r="30" fill="${color}" />`);
     });
 
+    this.syncState.onCompletedChange = (type) => {
+      this.onDownloadTaskCompleted(type);
+    };
     this.localStorageManager = new LocalStorageManager(this)
     this.api = new HttpApiService(this)
     this.websocket = new WebSocketManager(this)

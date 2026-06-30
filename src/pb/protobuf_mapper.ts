@@ -109,6 +109,22 @@ function enSendDataPayload(action: WSAction.WSSendAction, payload: unknown): Uin
             const msg = proto.v1.FolderRenameRequest.create(properties);
             return proto.v1.FolderRenameRequest.encode(msg).finish();
         }
+        case WSAction.FolderSyncPageAck: {
+            const msg = proto.v1.FolderSyncPageAckRequest.create(properties);
+            return proto.v1.FolderSyncPageAckRequest.encode(msg).finish();
+        }
+        case WSAction.NoteSyncPageAck: {
+            const msg = proto.v1.NoteSyncPageAckRequest.create(properties);
+            return proto.v1.NoteSyncPageAckRequest.encode(msg).finish();
+        }
+        case WSAction.FileSyncPageAck: {
+            const msg = proto.v1.FileSyncPageAckRequest.create(properties);
+            return proto.v1.FileSyncPageAckRequest.encode(msg).finish();
+        }
+        case WSAction.SettingSyncPageAck: {
+            const msg = proto.v1.SettingSyncPageAckRequest.create(properties);
+            return proto.v1.SettingSyncPageAckRequest.encode(msg).finish();
+        }
         default: {
             // Fallback to JSON encoding if not supported explicitly in proto definitions
             // 对于 proto 定义中未明确支持的消息，降级使用 JSON 编码
@@ -488,6 +504,46 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
             try {
                 return proto.v1.FolderRenameAckMessage.toObject(
                     proto.v1.FolderRenameAckMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case WSAction.NoteSyncPage: {
+            try {
+                return proto.v1.NoteSyncPageMessage.toObject(
+                    proto.v1.NoteSyncPageMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case WSAction.FileSyncPage: {
+            try {
+                return proto.v1.FileSyncPageMessage.toObject(
+                    proto.v1.FileSyncPageMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case WSAction.SettingSyncPage: {
+            try {
+                return proto.v1.SettingSyncPageMessage.toObject(
+                    proto.v1.SettingSyncPageMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case WSAction.FolderSyncPage: {
+            try {
+                return proto.v1.FolderSyncPageMessage.toObject(
+                    proto.v1.FolderSyncPageMessage.decode(data),
                     { defaults: true, longs: Number }
                 );
             } catch {
