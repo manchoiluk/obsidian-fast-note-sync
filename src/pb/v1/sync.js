@@ -11908,6 +11908,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [pathHash] FileChunkDownloadRequest pathHash
              * @property {string|null} [sessionId] FileChunkDownloadRequest sessionId
              * @property {number|Long|null} [chunkIndex] FileChunkDownloadRequest chunkIndex
+             * @property {string|null} [context] FileChunkDownloadRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -11980,6 +11981,14 @@ export const proto = $root.proto = (() => {
             FileChunkDownloadRequest.prototype.chunkIndex = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileChunkDownloadRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FileChunkDownloadRequest
+             * @instance
+             */
+            FileChunkDownloadRequest.prototype.context = "";
+
+            /**
              * Creates a new FileChunkDownloadRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileChunkDownloadRequest
@@ -12021,6 +12030,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.sessionId);
                 if (message.chunkIndex != null && $Object.hasOwnProperty.call(message, "chunkIndex"))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.chunkIndex);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -12113,6 +12124,15 @@ export const proto = $root.proto = (() => {
                                 delete message.chunkIndex;
                             continue;
                         }
+                    case 6: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -12171,6 +12191,9 @@ export const proto = $root.proto = (() => {
                 if (message.chunkIndex != null && $Object.hasOwnProperty.call(message, "chunkIndex"))
                     if (!$util.isInteger(message.chunkIndex) && !(message.chunkIndex && $util.isInteger(message.chunkIndex.low) && $util.isInteger(message.chunkIndex.high)))
                         return "chunkIndex: integer|Long expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -12214,6 +12237,9 @@ export const proto = $root.proto = (() => {
                             message.chunkIndex = object.chunkIndex;
                         else if (typeof object.chunkIndex === "object")
                             message.chunkIndex = new $util.LongBits(object.chunkIndex.low >>> 0, object.chunkIndex.high >>> 0).toNumber();
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -12244,6 +12270,7 @@ export const proto = $root.proto = (() => {
                         object.chunkIndex = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.chunkIndex = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -12260,6 +12287,8 @@ export const proto = $root.proto = (() => {
                         object.chunkIndex = options.longs === $String ? $String(message.chunkIndex) : message.chunkIndex;
                     else
                         object.chunkIndex = options.longs === $String ? $util.Long.prototype.toString.call(message.chunkIndex) : options.longs === $Number ? new $util.LongBits(message.chunkIndex.low >>> 0, message.chunkIndex.high >>> 0).toNumber() : message.chunkIndex;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -12299,6 +12328,8 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] FileGetRequest vault
              * @property {string|null} [path] FileGetRequest path
              * @property {string|null} [pathHash] FileGetRequest pathHash
+             * @property {boolean|null} [isRecycle] FileGetRequest isRecycle
+             * @property {string|null} [context] FileGetRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -12355,6 +12386,22 @@ export const proto = $root.proto = (() => {
             FileGetRequest.prototype.pathHash = "";
 
             /**
+             * FileGetRequest isRecycle.
+             * @member {boolean} isRecycle
+             * @memberof proto.v1.FileGetRequest
+             * @instance
+             */
+            FileGetRequest.prototype.isRecycle = false;
+
+            /**
+             * FileGetRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FileGetRequest
+             * @instance
+             */
+            FileGetRequest.prototype.context = "";
+
+            /**
              * Creates a new FileGetRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileGetRequest
@@ -12392,6 +12439,10 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle"))
+                    writer.uint32(/* id 4, wireType 0 =*/32).bool(message.isRecycle);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -12466,6 +12517,24 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.isRecycle = value;
+                            else
+                                delete message.isRecycle;
+                            continue;
+                        }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -12518,6 +12587,12 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle"))
+                    if (typeof message.isRecycle !== "boolean")
+                        return "isRecycle: boolean expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -12548,6 +12623,12 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.isRecycle != null)
+                    if (object.isRecycle)
+                        message.isRecycle = $Boolean(object.isRecycle);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -12572,6 +12653,8 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.path = "";
                     object.pathHash = "";
+                    object.isRecycle = false;
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -12579,6 +12662,10 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle"))
+                    object.isRecycle = message.isRecycle;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 

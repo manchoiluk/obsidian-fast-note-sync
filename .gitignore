@@ -22,6 +22,7 @@ sync.log
 .DS_Store
 /src/dist
 /src/views/dist
+temp-chunks/
 
 # Claude Code
 CLAUDE.md
