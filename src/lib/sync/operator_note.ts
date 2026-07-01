@@ -220,7 +220,6 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
     return
   }
   dump(`Receive note modify:`, data.path, data.contentHash, data.mtime, data.pathHash)
@@ -280,7 +279,6 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
     }
   } finally {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
   }
 }
 
@@ -353,7 +351,6 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
     return
   }
   dump(`Receive note sync mtime:`, data.path, data.mtime)
@@ -394,7 +391,6 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
     }
   } finally {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
   }
 }
 
@@ -405,7 +401,6 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
     return
   }
   dump(`Receive note delete:`, data.path, data.mtime, data.pathHash)
@@ -445,7 +440,6 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
     SyncLogManager.getInstance().addLog('receive', 'NoteDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
   } finally {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
   }
 }
 
@@ -476,7 +470,6 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
     return
   }
 
@@ -567,7 +560,6 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
     }
   } finally {
     plugin.noteSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('note');
   }
 }
 

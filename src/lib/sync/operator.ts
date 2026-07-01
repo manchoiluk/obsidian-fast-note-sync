@@ -235,7 +235,7 @@ async function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "f
     context: string;
   };
 
-  dump(`[PageSync] Received page info for ${type}, pageIndex: ${pageMsg.pageIndex}, totalCount: ${pageMsg.totalCount}, isLast: ${pageMsg.isLast}`);
+  dump(`[PageSync] Received page info for ${type}, pageIndex: ${pageMsg.pageIndex}, totalCount: ${pageMsg.totalCount}, isLast: ${pageMsg.isLast}, context: ${pageMsg.context}`);
 
   // 通知进度追踪器
   plugin.progressTracker.recordPageProgress(type, pageMsg.pageIndex, pageMsg.totalCount, pageMsg.isLast);
@@ -282,8 +282,8 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
 
   const trueTotal = tasks.needUpload + tasks.needModify + tasks.needSyncMtime + tasks.needDelete;
   const trackerType = type === "config" ? "setting" : type;
-  plugin.progressTracker.setDownloadTotal(trackerType as SyncType, trueTotal);
-  plugin.progressTracker.recordUploadComplete(trackerType as SyncType);
+  plugin.progressTracker.setDownloadTotal(trackerType as SyncType, trueTotal, plugin.syncState.syncDownChunkNum);
+  plugin.progressTracker.recordUploadComplete(trackerType as SyncType, tasks.completed);
 
   // 1.1 注意：v1.1 协议中 End 消息不再携带 messages 列表。
   // 排除项的处理将依赖于后端是否推送相关通知。
@@ -361,7 +361,13 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
   // 4. 如果所有活跃类型的客户端上传均已就绪（进入 download 推送阶段），批量触发首拉 Ack 信号
   if (plugin.progressTracker.getPhase() === "download") {
     for (const t of plugin.progressTracker.getActiveTypes()) {
-      plugin.sendSyncPageAck(t, -1);
+      const taskTotal = plugin.progressTracker.getTypeTaskTotal(t);
+      if (taskTotal > 0) {
+        dump(`[Sync] Triggering initial ACK for type: ${t}, total tasks: ${taskTotal}`);
+        plugin.sendSyncPageAck(t, -1);
+      } else {
+        dump(`[Sync] Skipping initial ACK for type: ${t} because total tasks is 0`);
+      }
     }
   }
 }

@@ -136,7 +136,6 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
         plugin.configSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('setting');
         return
     }
 
@@ -144,10 +143,12 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
 
     if (configIsPathExcluded(data.path, plugin)) {
         plugin.configSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('setting');
         return
     }
-    if (plugin.ignoredConfigFiles.has(data.path)) return
+    if (plugin.ignoredConfigFiles.has(data.path)) {
+        plugin.configSyncTasks.completed++
+        return
+    }
 
     plugin.addIgnoredConfigFile(data.path)
     try {
@@ -159,9 +160,9 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
                     plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
                 }
                 plugin.configSyncTasks.completed++
-                plugin.progressTracker.recordDownloadComplete('setting');
                 return
             }
+            plugin.configSyncTasks.completed++
             return
         }
 
@@ -209,7 +210,6 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
     }
 
     plugin.configSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('setting');
 }
 
 export const receiveConfigUpload = async function (data: ReceivePathMessage, plugin: FastSync) {
@@ -289,14 +289,19 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
 export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
 
-    if (!isPathInConfigSyncDirs(data.path, plugin)) return
+    if (!isPathInConfigSyncDirs(data.path, plugin)) {
+        plugin.configSyncTasks.completed++
+        return
+    }
 
     if (configIsPathExcluded(data.path, plugin)) {
         plugin.configSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('setting');
         return
     }
-    if (plugin.ignoredConfigFiles.has(data.path)) return
+    if (plugin.ignoredConfigFiles.has(data.path)) {
+        plugin.configSyncTasks.completed++
+        return
+    }
 
     plugin.addIgnoredConfigFile(data.path)
     const filePath = normalizePath(data.path)
@@ -319,20 +324,24 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
     }
 
     plugin.configSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('setting');
 }
 
 export const receiveConfigSyncDelete = async function (data: { path: string, lastTime?: number }, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
 
-    if (!isPathInConfigSyncDirs(data.path, plugin)) return
+    if (!isPathInConfigSyncDirs(data.path, plugin)) {
+        plugin.configSyncTasks.completed++
+        return
+    }
 
     if (configIsPathExcluded(data.path, plugin)) {
         plugin.configSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('setting');
         return
     }
-    if (plugin.ignoredConfigFiles.has(data.path)) return
+    if (plugin.ignoredConfigFiles.has(data.path)) {
+        plugin.configSyncTasks.completed++
+        return
+    }
 
     try {
         const fullPath = normalizePath(data.path)
@@ -370,7 +379,6 @@ export const receiveConfigSyncDelete = async function (data: { path: string, las
     if (data.path) { plugin.concurrencyLimiter.releaseSlot(data.path) }
 
     plugin.configSyncTasks.completed++
-    plugin.progressTracker.recordDownloadComplete('setting');
 }
 
 export const receiveConfigSyncEnd = async function (data: unknown, plugin: FastSync) {

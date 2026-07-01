@@ -675,14 +675,12 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
   plugin.pendingFileDeleteAcks.delete(data.path)
   if (isPathExcluded(data.path, plugin)) {
     plugin.fileSyncTasks.completed++;
-    plugin.progressTracker.recordDownloadComplete('file');
     return
   }
   if (isLargeBinarySyncRisk(data.size, plugin)) {
     dump(`Skip file download for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, data.size)
     showSyncNotice(`Fast Note Sync skipped large file download: ${data.path}`, 5000)
     plugin.fileSyncTasks.completed++;
-    plugin.progressTracker.recordDownloadComplete('file');
     return
   }
 
@@ -694,14 +692,12 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file download: ${data.path}`);
         plugin.fileSyncTasks.completed++;
-        plugin.progressTracker.recordDownloadComplete('file');
         return;
       }
     } else {
       // 未开启类型限制：由于启用了云预览，跳过所有附件下载
       dump(`Cloud Preview: Skipping all file downloads: ${data.path}`);
       plugin.fileSyncTasks.completed++;
-      plugin.progressTracker.recordDownloadComplete('file');
       return;
     }
   }
@@ -760,7 +756,6 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
 
   if (isPathExcluded(data.path, plugin)) {
     plugin.fileSyncTasks.completed++;
-    plugin.progressTracker.recordDownloadComplete('file');
     return
   }
 
@@ -770,13 +765,11 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file delete: ${data.path}`);
         plugin.fileSyncTasks.completed++;
-        plugin.progressTracker.recordDownloadComplete('file');
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file deletes: ${data.path}`);
       plugin.fileSyncTasks.completed++;
-      plugin.progressTracker.recordDownloadComplete('file');
       return;
     }
   }
@@ -813,7 +806,6 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
   });
 
   plugin.fileSyncTasks.completed++
-  plugin.progressTracker.recordDownloadComplete('file');
 }
 
 /**
@@ -824,7 +816,6 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
 
   if (isPathExcluded(data.path, plugin)) {
     plugin.fileSyncTasks.completed++;
-    plugin.progressTracker.recordDownloadComplete('file');
     return
   }
 
@@ -834,13 +825,11 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file mtime update: ${data.path}`);
         plugin.fileSyncTasks.completed++;
-        plugin.progressTracker.recordDownloadComplete('file');
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file mtime updates: ${data.path}`);
       plugin.fileSyncTasks.completed++;
-      plugin.progressTracker.recordDownloadComplete('file');
       return;
     }
   }
@@ -886,7 +875,6 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
   // FileSyncMtime indicates file already exists on server (no upload needed), release slot acquired by fileModify
   if (data.path) plugin.concurrencyLimiter.releaseSlot(data.path)
   plugin.fileSyncTasks.completed++
-  plugin.progressTracker.recordDownloadComplete('file');
 }
 
 /**
@@ -1141,7 +1129,6 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
 
     if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
     plugin.fileSyncTasks.completed++;
-    plugin.progressTracker.recordDownloadComplete('file');
     return
   }
 
@@ -1210,7 +1197,6 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
             dump(`Target attachment already exists and matches hash, skipping rename: ${data.path}`)
             plugin.fileHashManager.setFileHash(data.path, data.contentHash, targetFile.stat.mtime, targetFile.stat.size)
             plugin.fileSyncTasks.completed++
-            plugin.progressTracker.recordDownloadComplete('file');
             return
           }
         }
@@ -1236,7 +1222,6 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
   });
 
   plugin.fileSyncTasks.completed++
-  plugin.progressTracker.recordDownloadComplete('file');
 }
 
 /**

@@ -306,6 +306,16 @@ export class WebSocketManager {
         const errorMsg = data.message || "";
         const errorDetails = data.details ? " Details=" + data.details : "";
         showSyncNotice("Service Error: Code=" + data.code + " Message=" + errorMsg + errorDetails);
+        
+        // 如果错误数据里含有 sessionID 或 path，也进行释放和清理，防止同步卡死
+        // If error payload contains sessionID or path, release slot and increment completed to prevent deadlock
+        if (data.data && typeof data.data.sessionID === "string") {
+          receiveFileUploadSessionNotFound(data.data.sessionID, this.plugin);
+        } else if (data.data && typeof data.data.path === "string") {
+          const path = data.data.path;
+          this.plugin.concurrencyLimiter.releaseSlot(path);
+          this.plugin.fileSyncTasks.completed++;
+        }
       }
     } else {
       if (typeof data === "object" && "vault" in data && data.vault != null && data.vault !== "" && data.vault !== this.plugin.settings.vault) {
