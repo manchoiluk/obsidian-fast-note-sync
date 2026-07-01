@@ -2759,6 +2759,21 @@ body .suggestion-container {
   align-items: center;
 }
 
+.fns-phase-label {
+  font-size: 10px;
+  margin-right: 3px;
+  opacity: 0.7;
+}
+
+.fns-progress-pct {
+  font-size: 10px;
+  min-width: 28px;
+}
+
+.fast-note-sync-progress-fill {
+  transition: width 0.3s ease;
+}
+
 .fns-update-icon {
   color: var(--text-success);
   margin-left: 4px;

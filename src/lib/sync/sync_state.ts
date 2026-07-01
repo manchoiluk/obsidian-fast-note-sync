@@ -19,6 +19,12 @@ export interface SyncTaskStats {
  * 集中管理同步会话的运行时状态，避免在 FastSync 插件类中散落 30+ 个字段。
  */
 export class SyncState {
+  // ─── Chunk size settings from server ─────────────────────────────────────────
+  /** 上传分片数量 / Upload chunk size from server */
+  syncUpChunkNum = 100;
+  /** 下载分片数量 / Download chunk size from server */
+  syncDownChunkNum = 50;
+
   // ─── Sync-session control flags ──────────────────────────────────────────────
   /** 是否正在执行同步流程 / Whether sync process is running */
   isSyncing = false;

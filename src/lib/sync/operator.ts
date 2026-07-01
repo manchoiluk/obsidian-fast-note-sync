@@ -1,7 +1,7 @@
 import { TFolder, TFile, normalizePath } from "obsidian";
 
 import { receiveFileUpload, receiveFileSyncUpdate, receiveFileSyncDelete, receiveFileSyncMtime, receiveFileSyncChunkDownload, receiveFileSyncEnd, checkAndUploadAttachments, receiveFileSyncRename, receiveFileRenameAck, receiveFileUploadAck, receiveFileDeleteAck, isPluginUnloading } from "./operator_file";
-import { hashContent, hashContentAsync, dump, isPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize } from "../utils/helpers";
+import { hashContent, hashContentAsync, dump, dumpError, isPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize } from "../utils/helpers";
 import { receiveConfigSyncModify, receiveConfigUpload, receiveConfigSyncMtime, receiveConfigSyncDelete, receiveConfigSyncEnd, configAllPaths, receiveConfigSyncClear, receiveConfigModifyAck, receiveConfigDeleteAck } from "./operator_config";
 import { receiveNoteSyncModify, receiveNoteUpload, receiveNoteSyncMtime, receiveNoteSyncDelete, receiveNoteSyncEnd, receiveNoteSyncRename, receiveNoteModifyAck, receiveNoteRenameAck, receiveNoteDeleteAck } from "./operator_note";
 import { SyncMode, SnapFile, SnapFolder, SyncEndData, PathHashFile, NoteSyncData, FileSyncData, ConfigSyncData, FolderSyncData } from "../utils/types";
@@ -11,6 +11,7 @@ import { SyncLogManager } from "./sync_log_manager";
 import * as WSAction from "./websocket_action";
 import type FastSync from "../../main";
 import { $ } from "../../i18n/lang";
+import { SyncType } from "./sync_progress_tracker";
 
 
 export const startupSync = (plugin: FastSync): void => {
@@ -57,6 +58,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     plugin.downloadedChunksCount = 0;
     plugin.totalChunksToUpload = 0;
     plugin.uploadedChunksCount = 0;
+    plugin.progressTracker.forceComplete();
     plugin.updateStatusBar($("ui.status.completed"));
     window.setTimeout(() => plugin.updateStatusBar(""), 3000);
     return;
@@ -65,87 +67,22 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
   const ws = plugin.websocket.ws;
   const bufferedAmount = ws && ws.readyState === WebSocket.OPEN ? ws.bufferedAmount : 0;
 
-  // 模块进度的完成判定：已处理的明细数达到需处理总数（即使未收到 End 消息，只要完成数达标也视为结束，增强网络容错）
-  const noteTasksTotal = plugin.noteSyncTasks.needUpload + plugin.noteSyncTasks.needModify + plugin.noteSyncTasks.needSyncMtime + plugin.noteSyncTasks.needDelete;
-  const noteSyncDone = (plugin.noteSyncEnd || plugin.noteSyncTasks.completed >= noteTasksTotal) && plugin.noteSyncTasks.completed >= noteTasksTotal;
+  // 模块进度的完成判定：使用新版基于 SyncPage 的 isTypeFullyDone 进行精确判断
+  const noteSyncDone = plugin.progressTracker.isTypeFullyDone('note');
+  const fileSyncDone = plugin.progressTracker.isTypeFullyDone('file');
+  const configSyncDone = plugin.progressTracker.isTypeFullyDone('setting');
+  const folderSyncDone = plugin.progressTracker.isTypeFullyDone('folder');
 
-  const fileTasksTotal = plugin.fileSyncTasks.needUpload + plugin.fileSyncTasks.needModify + plugin.fileSyncTasks.needSyncMtime + plugin.fileSyncTasks.needDelete;
-  const fileSyncDone = (plugin.fileSyncEnd || plugin.fileSyncTasks.completed >= fileTasksTotal) && plugin.fileSyncTasks.completed >= fileTasksTotal;
-
-  const configTasksTotal = plugin.configSyncTasks.needUpload + plugin.configSyncTasks.needModify + plugin.configSyncTasks.needSyncMtime + plugin.configSyncTasks.needDelete;
-  const configSyncDone = (plugin.configSyncEnd || plugin.configSyncTasks.completed >= configTasksTotal) && plugin.configSyncTasks.completed >= configTasksTotal;
-
-  const folderTasksTotal = plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete;
-  const folderSyncDone = (plugin.folderSyncEnd || plugin.folderSyncTasks.completed >= folderTasksTotal) && plugin.folderSyncTasks.completed >= folderTasksTotal;
-
-  const allSyncDone = (!plugin.settings.syncEnabled || (noteSyncDone && folderSyncDone && (plugin.settings.cloudPreviewEnabled || fileSyncDone))) &&
+  const allSyncDone = (!plugin.settings.syncEnabled || (noteSyncDone && folderSyncDone && fileSyncDone)) &&
     (!plugin.settings.configSyncEnabled || configSyncDone);
 
-  const totalChunks = plugin.totalChunksToUpload + plugin.totalChunksToDownload;
-  const completedChunks = plugin.uploadedChunksCount + plugin.downloadedChunksCount;
-  const allChunksCompleted = totalChunks === 0 || completedChunks >= totalChunks;
   const allDownloadsComplete = plugin.fileDownloadSessions.size === 0;
   const bufferCleared = bufferedAmount === 0;
 
   // 计算整体权重进度
-  let totalProgressSum = 0;
-  let activeModuleCount = 0;
+  const overallPercentage = plugin.progressTracker.getOverallPct();
 
-  // 1. 笔记同步进度
-  if (plugin.settings.syncEnabled) {
-    activeModuleCount++;
-    const noteTasks = plugin.noteSyncTasks;
-    const total = noteTasks.needUpload + noteTasks.needModify + noteTasks.needSyncMtime + noteTasks.needDelete;
-    if (plugin.noteSyncEnd) {
-      totalProgressSum += Math.min(1, total > 0 ? noteTasks.completed / total : 1);
-    }
-  }
-
-  // 2. 文件同步进度
-  if (plugin.settings.syncEnabled && !plugin.settings.cloudPreviewEnabled) {
-    activeModuleCount++;
-    const fileTasks = plugin.fileSyncTasks;
-    const taskTotal = fileTasks.needUpload + fileTasks.needModify + fileTasks.needSyncMtime + fileTasks.needDelete;
-    if (plugin.fileSyncEnd) {
-      const avgChunkSize = 512 * 1024;
-      const bufferChunks = Math.ceil(bufferedAmount / avgChunkSize);
-      const actualUploadedChunks = Math.max(0, plugin.uploadedChunksCount - bufferChunks);
-      const doneChunks = actualUploadedChunks + plugin.downloadedChunksCount;
-
-      const unitsTotal = taskTotal + totalChunks;
-      const unitsDone = fileTasks.completed + doneChunks;
-      totalProgressSum += Math.min(1, unitsTotal > 0 ? unitsDone / unitsTotal : 1);
-    }
-  }
-
-  // 3. 配置同步进度
-  if (plugin.settings.configSyncEnabled) {
-    activeModuleCount++;
-    const configTasks = plugin.configSyncTasks;
-    const total = configTasks.needUpload + configTasks.needModify + configTasks.needSyncMtime + configTasks.needDelete;
-    if (plugin.configSyncEnd) {
-      totalProgressSum += Math.min(1, total > 0 ? configTasks.completed / total : 1);
-    }
-  }
-
-  // 4. 文件夹同步进度
-  if (plugin.settings.syncEnabled) {
-    activeModuleCount++;
-    const folderTasks = plugin.folderSyncTasks;
-    const total = folderTasks.needUpload + folderTasks.needModify + folderTasks.needSyncMtime + folderTasks.needDelete;
-    if (plugin.folderSyncEnd) {
-      totalProgressSum += Math.min(1, total > 0 ? folderTasks.completed / total : 1);
-    }
-  }
-
-  // 使用动态计算的活跃模块数，避免 handleSync 中的静态计数同步延迟或错误导致的分母偏差
-  const divisor = Math.max(1, activeModuleCount);
-  const overallPercentage = (totalProgressSum / divisor) * 100;
-
-  // 判断是否强制完成：进度到 100% 且网络空闲，所有模块都标记了 Done，且所有请求已发出
-  const isProgressComplete = overallPercentage >= 100 && bufferCleared && allDownloadsComplete && !plugin.isSyncRequesting;
-
-  if (((allSyncDone && allChunksCompleted && allDownloadsComplete && bufferCleared) || isProgressComplete) && !plugin.isSyncRequesting) {
+  if (allSyncDone && allDownloadsComplete && bufferCleared && !plugin.isSyncRequesting) {
     if (intervalId) window.clearInterval(intervalId);
 
     // 收集本轮同步的统计数据并生成小结日志
@@ -201,6 +138,8 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     plugin.totalChunksToUpload = 0;
     plugin.uploadedChunksCount = 0;
 
+    plugin.progressTracker.forceComplete();
+
     if (plugin.settings.isShowNotice) {
       showSyncNotice($("ui.status.completed"));
     }
@@ -222,31 +161,16 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     window.setTimeout(() => plugin.updateStatusBar(""), 3000);
   } else {
     // --- 强制完成逻辑与 90% 补偿 ---
-    const allEndReceived = (!plugin.settings.syncEnabled || (plugin.noteSyncEnd && plugin.folderSyncEnd && (plugin.settings.cloudPreviewEnabled || plugin.fileSyncEnd))) &&
-      (!plugin.settings.configSyncEnabled || plugin.configSyncEnd);
-
-    let finalPercentage = overallPercentage;
-    if (allEndReceived && bufferCleared && allDownloadsComplete && allChunksCompleted) {
-      if (overallPercentage > 90) {
-        finalPercentage = 100;
-        if (plugin.settings.syncEnabled) {
-          plugin.noteSyncTasks.completed = plugin.noteSyncTasks.needUpload + plugin.noteSyncTasks.needModify + plugin.noteSyncTasks.needSyncMtime + plugin.noteSyncTasks.needDelete;
-          plugin.folderSyncTasks.completed = plugin.folderSyncTasks.needUpload + plugin.folderSyncTasks.needModify + plugin.folderSyncTasks.needSyncMtime + plugin.folderSyncTasks.needDelete;
-          plugin.fileSyncTasks.completed = plugin.fileSyncTasks.needUpload + plugin.fileSyncTasks.needModify + plugin.fileSyncTasks.needSyncMtime + plugin.fileSyncTasks.needDelete;
-        }
-        if (plugin.settings.configSyncEnabled) {
-          plugin.configSyncTasks.completed = plugin.configSyncTasks.needUpload + plugin.configSyncTasks.needModify + plugin.configSyncTasks.needSyncMtime + plugin.configSyncTasks.needDelete;
-        }
-      }
-    }
-
     let statusText = $("ui.status.syncing");
     if (bufferedAmount > 0) {
       const bufferMB = (bufferedAmount / 1024 / 1024).toFixed(2);
       statusText = `${$("ui.status.syncing")} (缓冲区: ${bufferMB}MB)`;
     }
 
-    plugin.updateStatusBar(statusText, Math.min(100, Math.floor(finalPercentage)), 100);
+    const detailText = plugin.progressTracker.getDetailText();
+    const finalStatusText = detailText ? `${statusText} · ${detailText}` : statusText;
+
+    plugin.updateStatusBar(finalStatusText, overallPercentage, 100);
   }
 }
 /**
@@ -302,7 +226,7 @@ export const receiveOperators: Map<WSAction.WSReceiveAction, OperatorHandler> = 
 /**
  * 统一处理分页控制消息
  */
-function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "file" | "setting" | "folder"): void {
+async function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "file" | "setting" | "folder"): Promise<void> {
   const pageMsg = data as {
     pageIndex: number;
     pageSize: number;
@@ -313,17 +237,23 @@ function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "file" |
 
   dump(`[PageSync] Received page info for ${type}, pageIndex: ${pageMsg.pageIndex}, totalCount: ${pageMsg.totalCount}, isLast: ${pageMsg.isLast}`);
 
+  // 通知进度追踪器
+  plugin.progressTracker.recordPageProgress(type, pageMsg.pageIndex, pageMsg.totalCount, pageMsg.isLast);
+
+  // 登记当前下载分页状态 (Register page metadata)
   plugin.syncPageStateMap.set(type, {
     pageIndex: pageMsg.pageIndex,
     pageSize: pageMsg.pageSize,
     totalCount: pageMsg.totalCount,
     isLast: pageMsg.isLast,
-    completedCount: 0
+    completedCount: 0,
+    context: pageMsg.context
   });
 
   if (pageMsg.totalCount === 0) {
     dump(`[PageSync] Page ${pageMsg.pageIndex} for ${type} is empty. Sending ACK immediately.`);
-    plugin.sendSyncPageAck(type, pageMsg.pageIndex);
+    plugin.progressTracker.onPageComplete?.(type, pageMsg.pageIndex);
+    return;
   }
 }
 
@@ -350,6 +280,11 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
   tasks.needSyncMtime = syncData.needSyncMtimeCount || 0;
   tasks.needDelete = syncData.needDeleteCount || 0;
 
+  const trueTotal = tasks.needUpload + tasks.needModify + tasks.needSyncMtime + tasks.needDelete;
+  const trackerType = type === "config" ? "setting" : type;
+  plugin.progressTracker.setDownloadTotal(trackerType as SyncType, trueTotal);
+  plugin.progressTracker.recordUploadComplete(trackerType as SyncType);
+
   // 1.1 注意：v1.1 协议中 End 消息不再携带 messages 列表。
   // 排除项的处理将依赖于后端是否推送相关通知。
 
@@ -363,14 +298,10 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     plugin.pendingNoteModifies.clear()
     plugin.localStorageManager.clearPending('pendingNoteModifies')
     // 同步结束，提交扫描阶段计算出的哈希 (Commit hashes calculated during scan)
-    for (const [path, cache] of plugin.scannedNoteHashes) {
-      const hashMap = (plugin.fileHashManager as unknown as { hashMap: Map<string, { mtime: number }> }).hashMap;
-      const existing = hashMap.get(path)
-      if (!existing || existing.mtime <= cache.mtime) {
-        plugin.fileHashManager.setFileHash(path, cache.hash, cache.mtime, cache.size)
-      }
+    if (plugin.scannedNoteHashes.size > 0) {
+      plugin.fileHashManager.bulkSetFromScanned(plugin.scannedNoteHashes);
+      plugin.scannedNoteHashes.clear();
     }
-    plugin.scannedNoteHashes.clear()
   } else if (type === "file") {
     plugin.fileHashManager.removeFileHashes(plugin.pendingDeleteFilePaths)
     plugin.pendingDeleteFilePaths.clear()
@@ -379,16 +310,12 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     plugin.pendingUploadHashes.clear()
     plugin.localStorageManager.clearPending('pendingUploadHashes')
     // 同步结束，提交扫描阶段计算出的哈希 (Commit hashes calculated during scan)
-    for (const [path, cache] of plugin.scannedFileHashes) {
-      const hashMap = (plugin.fileHashManager as unknown as { hashMap: Map<string, { mtime: number }> }).hashMap;
-      const existing = hashMap.get(path)
-      if (!existing || existing.mtime <= cache.mtime) {
-        plugin.fileHashManager.setFileHash(path, cache.hash, cache.mtime, cache.size)
-      }
+    if (plugin.scannedFileHashes.size > 0) {
+      plugin.fileHashManager.bulkSetFromScanned(plugin.scannedFileHashes);
+      plugin.scannedFileHashes.clear();
     }
-    plugin.scannedFileHashes.clear()
   } else if (type === "folder") {
-    for (const path of plugin.pendingDeleteFolderPaths) plugin.folderSnapshotManager.removeFolder(path)
+    plugin.folderSnapshotManager.removeFolders(plugin.pendingDeleteFolderPaths);
     plugin.pendingDeleteFolderPaths.clear()
   } else if (type === "config") {
     if (plugin.configHashManager && plugin.configHashManager.isReady()) {
@@ -408,14 +335,10 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     plugin.pendingConfigModifies.clear()
     plugin.localStorageManager.clearPending('pendingConfigModifies')
     // 同步结束，提交扫描阶段计算出的哈希 (Commit hashes calculated during scan)
-    for (const [path, cache] of plugin.scannedConfigHashes) {
-      const hashMap = (plugin.configHashManager as unknown as { hashMap: Map<string, { mtime: number }> }).hashMap;
-      const existing = hashMap.get(path)
-      if (!existing || existing.mtime <= cache.mtime) {
-        plugin.configHashManager.setFileHash(path, cache.hash, cache.mtime, cache.size)
-      }
+    if (plugin.scannedConfigHashes.size > 0) {
+      plugin.configHashManager.bulkSetFromScanned(plugin.scannedConfigHashes);
+      plugin.scannedConfigHashes.clear();
     }
-    plugin.scannedConfigHashes.clear()
   }
 
   //dddd
@@ -433,6 +356,13 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
   } else if (type === "folder") {
     await receiveFolderSyncEnd(data, plugin);
     plugin.folderSyncEnd = true;
+  }
+
+  // 4. 如果所有活跃类型的客户端上传均已就绪（进入 download 推送阶段），批量触发首拉 Ack 信号
+  if (plugin.progressTracker.getPhase() === "download") {
+    for (const t of plugin.progressTracker.getActiveTypes()) {
+      plugin.sendSyncPageAck(t, -1);
+    }
   }
 }
 
@@ -477,6 +407,21 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.currentSyncType = isLoadLastTime ? 'incremental' : 'full';
     plugin.syncTypeCompleteCount = 0;
     plugin.resetSyncTasks();
+
+    const shouldSyncNotes = syncMode === "auto" || syncMode === "note";
+    const shouldSyncConfigs = syncMode === "auto" || syncMode === "config";
+
+    const activeTypes: SyncType[] = [];
+    if (plugin.settings.syncEnabled && shouldSyncNotes) {
+      activeTypes.push('note', 'folder');
+      if (!plugin.settings.cloudPreviewEnabled || plugin.settings.cloudPreviewTypeRestricted) {
+        activeTypes.push('file');
+      }
+    }
+    if (plugin.settings.configSyncEnabled && shouldSyncConfigs) {
+      activeTypes.push('setting');
+    }
+    plugin.progressTracker.reset(activeTypes);
     plugin.totalFilesToDownload = 0;
     plugin.downloadedFilesCount = 0;
     plugin.totalChunksToDownload = 0;
@@ -489,7 +434,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     // 清空上一次连接的未完成笔记 rename 队列，由 hashManager 旧路径进 delNotes 自然处理
     // Clear pending note renames from previous connection; old paths in hashManager will naturally go into delNotes
     plugin.pendingNoteRenames = []
-    // 清空 pending 删除路径集合，避免旧的 pending 条目干扰本次同步
+    // 清空 pending 删除路径集合，避免旧 of pending 条目干扰本次同步
     // Clear pending delete path sets to avoid stale entries interfering with this sync
     plugin.pendingDeleteNotePaths.clear()
     plugin.pendingDeleteFilePaths.clear()
@@ -503,9 +448,6 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.pendingConfigModifies.clear()
     plugin.localStorageManager.clearPending('pendingConfigModifies')
     plugin.disableWatch();
-
-    const shouldSyncNotes = syncMode === "auto" || syncMode === "note";
-    const shouldSyncConfigs = syncMode === "auto" || syncMode === "config";
 
     let expectedCount = 0;
     if (plugin.settings.syncEnabled && shouldSyncNotes) {
@@ -569,7 +511,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
 
       // --- PERF: Limit hash computations per sync cycle ---
       // Prevents V8 heap exhaustion on first full scan of large vaults.
-      const MAX_HASH_PER_CYCLE = 5000;
+      const MAX_HASH_PER_CYCLE = plugin.settings.hashSyncLimitEnabled !== false ? (plugin.settings.hashSyncLimit ?? 20000) : Infinity;
       let hashComputeCount = 0;
 
       for (const file of list) {
@@ -579,13 +521,15 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
             plugin.syncState.activeSyncContext = null;
             return;
           }
+          const pct = Math.floor((processedCount / totalToProcess) * 100);
+          plugin.progressTracker.recordHashProgress(pct);
           if (processedCount % 100 === 0) {
             SyncLogManager.getInstance().addOrUpdateLog({
               id: hashingLogId,
               type: 'info',
               action: `VaultScanning_${plugin.currentSyncType}`,
               status: 'pending',
-              progress: Math.floor((processedCount / totalToProcess) * 100),
+              progress: pct,
               message: `${plugin.currentSyncType === 'full' ? '🔍 正在全量扫描' : '🔍 正在增量扫描'}... (${processedCount}/${totalFiles})`
             });
           }
@@ -776,12 +720,14 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
           plugin.syncState.activeSyncContext = null; // 插件卸载中，清空上下文 / Plugin unloading, reset the context
           return;
         }
+        const pct = overallTotal > 0 ? Math.floor(((baseProcessedCount + configCount) / overallTotal) * 100) : 100;
+        plugin.progressTracker.recordHashProgress(pct);
         SyncLogManager.getInstance().addOrUpdateLog({
           id: hashingLogId,
           type: 'info',
           action: `VaultScanning_${plugin.currentSyncType}`,
           status: 'pending',
-          progress: overallTotal > 0 ? Math.floor(((baseProcessedCount + configCount) / overallTotal) * 100) : 100,
+          progress: pct,
           message: `${plugin.currentSyncType === 'full' ? '⚙️ 正在全量扫描配置' : '⚙️ 正在增量扫描配置'}... (${configCount}/${totalConfigs})`
         });
       }
@@ -920,6 +866,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
       });
     }
 
+    plugin.progressTracker.recordHashProgress(100);
+
     // Yield to let the 100% progress message render before entering WebSocket send phase
     await sleep(0);
 
@@ -967,14 +915,14 @@ async function sendInBatches<T extends Record<string, unknown>>(
   items: T[],
   buildPayload: (chunk: T[], batchIndex: number, totalBatches: number) => Record<string, unknown>,
   onLastBatchAcked?: (allItems: T[]) => void,
-  chunkSize = 2000
+  syncUpChunkNum = plugin.syncState.syncUpChunkNum
 ): Promise<void> {
   const total = items.length;
-  const totalBatches = Math.max(1, Math.ceil(total / chunkSize));
+  const totalBatches = Math.max(1, Math.ceil(total / syncUpChunkNum));
 
   for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-    const start = batchIndex * chunkSize;
-    const chunk = total > 0 ? items.slice(start, start + chunkSize) : [];
+    const start = batchIndex * syncUpChunkNum;
+    const chunk = total > 0 ? items.slice(start, start + syncUpChunkNum) : [];
     const isLast = batchIndex === totalBatches - 1;
     const payload = buildPayload(chunk, batchIndex, totalBatches);
 
@@ -1040,9 +988,8 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
         ...(folderData.missingFolders.length > 0 ? { missingFolders: folderData.missingFolders } : {}),
       }),
       (allFolders) => {
-        for (const folder of allFolders as unknown as SnapFolder[]) {
-          plugin.folderSnapshotManager.setFolderMtime(folder.path, Date.now());
-        }
+        const paths = (allFolders as unknown as SnapFolder[]).map(f => f.path);
+        plugin.folderSnapshotManager.setFolderMtimes(paths, Date.now());
       }
     );
 

@@ -647,6 +647,12 @@ export namespace proto {
             /** CheckVersionInfo pluginVersionHistory. */
             pluginVersionHistory: proto.v1.HistoricalVersion.$Properties[];
 
+            /** CheckVersionInfo syncUpChunkNum. */
+            syncUpChunkNum: number;
+
+            /** CheckVersionInfo syncDownChunkNum. */
+            syncDownChunkNum: number;
+
             /**
              * Creates a new CheckVersionInfo instance using the specified properties.
              * @param [properties] Properties to set
@@ -769,6 +775,12 @@ export namespace proto {
 
                 /** CheckVersionInfo pluginVersionHistory */
                 pluginVersionHistory?: (proto.v1.HistoricalVersion.$Properties[]|null);
+
+                /** CheckVersionInfo syncUpChunkNum */
+                syncUpChunkNum?: (number|null);
+
+                /** CheckVersionInfo syncDownChunkNum */
+                syncDownChunkNum?: (number|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -1250,6 +1262,9 @@ export namespace proto {
             /** NoteModifyOrCreateRequest createOnly. */
             createOnly: boolean;
 
+            /** NoteModifyOrCreateRequest context. */
+            context: string;
+
             /**
              * Creates a new NoteModifyOrCreateRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -1363,6 +1378,9 @@ export namespace proto {
 
                 /** NoteModifyOrCreateRequest createOnly */
                 createOnly?: (boolean|null);
+
+                /** NoteModifyOrCreateRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -1547,6 +1565,9 @@ export namespace proto {
             /** NoteDeleteRequest pathHash. */
             pathHash: string;
 
+            /** NoteDeleteRequest context. */
+            context: string;
+
             /**
              * Creates a new NoteDeleteRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -1640,6 +1661,9 @@ export namespace proto {
                 /** NoteDeleteRequest pathHash */
                 pathHash?: (string|null);
 
+                /** NoteDeleteRequest context */
+                context?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -1681,6 +1705,9 @@ export namespace proto {
 
             /** NoteRenameRequest oldPathHash. */
             oldPathHash: string;
+
+            /** NoteRenameRequest context. */
+            context: string;
 
             /**
              * Creates a new NoteRenameRequest instance using the specified properties.
@@ -1780,6 +1807,9 @@ export namespace proto {
 
                 /** NoteRenameRequest oldPathHash */
                 oldPathHash?: (string|null);
+
+                /** NoteRenameRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -3644,6 +3674,9 @@ export namespace proto {
             /** FileUploadCheckRequest mtime. */
             mtime: (number|Long);
 
+            /** FileUploadCheckRequest context. */
+            context: string;
+
             /**
              * Creates a new FileUploadCheckRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -3749,6 +3782,9 @@ export namespace proto {
                 /** FileUploadCheckRequest mtime */
                 mtime?: (number|Long|null);
 
+                /** FileUploadCheckRequest context */
+                context?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -3784,6 +3820,9 @@ export namespace proto {
 
             /** FileDeleteRequest pathHash. */
             pathHash: string;
+
+            /** FileDeleteRequest context. */
+            context: string;
 
             /**
              * Creates a new FileDeleteRequest instance using the specified properties.
@@ -3878,6 +3917,9 @@ export namespace proto {
                 /** FileDeleteRequest pathHash */
                 pathHash?: (string|null);
 
+                /** FileDeleteRequest context */
+                context?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -3919,6 +3961,9 @@ export namespace proto {
 
             /** FileRenameRequest oldPathHash. */
             oldPathHash: string;
+
+            /** FileRenameRequest context. */
+            context: string;
 
             /**
              * Creates a new FileRenameRequest instance using the specified properties.
@@ -4018,6 +4063,9 @@ export namespace proto {
 
                 /** FileRenameRequest oldPathHash */
                 oldPathHash?: (string|null);
+
+                /** FileRenameRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -6182,6 +6230,9 @@ export namespace proto {
             /** SettingModifyOrCreateRequest mtime. */
             mtime: (number|Long);
 
+            /** SettingModifyOrCreateRequest context. */
+            context: string;
+
             /**
              * Creates a new SettingModifyOrCreateRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -6286,6 +6337,9 @@ export namespace proto {
 
                 /** SettingModifyOrCreateRequest mtime */
                 mtime?: (number|Long|null);
+
+                /** SettingModifyOrCreateRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -6470,6 +6524,9 @@ export namespace proto {
             /** SettingDeleteRequest pathHash. */
             pathHash: string;
 
+            /** SettingDeleteRequest context. */
+            context: string;
+
             /**
              * Creates a new SettingDeleteRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -6562,6 +6619,9 @@ export namespace proto {
 
                 /** SettingDeleteRequest pathHash */
                 pathHash?: (string|null);
+
+                /** SettingDeleteRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -8207,6 +8267,9 @@ export namespace proto {
             /** FolderCreateRequest pathHash. */
             pathHash: string;
 
+            /** FolderCreateRequest context. */
+            context: string;
+
             /**
              * Creates a new FolderCreateRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -8300,6 +8363,9 @@ export namespace proto {
                 /** FolderCreateRequest pathHash */
                 pathHash?: (string|null);
 
+                /** FolderCreateRequest context */
+                context?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -8335,6 +8401,9 @@ export namespace proto {
 
             /** FolderDeleteRequest pathHash. */
             pathHash: string;
+
+            /** FolderDeleteRequest context. */
+            context: string;
 
             /**
              * Creates a new FolderDeleteRequest instance using the specified properties.
@@ -8429,6 +8498,9 @@ export namespace proto {
                 /** FolderDeleteRequest pathHash */
                 pathHash?: (string|null);
 
+                /** FolderDeleteRequest context */
+                context?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -8470,6 +8542,9 @@ export namespace proto {
 
             /** FolderRenameRequest oldPathHash. */
             oldPathHash: string;
+
+            /** FolderRenameRequest context. */
+            context: string;
 
             /**
              * Creates a new FolderRenameRequest instance using the specified properties.
@@ -8569,6 +8644,9 @@ export namespace proto {
 
                 /** FolderRenameRequest oldPathHash */
                 oldPathHash?: (string|null);
+
+                /** FolderRenameRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -9548,9 +9626,6 @@ export namespace proto {
             /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
-            /** NoteSyncPageMessage context. */
-            context: string;
-
             /** NoteSyncPageMessage pageIndex. */
             pageIndex: number;
 
@@ -9646,9 +9721,6 @@ export namespace proto {
 
             /** Properties of a NoteSyncPageMessage. */
             interface $Properties {
-
-                /** NoteSyncPageMessage context */
-                context?: (string|null);
 
                 /** NoteSyncPageMessage pageIndex */
                 pageIndex?: (number|null);
@@ -9818,9 +9890,6 @@ export namespace proto {
             /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
-            /** FileSyncPageMessage context. */
-            context: string;
-
             /** FileSyncPageMessage pageIndex. */
             pageIndex: number;
 
@@ -9916,9 +9985,6 @@ export namespace proto {
 
             /** Properties of a FileSyncPageMessage. */
             interface $Properties {
-
-                /** FileSyncPageMessage context */
-                context?: (string|null);
 
                 /** FileSyncPageMessage pageIndex */
                 pageIndex?: (number|null);
@@ -10088,9 +10154,6 @@ export namespace proto {
             /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
-            /** SettingSyncPageMessage context. */
-            context: string;
-
             /** SettingSyncPageMessage pageIndex. */
             pageIndex: number;
 
@@ -10186,9 +10249,6 @@ export namespace proto {
 
             /** Properties of a SettingSyncPageMessage. */
             interface $Properties {
-
-                /** SettingSyncPageMessage context */
-                context?: (string|null);
 
                 /** SettingSyncPageMessage pageIndex */
                 pageIndex?: (number|null);
@@ -10358,9 +10418,6 @@ export namespace proto {
             /** Unknown fields preserved while decoding when enabled */
             $unknowns?: Uint8Array[];
 
-            /** FolderSyncPageMessage context. */
-            context: string;
-
             /** FolderSyncPageMessage pageIndex. */
             pageIndex: number;
 
@@ -10456,9 +10513,6 @@ export namespace proto {
 
             /** Properties of a FolderSyncPageMessage. */
             interface $Properties {
-
-                /** FolderSyncPageMessage context */
-                context?: (string|null);
 
                 /** FolderSyncPageMessage pageIndex */
                 pageIndex?: (number|null);

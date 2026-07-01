@@ -28,6 +28,9 @@ import { SyncState } from "./lib/sync/sync_state";
 import { RuntimeConfig } from "./lib/sync/runtime_config";
 import { $ } from "./i18n/lang";
 import { SsoImportModal } from "./views/sso-import-modal";
+import { StatusBarManager } from "./lib/ui/status_bar_manager";
+import { SyncProgressTracker } from "./lib/sync/sync_progress_tracker";
+
 
 
 interface LegacySettings extends Partial<PluginSettings> {
@@ -61,6 +64,8 @@ export default class FastSync extends Plugin {
   localStorageManager: LocalStorageManager        // 本地存储管理器
   fileCloudPreview: FileCloudPreview              // 云端文件预览管理器
   folderSnapshotManager: FolderSnapshotManager    // 文件夹快照管理器
+  statusBarManager: StatusBarManager              // 状态栏管理器
+  readonly progressTracker = new SyncProgressTracker() // 进度追踪器
   private menuManagerInitialized = false          // 防止 onLayoutReady 重复初始化 / Guard against duplicate onLayoutReady init
 
   // ─── Aggregated state objects (replaces 30+ scattered fields) ────────────────
@@ -77,19 +82,19 @@ export default class FastSync extends Plugin {
     totalCount: number;
     isLast: boolean;
     completedCount: number;
+    context: string;
   }>();
 
-  onDownloadTaskCompleted(type: "note" | "file" | "setting" | "folder") {
-    const pageState = this.syncPageStateMap.get(type);
-    if (!pageState) return;
-
-    pageState.completedCount++;
-    dump(`[PageSync] Task completed for type: ${type}, pageState: ${pageState.pageIndex}, completedCount: ${pageState.completedCount}, totalCount: ${pageState.totalCount}`);
-
-    if (pageState.completedCount >= pageState.totalCount) {
-      dump(`[PageSync] Page completed for type: ${type}, pageIndex: ${pageState.pageIndex}. Sending ACK.`);
-      this.sendSyncPageAck(type, pageState.pageIndex);
-    }
+  setupProgressTracker() {
+    this.progressTracker.onPageComplete = (type, pageIndex) => {
+      this.sendSyncPageAck(type, pageIndex);
+    };
+    this.progressTracker.onChange = (pct, detail, phase) => {
+      this.statusBarManager?.render(pct, detail, phase);
+    };
+    this.syncState.onCompletedChange = (type) => {
+      this.progressTracker.recordCompleted(type);
+    };
   }
 
   sendSyncPageAck(type: "note" | "file" | "setting" | "folder", pageIndex: number) {
@@ -101,8 +106,11 @@ export default class FastSync extends Plugin {
 
     if (!action) return;
 
+    const pageState = this.syncPageStateMap.get(type);
+    const msgContext = pageState?.context || this.syncState.activeSyncContext || "";
+
     this.websocket.Send(action, {
-      context: this.syncState.activeSyncContext || "",
+      context: msgContext,
       vault: this.settings.vault,
       pageIndex: pageIndex
     });
@@ -168,8 +176,6 @@ export default class FastSync extends Plugin {
   set totalChunksToUpload(v: number) { this.syncState.totalChunksToUpload = v }
   get uploadedChunksCount() { return this.syncState.uploadedChunksCount }
   set uploadedChunksCount(v: number) { this.syncState.uploadedChunksCount = v }
-  get lastStatusBarPercentage() { return this.syncState.lastStatusBarPercentage }
-  set lastStatusBarPercentage(v: number) { this.syncState.lastStatusBarPercentage = v }
 
   // SyncState — sync-end flags
   get noteSyncEnd() { return this.syncState.noteSyncEnd }
@@ -312,8 +318,8 @@ export default class FastSync extends Plugin {
   }
 
   updateStatusBar(text: string, current?: number, total?: number) {
-    if (this.menuManager) {
-      this.menuManager.updateStatusBar(text, current, total);
+    if (this.statusBarManager) {
+      this.statusBarManager.update(text, current, total);
     }
   }
 
@@ -357,9 +363,7 @@ export default class FastSync extends Plugin {
       addIcon(`fns-dot-${key}`, `<circle cx="50" cy="50" r="30" fill="${color}" />`);
     });
 
-    this.syncState.onCompletedChange = (type) => {
-      this.onDownloadTaskCompleted(type);
-    };
+    this.setupProgressTracker();
     this.localStorageManager = new LocalStorageManager(this)
     this.api = new HttpApiService(this)
     this.websocket = new WebSocketManager(this)
@@ -449,7 +453,10 @@ export default class FastSync extends Plugin {
     // 这样 Obsidian 应用保存的 ribbon 排序配置时按钮已存在，用户调整的位置才能被正确恢复。
     // Create MenuManager and init ribbon before onLayoutReady so that when Obsidian
     // applies the saved ribbon order config, the button already exists and its position is preserved.
+    this.statusBarManager = new StatusBarManager(this)
+    this.statusBarManager.init()
     this.menuManager = new MenuManager(this)
+    this.menuManager.statusBarManager = this.statusBarManager
     this.menuManager.initRibbon()
 
     // 大部分初始化逻辑移动到 onLayoutReady 之后，避免阻塞 Obsidian 启动

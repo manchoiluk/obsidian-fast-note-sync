@@ -182,6 +182,23 @@ export class ConfigHashManager {
     }
 
     /**
+     * 批量从扫描的哈希表中设置并持久化一次
+     */
+    bulkSetFromScanned(scanned: Map<string, { hash: string; mtime: number; size: number }>): void {
+        if (scanned.size === 0) return;
+        let changed = false;
+        for (const [path, cache] of scanned) {
+            const existing = this.hashMap.get(path);
+            if (!existing || existing.mtime <= cache.mtime) {
+                this.hashMap.set(path, { hash: cache.hash, mtime: cache.mtime, size: cache.size });
+                changed = true;
+            }
+        }
+        if (changed) this.saveToStorage();
+    }
+
+
+    /**
      * 删除指定路径的哈希
      */
     removeFileHash(path: string): void {

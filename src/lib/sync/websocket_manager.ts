@@ -1,6 +1,6 @@
 import { moment, Platform } from "obsidian";
 
-import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue } from "./operator_file";
+import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue, receiveFileUploadSessionNotFound } from "./operator_file";
 import { dump, addRandomParam, showSyncNotice, safeStringify } from "../utils/helpers";
 import { enSendDTOToProtobuf, deReceivePacket } from "../../pb/protobuf_mapper";
 import { receiveOperators, startupSync, startupFullSync } from "./operator";
@@ -216,11 +216,29 @@ export class WebSocketManager {
   public triggerReconnect() {
     this.client.triggerReconnect();
   }
-  public SendMessage(action: WSAction.WSSendAction, data: unknown, before?: () => boolean, after?: () => void) {
-    return this.client.SendMessage(action, data, before, after);
+  public SendMessage(action: WSAction.WSSendAction, data: unknown, before?: () => boolean, after?: () => void, context?: string) {
+    return this.client.SendMessage(action, this.injectContext(data, context), before, after);
   }
-  public Send(action: WSAction.WSSendAction, data: unknown, after?: () => void) {
-    this.client.Send(action, data, after);
+  public Send(action: WSAction.WSSendAction, data: unknown, after?: () => void, context?: string) {
+    this.client.Send(action, this.injectContext(data, context), after);
+  }
+
+  /**
+   * Injects the current sync context into outgoing payload if in an active sync session.
+   * 如果处于活跃同步状态，向消息载荷注入当前同步 context。
+   * 仅对不已携带 context 字段的对象类型载荷进行注入，避免重复注入。
+   */
+  private injectContext(data: unknown, context?: string): unknown {
+    const ctx = context || this.plugin.syncState.activeSyncContext;
+    if (
+      ctx &&
+      data !== null &&
+      typeof data === 'object' &&
+      !('context' in (data as Record<string, unknown>))
+    ) {
+      return { ...(data as Record<string, unknown>), context: ctx };
+    }
+    return data;
   }
   public SendBinary(data: ArrayBuffer | Uint8Array, prefix: string, before?: () => boolean, after?: () => void) {
     return this.client.SendBinary(data, prefix, before, after);
@@ -282,6 +300,8 @@ export class WebSocketManager {
       // 处理冲突相关错误码
       if (data.code === ERROR_SYNC_CONFLICT) {
         this.handleConflictError(data);
+      } else if (data.code === 463 && typeof data.data?.sessionID === "string") {
+        receiveFileUploadSessionNotFound(data.data.sessionID, this.plugin);
       } else {
         const errorMsg = data.message || "";
         const errorDetails = data.details ? " Details=" + data.details : "";
@@ -293,11 +313,11 @@ export class WebSocketManager {
         return;
       }
 
-      // 基于 Context 进行过滤：如果处于活跃的同步中，且业务消息包含 context，则必须匹配
-      // Filter based on Context: if there's an active sync context and incoming business message has a context, it must match
+      // 基于 Context 进行过滤：如果处于活跃的同步中，必须完全匹配
+      // Filter based on Context: if there's an active sync context, incoming messages (including Acks) must match
       if (this.plugin.syncState.activeSyncContext) {
         const isControlMsg = msgAction === WSAction.ClientReceiveAuth || msgAction === WSAction.ClientReceiveInfo;
-        if (!isControlMsg && data.context && data.context !== this.plugin.syncState.activeSyncContext) {
+        if (!isControlMsg && data.context !== this.plugin.syncState.activeSyncContext) {
           dump(`[SyncContext] Discard message ${msgAction} due to mismatched context. Expected: ${this.plugin.syncState.activeSyncContext}, Got: ${data.context}`);
           return;
         }
@@ -305,7 +325,10 @@ export class WebSocketManager {
 
       const handler = receiveOperators.get(msgAction);
       if (handler) {
-        void handler(data.data, this.plugin);
+        const payload = (typeof data.data === 'object' && data.data !== null && data.context)
+          ? { ...(data.data as Record<string, unknown>), context: data.context }
+          : data.data;
+        void handler(payload, this.plugin);
         this.client.notifyActivity();
       }
     }

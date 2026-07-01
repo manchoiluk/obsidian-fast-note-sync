@@ -107,6 +107,13 @@ export class VersionManager {
         if (!data) return;
         const plugin = this.plugin;
 
+        if (typeof data.syncUpChunkNum === 'number') {
+            plugin.syncState.syncUpChunkNum = data.syncUpChunkNum;
+        }
+        if (typeof data.syncDownChunkNum === 'number') {
+            plugin.syncState.syncDownChunkNum = data.syncDownChunkNum;
+        }
+
         // 针对服务端版本 (For server version)
         const serverCurrent = (plugin.localStorageManager.getMetadata("serverVersion") as string) || "";
         const serverLatest = (data.versionNewName || data.version) as string;

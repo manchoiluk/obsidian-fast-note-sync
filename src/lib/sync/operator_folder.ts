@@ -156,6 +156,7 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
     if (plugin.settings.syncEnabled == false) return
     if (isPathExcluded(data.path, plugin)) {
         plugin.folderSyncTasks.completed++
+        plugin.progressTracker.recordDownloadComplete('folder');
         return
     }
     dump(`Receive folder modify:`, data.path, data.pathHash)
@@ -197,6 +198,7 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
         plugin.folderSyncTasks.completed++
+        plugin.progressTracker.recordDownloadComplete('folder');
     }
 }
 
@@ -207,6 +209,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
     if (plugin.settings.syncEnabled == false) return
     if (isPathExcluded(data.path, plugin)) {
         plugin.folderSyncTasks.completed++
+        plugin.progressTracker.recordDownloadComplete('folder');
         return
     }
     dump(`Receive folder delete:`, data.path, data.pathHash)
@@ -243,6 +246,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
         plugin.folderSyncTasks.completed++
+        plugin.progressTracker.recordDownloadComplete('folder');
     }
 }
 
@@ -253,6 +257,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
     if (plugin.settings.syncEnabled == false) return
     if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
         plugin.folderSyncTasks.completed++
+        plugin.progressTracker.recordDownloadComplete('folder');
         return
     }
 
@@ -313,6 +318,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
         plugin.folderSyncTasks.completed++
+        plugin.progressTracker.recordDownloadComplete('folder');
     }
 }
 

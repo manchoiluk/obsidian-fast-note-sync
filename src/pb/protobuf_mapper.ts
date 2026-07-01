@@ -512,40 +512,32 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
         }
         case WSAction.NoteSyncPage: {
             try {
-                return proto.v1.NoteSyncPageMessage.toObject(
-                    proto.v1.NoteSyncPageMessage.decode(data),
-                    { defaults: true, longs: Number }
-                );
+                const pbObj = proto.v1.NoteSyncPageMessage.decode(data);
+                return proto.v1.NoteSyncPageMessage.toObject(pbObj, { defaults: true, longs: Number });
             } catch {
                 return tryJsonDecode();
             }
         }
         case WSAction.FileSyncPage: {
             try {
-                return proto.v1.FileSyncPageMessage.toObject(
-                    proto.v1.FileSyncPageMessage.decode(data),
-                    { defaults: true, longs: Number }
-                );
+                const pbObj = proto.v1.FileSyncPageMessage.decode(data);
+                return proto.v1.FileSyncPageMessage.toObject(pbObj, { defaults: true, longs: Number });
             } catch {
                 return tryJsonDecode();
             }
         }
         case WSAction.SettingSyncPage: {
             try {
-                return proto.v1.SettingSyncPageMessage.toObject(
-                    proto.v1.SettingSyncPageMessage.decode(data),
-                    { defaults: true, longs: Number }
-                );
+                const pbObj = proto.v1.SettingSyncPageMessage.decode(data);
+                return proto.v1.SettingSyncPageMessage.toObject(pbObj, { defaults: true, longs: Number });
             } catch {
                 return tryJsonDecode();
             }
         }
         case WSAction.FolderSyncPage: {
             try {
-                return proto.v1.FolderSyncPageMessage.toObject(
-                    proto.v1.FolderSyncPageMessage.decode(data),
-                    { defaults: true, longs: Number }
-                );
+                const pbObj = proto.v1.FolderSyncPageMessage.decode(data);
+                return proto.v1.FolderSyncPageMessage.toObject(pbObj, { defaults: true, longs: Number });
             } catch {
                 return tryJsonDecode();
             }

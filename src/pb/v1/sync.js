@@ -1657,6 +1657,8 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [pluginVersionNewChangelog] CheckVersionInfo pluginVersionNewChangelog
              * @property {string|null} [pluginVersionNewChangelogContent] CheckVersionInfo pluginVersionNewChangelogContent
              * @property {Array.<proto.v1.HistoricalVersion.$Properties>|null} [pluginVersionHistory] CheckVersionInfo pluginVersionHistory
+             * @property {number|null} [syncUpChunkNum] CheckVersionInfo syncUpChunkNum
+             * @property {number|null} [syncDownChunkNum] CheckVersionInfo syncDownChunkNum
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -1795,6 +1797,22 @@ export const proto = $root.proto = (() => {
             CheckVersionInfo.prototype.pluginVersionHistory = $util.emptyArray;
 
             /**
+             * CheckVersionInfo syncUpChunkNum.
+             * @member {number} syncUpChunkNum
+             * @memberof proto.v1.CheckVersionInfo
+             * @instance
+             */
+            CheckVersionInfo.prototype.syncUpChunkNum = 0;
+
+            /**
+             * CheckVersionInfo syncDownChunkNum.
+             * @member {number} syncDownChunkNum
+             * @memberof proto.v1.CheckVersionInfo
+             * @instance
+             */
+            CheckVersionInfo.prototype.syncDownChunkNum = 0;
+
+            /**
              * Creates a new CheckVersionInfo instance using the specified properties.
              * @function create
              * @memberof proto.v1.CheckVersionInfo
@@ -1854,6 +1872,10 @@ export const proto = $root.proto = (() => {
                 if (message.pluginVersionHistory != null && message.pluginVersionHistory.length)
                     for (let i = 0; i < message.pluginVersionHistory.length; ++i)
                         $root.proto.v1.HistoricalVersion.encode(message.pluginVersionHistory[i], writer.uint32(/* id 13, wireType 2 =*/106).fork(), _depth + 1).ldelim();
+                if (message.syncUpChunkNum != null && $Object.hasOwnProperty.call(message, "syncUpChunkNum"))
+                    writer.uint32(/* id 14, wireType 0 =*/112).int32(message.syncUpChunkNum);
+                if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum"))
+                    writer.uint32(/* id 15, wireType 0 =*/120).int32(message.syncDownChunkNum);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -2016,6 +2038,24 @@ export const proto = $root.proto = (() => {
                             message.pluginVersionHistory.push($root.proto.v1.HistoricalVersion.decode(reader, reader.uint32(), $undefined, _depth + 1));
                             continue;
                         }
+                    case 14: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.int32())
+                                message.syncUpChunkNum = value;
+                            else
+                                delete message.syncUpChunkNum;
+                            continue;
+                        }
+                    case 15: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.int32())
+                                message.syncDownChunkNum = value;
+                            else
+                                delete message.syncDownChunkNum;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -2110,6 +2150,12 @@ export const proto = $root.proto = (() => {
                             return "pluginVersionHistory." + error;
                     }
                 }
+                if (message.syncUpChunkNum != null && $Object.hasOwnProperty.call(message, "syncUpChunkNum"))
+                    if (!$util.isInteger(message.syncUpChunkNum))
+                        return "syncUpChunkNum: integer expected";
+                if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum"))
+                    if (!$util.isInteger(message.syncDownChunkNum))
+                        return "syncDownChunkNum: integer expected";
                 return null;
             };
 
@@ -2184,6 +2230,12 @@ export const proto = $root.proto = (() => {
                         message.pluginVersionHistory[i] = $root.proto.v1.HistoricalVersion.fromObject(object.pluginVersionHistory[i], _depth + 1);
                     }
                 }
+                if (object.syncUpChunkNum != null)
+                    if ($Number(object.syncUpChunkNum) !== 0)
+                        message.syncUpChunkNum = object.syncUpChunkNum | 0;
+                if (object.syncDownChunkNum != null)
+                    if ($Number(object.syncDownChunkNum) !== 0)
+                        message.syncDownChunkNum = object.syncDownChunkNum | 0;
                 return message;
             };
 
@@ -2220,6 +2272,8 @@ export const proto = $root.proto = (() => {
                     object.pluginVersionNewLink = "";
                     object.pluginVersionNewChangelog = "";
                     object.pluginVersionNewChangelogContent = "";
+                    object.syncUpChunkNum = 0;
+                    object.syncDownChunkNum = 0;
                 }
                 if (message.githubAvailable != null && $Object.hasOwnProperty.call(message, "githubAvailable"))
                     object.githubAvailable = message.githubAvailable;
@@ -2253,6 +2307,10 @@ export const proto = $root.proto = (() => {
                     for (let j = 0; j < message.pluginVersionHistory.length; ++j)
                         object.pluginVersionHistory[j] = $root.proto.v1.HistoricalVersion.toObject(message.pluginVersionHistory[j], options, _depth + 1);
                 }
+                if (message.syncUpChunkNum != null && $Object.hasOwnProperty.call(message, "syncUpChunkNum"))
+                    object.syncUpChunkNum = message.syncUpChunkNum;
+                if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum"))
+                    object.syncDownChunkNum = message.syncDownChunkNum;
                 return object;
             };
 
@@ -3531,6 +3589,7 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [ctime] NoteModifyOrCreateRequest ctime
              * @property {number|Long|null} [mtime] NoteModifyOrCreateRequest mtime
              * @property {boolean|null} [createOnly] NoteModifyOrCreateRequest createOnly
+             * @property {string|null} [context] NoteModifyOrCreateRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -3643,6 +3702,14 @@ export const proto = $root.proto = (() => {
             NoteModifyOrCreateRequest.prototype.createOnly = false;
 
             /**
+             * NoteModifyOrCreateRequest context.
+             * @member {string} context
+             * @memberof proto.v1.NoteModifyOrCreateRequest
+             * @instance
+             */
+            NoteModifyOrCreateRequest.prototype.context = "";
+
+            /**
              * Creates a new NoteModifyOrCreateRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.NoteModifyOrCreateRequest
@@ -3694,6 +3761,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 9, wireType 0 =*/72).int64(message.mtime);
                 if (message.createOnly != null && $Object.hasOwnProperty.call(message, "createOnly"))
                     writer.uint32(/* id 10, wireType 0 =*/80).bool(message.createOnly);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 11, wireType 2 =*/90).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -3831,6 +3900,15 @@ export const proto = $root.proto = (() => {
                                 delete message.createOnly;
                             continue;
                         }
+                    case 11: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -3904,6 +3982,9 @@ export const proto = $root.proto = (() => {
                 if (message.createOnly != null && $Object.hasOwnProperty.call(message, "createOnly"))
                     if (typeof message.createOnly !== "boolean")
                         return "createOnly: boolean expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -3969,6 +4050,9 @@ export const proto = $root.proto = (() => {
                 if (object.createOnly != null)
                     if (object.createOnly)
                         message.createOnly = $Boolean(object.createOnly);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -4008,6 +4092,7 @@ export const proto = $root.proto = (() => {
                     } else
                         object.mtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
                     object.createOnly = false;
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -4039,6 +4124,8 @@ export const proto = $root.proto = (() => {
                         object.mtime = options.longs === $String ? $util.Long.prototype.toString.call(message.mtime) : options.longs === $Number ? new $util.LongBits(message.mtime.low >>> 0, message.mtime.high >>> 0).toNumber() : message.mtime;
                 if (message.createOnly != null && $Object.hasOwnProperty.call(message, "createOnly"))
                     object.createOnly = message.createOnly;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -4516,6 +4603,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] NoteDeleteRequest vault
              * @property {string|null} [path] NoteDeleteRequest path
              * @property {string|null} [pathHash] NoteDeleteRequest pathHash
+             * @property {string|null} [context] NoteDeleteRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -4572,6 +4660,14 @@ export const proto = $root.proto = (() => {
             NoteDeleteRequest.prototype.pathHash = "";
 
             /**
+             * NoteDeleteRequest context.
+             * @member {string} context
+             * @memberof proto.v1.NoteDeleteRequest
+             * @instance
+             */
+            NoteDeleteRequest.prototype.context = "";
+
+            /**
              * Creates a new NoteDeleteRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.NoteDeleteRequest
@@ -4609,6 +4705,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -4683,6 +4781,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -4735,6 +4842,9 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -4765,6 +4875,9 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -4789,6 +4902,7 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.path = "";
                     object.pathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -4796,6 +4910,8 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -4837,6 +4953,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [pathHash] NoteRenameRequest pathHash
              * @property {string|null} [oldPath] NoteRenameRequest oldPath
              * @property {string|null} [oldPathHash] NoteRenameRequest oldPathHash
+             * @property {string|null} [context] NoteRenameRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -4909,6 +5026,14 @@ export const proto = $root.proto = (() => {
             NoteRenameRequest.prototype.oldPathHash = "";
 
             /**
+             * NoteRenameRequest context.
+             * @member {string} context
+             * @memberof proto.v1.NoteRenameRequest
+             * @instance
+             */
+            NoteRenameRequest.prototype.context = "";
+
+            /**
              * Creates a new NoteRenameRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.NoteRenameRequest
@@ -4950,6 +5075,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.oldPath);
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -5042,6 +5169,15 @@ export const proto = $root.proto = (() => {
                                 delete message.oldPathHash;
                             continue;
                         }
+                    case 6: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -5100,6 +5236,9 @@ export const proto = $root.proto = (() => {
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     if (!$util.isString(message.oldPathHash))
                         return "oldPathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -5136,6 +5275,9 @@ export const proto = $root.proto = (() => {
                 if (object.oldPathHash != null)
                     if (typeof object.oldPathHash !== "string" || object.oldPathHash.length)
                         message.oldPathHash = $String(object.oldPathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -5162,6 +5304,7 @@ export const proto = $root.proto = (() => {
                     object.pathHash = "";
                     object.oldPath = "";
                     object.oldPathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -5173,6 +5316,8 @@ export const proto = $root.proto = (() => {
                     object.oldPath = message.oldPath;
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     object.oldPathHash = message.oldPathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -10499,6 +10644,7 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [size] FileUploadCheckRequest size
              * @property {number|Long|null} [ctime] FileUploadCheckRequest ctime
              * @property {number|Long|null} [mtime] FileUploadCheckRequest mtime
+             * @property {string|null} [context] FileUploadCheckRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -10587,6 +10733,14 @@ export const proto = $root.proto = (() => {
             FileUploadCheckRequest.prototype.mtime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileUploadCheckRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.context = "";
+
+            /**
              * Creates a new FileUploadCheckRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileUploadCheckRequest
@@ -10632,6 +10786,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
                 if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.mtime);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -10742,6 +10898,15 @@ export const proto = $root.proto = (() => {
                                 delete message.mtime;
                             continue;
                         }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -10806,6 +10971,9 @@ export const proto = $root.proto = (() => {
                 if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
                     if (!$util.isInteger(message.mtime) && !(message.mtime && $util.isInteger(message.mtime.low) && $util.isInteger(message.mtime.high)))
                         return "mtime: integer|Long expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -10869,6 +11037,9 @@ export const proto = $root.proto = (() => {
                             message.mtime = object.mtime;
                         else if (typeof object.mtime === "object")
                             message.mtime = new $util.LongBits(object.mtime.low >>> 0, object.mtime.high >>> 0).toNumber();
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -10909,6 +11080,7 @@ export const proto = $root.proto = (() => {
                         object.mtime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.mtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -10939,6 +11111,8 @@ export const proto = $root.proto = (() => {
                         object.mtime = options.longs === $String ? $String(message.mtime) : message.mtime;
                     else
                         object.mtime = options.longs === $String ? $util.Long.prototype.toString.call(message.mtime) : options.longs === $Number ? new $util.LongBits(message.mtime.low >>> 0, message.mtime.high >>> 0).toNumber() : message.mtime;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -10978,6 +11152,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] FileDeleteRequest vault
              * @property {string|null} [path] FileDeleteRequest path
              * @property {string|null} [pathHash] FileDeleteRequest pathHash
+             * @property {string|null} [context] FileDeleteRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -11034,6 +11209,14 @@ export const proto = $root.proto = (() => {
             FileDeleteRequest.prototype.pathHash = "";
 
             /**
+             * FileDeleteRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FileDeleteRequest
+             * @instance
+             */
+            FileDeleteRequest.prototype.context = "";
+
+            /**
              * Creates a new FileDeleteRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileDeleteRequest
@@ -11071,6 +11254,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -11145,6 +11330,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -11197,6 +11391,9 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -11227,6 +11424,9 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -11251,6 +11451,7 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.path = "";
                     object.pathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -11258,6 +11459,8 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -11299,6 +11502,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [pathHash] FileRenameRequest pathHash
              * @property {string|null} [oldPath] FileRenameRequest oldPath
              * @property {string|null} [oldPathHash] FileRenameRequest oldPathHash
+             * @property {string|null} [context] FileRenameRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -11371,6 +11575,14 @@ export const proto = $root.proto = (() => {
             FileRenameRequest.prototype.oldPathHash = "";
 
             /**
+             * FileRenameRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FileRenameRequest
+             * @instance
+             */
+            FileRenameRequest.prototype.context = "";
+
+            /**
              * Creates a new FileRenameRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileRenameRequest
@@ -11412,6 +11624,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.oldPath);
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -11504,6 +11718,15 @@ export const proto = $root.proto = (() => {
                                 delete message.oldPathHash;
                             continue;
                         }
+                    case 6: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -11562,6 +11785,9 @@ export const proto = $root.proto = (() => {
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     if (!$util.isString(message.oldPathHash))
                         return "oldPathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -11598,6 +11824,9 @@ export const proto = $root.proto = (() => {
                 if (object.oldPathHash != null)
                     if (typeof object.oldPathHash !== "string" || object.oldPathHash.length)
                         message.oldPathHash = $String(object.oldPathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -11624,6 +11853,7 @@ export const proto = $root.proto = (() => {
                     object.pathHash = "";
                     object.oldPath = "";
                     object.oldPathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -11635,6 +11865,8 @@ export const proto = $root.proto = (() => {
                     object.oldPath = message.oldPath;
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     object.oldPathHash = message.oldPathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -17914,6 +18146,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [contentHash] SettingModifyOrCreateRequest contentHash
              * @property {number|Long|null} [ctime] SettingModifyOrCreateRequest ctime
              * @property {number|Long|null} [mtime] SettingModifyOrCreateRequest mtime
+             * @property {string|null} [context] SettingModifyOrCreateRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -18002,6 +18235,14 @@ export const proto = $root.proto = (() => {
             SettingModifyOrCreateRequest.prototype.mtime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * SettingModifyOrCreateRequest context.
+             * @member {string} context
+             * @memberof proto.v1.SettingModifyOrCreateRequest
+             * @instance
+             */
+            SettingModifyOrCreateRequest.prototype.context = "";
+
+            /**
              * Creates a new SettingModifyOrCreateRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.SettingModifyOrCreateRequest
@@ -18047,6 +18288,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
                 if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.mtime);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -18157,6 +18400,15 @@ export const proto = $root.proto = (() => {
                                 delete message.mtime;
                             continue;
                         }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -18221,6 +18473,9 @@ export const proto = $root.proto = (() => {
                 if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
                     if (!$util.isInteger(message.mtime) && !(message.mtime && $util.isInteger(message.mtime.low) && $util.isInteger(message.mtime.high)))
                         return "mtime: integer|Long expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -18277,6 +18532,9 @@ export const proto = $root.proto = (() => {
                             message.mtime = object.mtime;
                         else if (typeof object.mtime === "object")
                             message.mtime = new $util.LongBits(object.mtime.low >>> 0, object.mtime.high >>> 0).toNumber();
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -18313,6 +18571,7 @@ export const proto = $root.proto = (() => {
                         object.mtime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.mtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -18338,6 +18597,8 @@ export const proto = $root.proto = (() => {
                         object.mtime = options.longs === $String ? $String(message.mtime) : message.mtime;
                     else
                         object.mtime = options.longs === $String ? $util.Long.prototype.toString.call(message.mtime) : options.longs === $Number ? new $util.LongBits(message.mtime.low >>> 0, message.mtime.high >>> 0).toNumber() : message.mtime;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -18815,6 +19076,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] SettingDeleteRequest vault
              * @property {string|null} [path] SettingDeleteRequest path
              * @property {string|null} [pathHash] SettingDeleteRequest pathHash
+             * @property {string|null} [context] SettingDeleteRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -18871,6 +19133,14 @@ export const proto = $root.proto = (() => {
             SettingDeleteRequest.prototype.pathHash = "";
 
             /**
+             * SettingDeleteRequest context.
+             * @member {string} context
+             * @memberof proto.v1.SettingDeleteRequest
+             * @instance
+             */
+            SettingDeleteRequest.prototype.context = "";
+
+            /**
              * Creates a new SettingDeleteRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.SettingDeleteRequest
@@ -18908,6 +19178,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -18982,6 +19254,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -19034,6 +19315,9 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -19064,6 +19348,9 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -19088,6 +19375,7 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.path = "";
                     object.pathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -19095,6 +19383,8 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -23591,6 +23881,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] FolderCreateRequest vault
              * @property {string|null} [path] FolderCreateRequest path
              * @property {string|null} [pathHash] FolderCreateRequest pathHash
+             * @property {string|null} [context] FolderCreateRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -23647,6 +23938,14 @@ export const proto = $root.proto = (() => {
             FolderCreateRequest.prototype.pathHash = "";
 
             /**
+             * FolderCreateRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FolderCreateRequest
+             * @instance
+             */
+            FolderCreateRequest.prototype.context = "";
+
+            /**
              * Creates a new FolderCreateRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FolderCreateRequest
@@ -23684,6 +23983,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -23758,6 +24059,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -23810,6 +24120,9 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -23840,6 +24153,9 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -23864,6 +24180,7 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.path = "";
                     object.pathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -23871,6 +24188,8 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -23910,6 +24229,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] FolderDeleteRequest vault
              * @property {string|null} [path] FolderDeleteRequest path
              * @property {string|null} [pathHash] FolderDeleteRequest pathHash
+             * @property {string|null} [context] FolderDeleteRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -23966,6 +24286,14 @@ export const proto = $root.proto = (() => {
             FolderDeleteRequest.prototype.pathHash = "";
 
             /**
+             * FolderDeleteRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FolderDeleteRequest
+             * @instance
+             */
+            FolderDeleteRequest.prototype.context = "";
+
+            /**
              * Creates a new FolderDeleteRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FolderDeleteRequest
@@ -24003,6 +24331,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -24077,6 +24407,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -24129,6 +24468,9 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -24159,6 +24501,9 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -24183,6 +24528,7 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.path = "";
                     object.pathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -24190,6 +24536,8 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -24231,6 +24579,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [pathHash] FolderRenameRequest pathHash
              * @property {string|null} [oldPath] FolderRenameRequest oldPath
              * @property {string|null} [oldPathHash] FolderRenameRequest oldPathHash
+             * @property {string|null} [context] FolderRenameRequest context
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -24303,6 +24652,14 @@ export const proto = $root.proto = (() => {
             FolderRenameRequest.prototype.oldPathHash = "";
 
             /**
+             * FolderRenameRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FolderRenameRequest
+             * @instance
+             */
+            FolderRenameRequest.prototype.context = "";
+
+            /**
              * Creates a new FolderRenameRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FolderRenameRequest
@@ -24344,6 +24701,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.oldPath);
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -24436,6 +24795,15 @@ export const proto = $root.proto = (() => {
                                 delete message.oldPathHash;
                             continue;
                         }
+                    case 6: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -24494,6 +24862,9 @@ export const proto = $root.proto = (() => {
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     if (!$util.isString(message.oldPathHash))
                         return "oldPathHash: string expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
                 return null;
             };
 
@@ -24530,6 +24901,9 @@ export const proto = $root.proto = (() => {
                 if (object.oldPathHash != null)
                     if (typeof object.oldPathHash !== "string" || object.oldPathHash.length)
                         message.oldPathHash = $String(object.oldPathHash);
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
                 return message;
             };
 
@@ -24556,6 +24930,7 @@ export const proto = $root.proto = (() => {
                     object.pathHash = "";
                     object.oldPath = "";
                     object.oldPathHash = "";
+                    object.context = "";
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -24567,6 +24942,8 @@ export const proto = $root.proto = (() => {
                     object.oldPath = message.oldPath;
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     object.oldPathHash = message.oldPathHash;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
                 return object;
             };
 
@@ -27308,7 +27685,6 @@ export const proto = $root.proto = (() => {
             /**
              * Properties of a NoteSyncPageMessage.
              * @typedef {Object} proto.v1.NoteSyncPageMessage.$Properties
-             * @property {string|null} [context] NoteSyncPageMessage context
              * @property {number|null} [pageIndex] NoteSyncPageMessage pageIndex
              * @property {number|null} [pageSize] NoteSyncPageMessage pageSize
              * @property {number|null} [totalCount] NoteSyncPageMessage totalCount
@@ -27343,14 +27719,6 @@ export const proto = $root.proto = (() => {
                         if (properties[keys[i]] != null && keys[i] !== "__proto__")
                             this[keys[i]] = properties[keys[i]];
             };
-
-            /**
-             * NoteSyncPageMessage context.
-             * @member {string} context
-             * @memberof proto.v1.NoteSyncPageMessage
-             * @instance
-             */
-            NoteSyncPageMessage.prototype.context = "";
 
             /**
              * NoteSyncPageMessage pageIndex.
@@ -27416,8 +27784,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -27473,15 +27839,6 @@ export const proto = $root.proto = (() => {
                     }
                     let wireType = tag & 7;
                     switch (tag >>>= 3) {
-                    case 1: {
-                            if (wireType !== 2)
-                                break;
-                            if ((value = reader.stringVerify()).length)
-                                message.context = value;
-                            else
-                                delete message.context;
-                            continue;
-                        }
                     case 2: {
                             if (wireType !== 0)
                                 break;
@@ -27561,9 +27918,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     return "max depth exceeded";
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    if (!$util.isString(message.context))
-                        return "context: string expected";
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     if (!$util.isInteger(message.pageIndex))
                         return "pageIndex: integer expected";
@@ -27597,9 +27951,6 @@ export const proto = $root.proto = (() => {
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
                 let message = new $root.proto.v1.NoteSyncPageMessage();
-                if (object.context != null)
-                    if (typeof object.context !== "string" || object.context.length)
-                        message.context = $String(object.context);
                 if (object.pageIndex != null)
                     if ($Number(object.pageIndex) !== 0)
                         message.pageIndex = object.pageIndex | 0;
@@ -27633,14 +27984,11 @@ export const proto = $root.proto = (() => {
                     throw $Error("max depth exceeded");
                 let object = {};
                 if (options.defaults) {
-                    object.context = "";
                     object.pageIndex = 0;
                     object.pageSize = 0;
                     object.totalCount = 0;
                     object.isLast = false;
                 }
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    object.context = message.context;
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     object.pageIndex = message.pageIndex;
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -28004,7 +28352,6 @@ export const proto = $root.proto = (() => {
             /**
              * Properties of a FileSyncPageMessage.
              * @typedef {Object} proto.v1.FileSyncPageMessage.$Properties
-             * @property {string|null} [context] FileSyncPageMessage context
              * @property {number|null} [pageIndex] FileSyncPageMessage pageIndex
              * @property {number|null} [pageSize] FileSyncPageMessage pageSize
              * @property {number|null} [totalCount] FileSyncPageMessage totalCount
@@ -28039,14 +28386,6 @@ export const proto = $root.proto = (() => {
                         if (properties[keys[i]] != null && keys[i] !== "__proto__")
                             this[keys[i]] = properties[keys[i]];
             };
-
-            /**
-             * FileSyncPageMessage context.
-             * @member {string} context
-             * @memberof proto.v1.FileSyncPageMessage
-             * @instance
-             */
-            FileSyncPageMessage.prototype.context = "";
 
             /**
              * FileSyncPageMessage pageIndex.
@@ -28112,8 +28451,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -28169,15 +28506,6 @@ export const proto = $root.proto = (() => {
                     }
                     let wireType = tag & 7;
                     switch (tag >>>= 3) {
-                    case 1: {
-                            if (wireType !== 2)
-                                break;
-                            if ((value = reader.stringVerify()).length)
-                                message.context = value;
-                            else
-                                delete message.context;
-                            continue;
-                        }
                     case 2: {
                             if (wireType !== 0)
                                 break;
@@ -28257,9 +28585,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     return "max depth exceeded";
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    if (!$util.isString(message.context))
-                        return "context: string expected";
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     if (!$util.isInteger(message.pageIndex))
                         return "pageIndex: integer expected";
@@ -28293,9 +28618,6 @@ export const proto = $root.proto = (() => {
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
                 let message = new $root.proto.v1.FileSyncPageMessage();
-                if (object.context != null)
-                    if (typeof object.context !== "string" || object.context.length)
-                        message.context = $String(object.context);
                 if (object.pageIndex != null)
                     if ($Number(object.pageIndex) !== 0)
                         message.pageIndex = object.pageIndex | 0;
@@ -28329,14 +28651,11 @@ export const proto = $root.proto = (() => {
                     throw $Error("max depth exceeded");
                 let object = {};
                 if (options.defaults) {
-                    object.context = "";
                     object.pageIndex = 0;
                     object.pageSize = 0;
                     object.totalCount = 0;
                     object.isLast = false;
                 }
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    object.context = message.context;
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     object.pageIndex = message.pageIndex;
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -28700,7 +29019,6 @@ export const proto = $root.proto = (() => {
             /**
              * Properties of a SettingSyncPageMessage.
              * @typedef {Object} proto.v1.SettingSyncPageMessage.$Properties
-             * @property {string|null} [context] SettingSyncPageMessage context
              * @property {number|null} [pageIndex] SettingSyncPageMessage pageIndex
              * @property {number|null} [pageSize] SettingSyncPageMessage pageSize
              * @property {number|null} [totalCount] SettingSyncPageMessage totalCount
@@ -28735,14 +29053,6 @@ export const proto = $root.proto = (() => {
                         if (properties[keys[i]] != null && keys[i] !== "__proto__")
                             this[keys[i]] = properties[keys[i]];
             };
-
-            /**
-             * SettingSyncPageMessage context.
-             * @member {string} context
-             * @memberof proto.v1.SettingSyncPageMessage
-             * @instance
-             */
-            SettingSyncPageMessage.prototype.context = "";
 
             /**
              * SettingSyncPageMessage pageIndex.
@@ -28808,8 +29118,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -28865,15 +29173,6 @@ export const proto = $root.proto = (() => {
                     }
                     let wireType = tag & 7;
                     switch (tag >>>= 3) {
-                    case 1: {
-                            if (wireType !== 2)
-                                break;
-                            if ((value = reader.stringVerify()).length)
-                                message.context = value;
-                            else
-                                delete message.context;
-                            continue;
-                        }
                     case 2: {
                             if (wireType !== 0)
                                 break;
@@ -28953,9 +29252,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     return "max depth exceeded";
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    if (!$util.isString(message.context))
-                        return "context: string expected";
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     if (!$util.isInteger(message.pageIndex))
                         return "pageIndex: integer expected";
@@ -28989,9 +29285,6 @@ export const proto = $root.proto = (() => {
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
                 let message = new $root.proto.v1.SettingSyncPageMessage();
-                if (object.context != null)
-                    if (typeof object.context !== "string" || object.context.length)
-                        message.context = $String(object.context);
                 if (object.pageIndex != null)
                     if ($Number(object.pageIndex) !== 0)
                         message.pageIndex = object.pageIndex | 0;
@@ -29025,14 +29318,11 @@ export const proto = $root.proto = (() => {
                     throw $Error("max depth exceeded");
                 let object = {};
                 if (options.defaults) {
-                    object.context = "";
                     object.pageIndex = 0;
                     object.pageSize = 0;
                     object.totalCount = 0;
                     object.isLast = false;
                 }
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    object.context = message.context;
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     object.pageIndex = message.pageIndex;
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -29396,7 +29686,6 @@ export const proto = $root.proto = (() => {
             /**
              * Properties of a FolderSyncPageMessage.
              * @typedef {Object} proto.v1.FolderSyncPageMessage.$Properties
-             * @property {string|null} [context] FolderSyncPageMessage context
              * @property {number|null} [pageIndex] FolderSyncPageMessage pageIndex
              * @property {number|null} [pageSize] FolderSyncPageMessage pageSize
              * @property {number|null} [totalCount] FolderSyncPageMessage totalCount
@@ -29431,14 +29720,6 @@ export const proto = $root.proto = (() => {
                         if (properties[keys[i]] != null && keys[i] !== "__proto__")
                             this[keys[i]] = properties[keys[i]];
             };
-
-            /**
-             * FolderSyncPageMessage context.
-             * @member {string} context
-             * @memberof proto.v1.FolderSyncPageMessage
-             * @instance
-             */
-            FolderSyncPageMessage.prototype.context = "";
 
             /**
              * FolderSyncPageMessage pageIndex.
@@ -29504,8 +29785,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
@@ -29561,15 +29840,6 @@ export const proto = $root.proto = (() => {
                     }
                     let wireType = tag & 7;
                     switch (tag >>>= 3) {
-                    case 1: {
-                            if (wireType !== 2)
-                                break;
-                            if ((value = reader.stringVerify()).length)
-                                message.context = value;
-                            else
-                                delete message.context;
-                            continue;
-                        }
                     case 2: {
                             if (wireType !== 0)
                                 break;
@@ -29649,9 +29919,6 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     return "max depth exceeded";
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    if (!$util.isString(message.context))
-                        return "context: string expected";
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     if (!$util.isInteger(message.pageIndex))
                         return "pageIndex: integer expected";
@@ -29685,9 +29952,6 @@ export const proto = $root.proto = (() => {
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
                 let message = new $root.proto.v1.FolderSyncPageMessage();
-                if (object.context != null)
-                    if (typeof object.context !== "string" || object.context.length)
-                        message.context = $String(object.context);
                 if (object.pageIndex != null)
                     if ($Number(object.pageIndex) !== 0)
                         message.pageIndex = object.pageIndex | 0;
@@ -29721,14 +29985,11 @@ export const proto = $root.proto = (() => {
                     throw $Error("max depth exceeded");
                 let object = {};
                 if (options.defaults) {
-                    object.context = "";
                     object.pageIndex = 0;
                     object.pageSize = 0;
                     object.totalCount = 0;
                     object.isLast = false;
                 }
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
-                    object.context = message.context;
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     object.pageIndex = message.pageIndex;
                 if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))

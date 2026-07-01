@@ -82,10 +82,35 @@ export class FolderSnapshotManager {
     }
 
     /**
+     * 批量更新文件夹的快照时间
+     */
+    setFolderMtimes(paths: string[], mtime: number): void {
+        for (const path of paths) {
+            this.snapshotMap.set(path, mtime);
+        }
+        this.saveToStorage();
+    }
+
+    /**
      * 删除路径快照
      */
     removeFolder(path: string): void {
         if (this.snapshotMap.delete(path)) {
+            this.saveToStorage();
+        }
+    }
+
+    /**
+     * 批量删除文件夹快照
+     */
+    removeFolders(paths: Iterable<string>): void {
+        let changed = false;
+        for (const path of paths) {
+            if (this.snapshotMap.delete(path)) {
+                changed = true;
+            }
+        }
+        if (changed) {
             this.saveToStorage();
         }
     }

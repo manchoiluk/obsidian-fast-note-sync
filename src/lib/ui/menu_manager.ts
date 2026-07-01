@@ -9,6 +9,8 @@ import { ShareModal } from '../../views/share-modal';
 import { AboutModal } from '../../views/about-modal';
 import { $ } from "../../i18n/lang";
 import FastSync from "../../main";
+import { StatusBarManager } from './status_bar_manager';
+
 
 
 export class MenuManager {
@@ -18,7 +20,7 @@ export class MenuManager {
   public ribbonIcon: HTMLElement;
   public ribbonIconStatus: boolean = false;
   public badgeEl: HTMLElement | null = null;
-  public statusBarItem: HTMLElement;
+  public statusBarManager: StatusBarManager;
   public historyStatusBarItem: HTMLElement;
   public shareStatusBarItem: HTMLElement;
   public logStatusBarItem: HTMLElement;
@@ -28,10 +30,6 @@ export class MenuManager {
   private mobileHeaderIconStatus: boolean = false;
   private ribbonMutationTimer: number | null = null;
 
-  private statusBarText: HTMLElement;
-  private statusBarFill: HTMLElement;
-  private statusBarProgressBar: HTMLElement;
-  private statusBarCheck: HTMLElement;
 
   constructor(plugin: FastSync) {
     this.plugin = plugin;
@@ -77,10 +75,9 @@ export class MenuManager {
 
   init() {
     // 初始化状态栏进度
-    this.statusBarItem = this.plugin.addStatusBarItem();
-    // Hide by default on creation to avoid blank gaps in Obsidian status bar.
-    // 默认隐藏，避免在 Obsidian 状态栏中产生空白占位。
-    this.statusBarItem.addClass("fns-hidden");
+    if (this.statusBarManager) {
+      this.statusBarManager.init();
+    }
 
     // 初始化并发控制状态栏指示器 / Initialize concurrency control status bar indicator
     this.concurrencyStatusBarItem = this.plugin.addStatusBarItem();
@@ -360,7 +357,7 @@ export class MenuManager {
    */
   unload() {
     this.ribbonIcon?.remove();
-    this.statusBarItem?.remove();
+    this.statusBarManager?.unload();
     this.historyStatusBarItem?.remove();
     this.shareStatusBarItem?.remove();
     this.logStatusBarItem?.remove();
@@ -396,6 +393,12 @@ export class MenuManager {
     });
   }
 
+  updateStatusBar(text: string, current?: number, total?: number) {
+    if (this.statusBarManager) {
+      this.statusBarManager.update(text, current, total);
+    }
+  }
+
   /**
    * 设置同步状态 → 切换颜色动画
    * Set sync status → toggle color animation
@@ -416,75 +419,7 @@ export class MenuManager {
     });
   }
 
-  updateStatusBar(text: string, current?: number, total?: number) {
-    // If there is no text and no progress values, hide the status bar item completely and return early to avoid unwanted DOM creation and empty outlines.
-    // 如果没有文本且没有进度数值，则彻底隐藏状态栏项并提前返回，避免多余 of DOM 创建和空边框显示。
-    if (!text && current === undefined && total === undefined) {
-      if (this.statusBarItem) {
-        this.statusBarItem.addClass("fns-hidden");
-        this.statusBarItem.removeClass("fns-status-bar-progress");
-      }
-      return;
-    }
 
-    if (this.statusBarItem) {
-      this.statusBarItem.removeClass("fns-hidden");
-    }
-
-    if (!this.statusBarText) {
-      this.statusBarItem.addClass("fast-note-sync-status-bar-progress");
-
-      this.statusBarProgressBar = this.statusBarItem.createDiv("fast-note-sync-progress-bar");
-      this.statusBarFill = this.statusBarProgressBar.createDiv("fast-note-sync-progress-fill");
-
-      this.statusBarCheck = this.statusBarItem.createSpan("fast-note-sync-progress-check fns-status-bar-check");
-      setIcon(this.statusBarCheck, "check");
-
-      this.statusBarText = this.statusBarItem.createDiv("fast-note-sync-progress-text");
-    }
-
-    if (current !== undefined && total !== undefined && total > 0) {
-      this.statusBarItem.addClass("fns-status-bar-progress");
-      this.statusBarProgressBar.removeClass("fns-hidden");
-
-      let percentage = Math.min(100, Math.round((current / total) * 100));
-
-      // 确保进度不会回退
-      if (percentage < this.plugin.lastStatusBarPercentage) {
-        percentage = this.plugin.lastStatusBarPercentage;
-      } else {
-        this.plugin.lastStatusBarPercentage = percentage;
-      }
-
-      // Use setCssProps for dynamic progress bar width
-      // 使用 setCssProps 设置动态进度条宽度
-      this.statusBarFill.setCssProps({ width: `${percentage}%` });
-      this.statusBarText.setText(`${percentage}%`);
-      this.statusBarItem.setAttribute("aria-label", text);
-
-      if (percentage === 100) {
-        this.statusBarProgressBar.addClass("fns-hidden");
-        this.statusBarCheck.removeClass("fns-hidden");
-      } else {
-        this.statusBarProgressBar.removeClass("fns-hidden");
-        this.statusBarCheck.addClass("fns-hidden");
-      }
-    } else {
-      if (text) {
-        this.statusBarItem.addClass("fns-status-bar-progress");
-        this.statusBarProgressBar.addClass("fns-hidden");
-        if (text === $("ui.status.completed")) {
-          this.statusBarCheck.removeClass("fns-hidden");
-        } else {
-          this.statusBarCheck.addClass("fns-hidden");
-        }
-        this.statusBarText.setText(text);
-      } else {
-        this.statusBarItem.removeClass("fns-status-bar-progress");
-        this.statusBarText.setText("");
-      }
-    }
-  }
 
   /**
    * 刷新并发控制状态栏指示器的显示状态
