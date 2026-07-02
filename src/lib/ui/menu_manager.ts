@@ -471,6 +471,7 @@ export class MenuManager {
           .setIcon("pause")
           .setTitle($("ui.menu.disable_sync"))
           .onClick(async () => {
+            cancelSync(this.plugin);
             void this.plugin.websocket.unRegister(true);
             showSyncNotice($("ui.menu.disable_sync_desc"));
           });
