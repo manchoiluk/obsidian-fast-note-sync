@@ -109,6 +109,8 @@ export default class FastSync extends Plugin {
     const pageState = this.syncPageStateMap.get(type);
     const msgContext = pageState?.context || this.syncState.activeSyncContext || "";
 
+    dump(`[sendSyncPageAck] Sending ACK for type: ${type}, action: ${action}, pageIndex: ${pageIndex}, context: ${msgContext}`);
+
     this.websocket.Send(action, {
       context: msgContext,
       vault: this.settings.vault,

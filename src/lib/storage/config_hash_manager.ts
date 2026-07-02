@@ -295,7 +295,7 @@ export class ConfigHashManager {
      */
     async rebuildHashMap(): Promise<void> {
         dump("ConfigHashManager: 手动重建配置哈希映射");
-        this.hashMap.clear();
+        this.clearAll();
         await this.buildConfigHashMap();
     }
 

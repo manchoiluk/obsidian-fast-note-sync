@@ -1,4 +1,5 @@
 // src/lib/sync/sync_progress_tracker.ts
+import { dump } from "../utils/helpers";
 
 export type SyncType = 'note' | 'file' | 'setting' | 'folder';
 export type SyncPhase = 'hash' | 'upload' | 'download' | 'idle';
@@ -23,6 +24,10 @@ interface TypeProgress {
   downloadPageIndex: number;  // Current page index / 当前页码
   downloadPageCount: number;  // Expected items in current page / 当前页包含的项数
   downloadPageDone: number;   // Processed items in current page / 当前页已处理项数
+
+  uploadTasksBase: number;    // 上传阶段完成任务的基准数（避免影响 isTypeFullyDone 计算）
+  expectedPages: number;      // 预期分页总数
+  initialAckSent: boolean;    // Has the initial ACK (pageIndex = -1) been sent / 是否已发送初始 ACK
 }
 
 /**
@@ -60,6 +65,17 @@ export class SyncProgressTracker {
     return this.progressMap.get(type)?.pageTaskTotal || 0;
   }
 
+  isInitialAckSent(type: SyncType): boolean {
+    return this.progressMap.get(type)?.initialAckSent || false;
+  }
+
+  setInitialAckSent(type: SyncType, sent: boolean): void {
+    const prog = this.progressMap.get(type);
+    if (prog) {
+      prog.initialAckSent = sent;
+    }
+  }
+
   /**
    * Reset the tracker for a new sync session.
    * 重置追踪器以开始新的同步会话。
@@ -80,7 +96,10 @@ export class SyncProgressTracker {
         receivedTaskTotal: 0,
         downloadPageIndex: -1,
         downloadPageCount: 0,
-        downloadPageDone: 0
+        downloadPageDone: 0,
+        uploadTasksBase: 0,
+        expectedPages: 0,
+        initialAckSent: false
       });
     }
 
@@ -100,11 +119,12 @@ export class SyncProgressTracker {
    * Record that upload (receiving SyncEnd from server) is complete for a sync type.
    * 记录某个同步类型的上传已完成 (收到服务端返回 of SyncEnd 消息)。
    */
-  recordUploadComplete(type: SyncType): void {
+  recordUploadComplete(type: SyncType, completedUploadsBase = 0): void {
     const prog = this.progressMap.get(type);
     if (!prog) return;
 
     prog.uploadComplete = true;
+    prog.uploadTasksBase = completedUploadsBase;
     // If no pages were received, then we have all pages (0 total tasks)
     if (prog.pageTaskTotal === 0) {
       prog.allPagesReceived = true;
@@ -136,11 +156,19 @@ export class SyncProgressTracker {
     prog.pageTaskCompleted++;
     prog.downloadPageDone++;
 
+    dump(`[SyncProgressTracker] [recordCompleted] type: ${type}, downloadPageDone: ${prog.downloadPageDone}, downloadPageCount: ${prog.downloadPageCount}, downloadPageIndex: ${prog.downloadPageIndex}`);
+
     // Check if the current page has finished processing / 检查当前页是否处理完成
     if (prog.downloadPageDone >= prog.downloadPageCount && prog.downloadPageIndex !== -1) {
       const completedPage = prog.downloadPageIndex;
       prog.downloadPageIndex = -1; // Reset to avoid double triggering / 重置以防重复触发
-      if (this.onPageComplete) {
+      
+      // 如果最后一页已收到，无需发送最终确认 ACK (已由服务端主动销毁缓存)
+      // If the last page has been received, no need to send final confirmation ACK (cache cleared by server)
+      if (prog.allPagesReceived) {
+        dump(`[SyncProgressTracker] [recordCompleted] Last page (${completedPage}) completed for type: ${type}, skipping final ACK`);
+      } else if (this.onPageComplete) {
+        dump(`[SyncProgressTracker] [onPageComplete] triggering page ACK for type: ${type}, pageIndex: ${completedPage}`);
         this.onPageComplete(type, completedPage);
       }
     }
@@ -152,10 +180,11 @@ export class SyncProgressTracker {
    * Set the authoritative total task count for download phase.
    * 一步到位地设置第三阶段（下载/处理）的权威任务总数。
    */
-  setDownloadTotal(type: SyncType, total: number): void {
+  setDownloadTotal(type: SyncType, total: number, syncDownChunkNum = 100): void {
     const prog = this.progressMap.get(type);
     if (!prog) return;
     prog.pageTaskTotal = total;
+    prog.expectedPages = total === 0 ? 0 : Math.ceil(total / syncDownChunkNum);
     this.notify();
   }
 
@@ -167,12 +196,16 @@ export class SyncProgressTracker {
     const prog = this.progressMap.get(type);
     if (!prog) return;
 
-    prog.downloadPageIndex = pageIndex;
+    prog.downloadPageIndex = totalCount === 0 ? -1 : pageIndex;
     prog.downloadPageCount = totalCount;
     prog.downloadPageDone = 0;
 
+    dump(`[SyncProgressTracker] [recordPageProgress] type: ${type}, pageIndex: ${pageIndex}, totalCount: ${totalCount}, isLast: ${isLast}`);
+
     // Accumulate precisely received total task count from server / 累加绝对精准的已收到任务总数
     prog.receivedTaskTotal += totalCount;
+    
+    // 如果收到最后一页标志，则标记所有页均已收到
     prog.allPagesReceived = isLast;
 
     // Correct UI total if received count exceeds it / 如果实际收到的数量超过了估算值，调大估算分母
@@ -207,9 +240,9 @@ export class SyncProgressTracker {
     if (!this.activeTypes.has(type)) return true;
     const prog = this.progressMap.get(type);
     if (!prog) return true;
-    // Use receivedTaskTotal instead of estimated pageTaskTotal to prevent hang due to estimation mismatch
-    // 使用实际收到的精准任务数判定完成，防止因估算偏差导致同步挂起
-    return prog.uploadComplete && prog.allPagesReceived && prog.pageTaskCompleted >= prog.receivedTaskTotal;
+    // 使用实际收到的精准下载任务数加上传任务基数判定完成，防止提早判断导致清空 context
+    const downloadCompleted = prog.pageTaskCompleted - prog.uploadTasksBase;
+    return prog.uploadComplete && prog.allPagesReceived && downloadCompleted >= prog.receivedTaskTotal;
   }
 
   /**

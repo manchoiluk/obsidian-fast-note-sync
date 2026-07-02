@@ -723,31 +723,19 @@ export class SettingTab extends PluginSettingTab {
         void this.plugin.activateLogView()
       }
     } else {
-      const clearTimeButton = debugDiv.createEl("button")
-      clearTimeButton.setText($("ui.menu.clear_time"))
-      clearTimeButton.onclick = () => {
+      const clearCacheButton = debugDiv.createEl("button")
+      clearCacheButton.setText($("ui.menu.clear_cache"))
+      clearCacheButton.onclick = () => {
         new ConfirmModal(
           this.app,
           $("ui.title.notice"),
-          $("setting.debug.clear_time_desc"),
+          $("setting.debug.clear_cache_confirm"),
           () => {
-            void resetSettingSyncTime(this.plugin)
-          },
-          $("ui.button.confirm"),
-          $("ui.button.cancel"),
-          false,
-        ).open()
-      }
-
-      const clearOnlyHashButton = debugDiv.createEl("button")
-      clearOnlyHashButton.setText($("ui.menu.clear_hash"))
-      clearOnlyHashButton.onclick = () => {
-        new ConfirmModal(
-          this.app,
-          $("ui.title.notice"),
-          $("setting.debug.clear_hash_only_desc"),
-          () => {
-            void clearAllHashes(this.plugin)
+            void (async () => {
+              await resetSettingSyncTime(this.plugin, true)
+              await clearAllHashes(this.plugin)
+              showSyncNotice($("setting.debug.clear_cache_success"))
+            })()
           },
           $("ui.button.confirm"),
           $("ui.button.cancel"),

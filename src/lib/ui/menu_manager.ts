@@ -1,6 +1,6 @@
 import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
 
-import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes } from '../sync/operator';
+import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from '../sync/operator';
 import { AppWithInternal, MenuItemWithDom, MenuWithHide, MenuItemWithInternal } from "../utils/types";
 import { NoteHistoryModal } from '../../views/note-history/history-modal';
 import { RecycleBinModal } from '../../views/recycle-bin-modal';
@@ -162,8 +162,14 @@ export class MenuManager {
 
     this.plugin.addCommand({
       id: "clean-local-sync-time",
-      name: $("ui.menu.clear_time"),
-      callback: () => resetSettingSyncTime(this.plugin),
+      name: $("ui.menu.clear_cache"),
+      callback: () => {
+        void (async () => {
+          await resetSettingSyncTime(this.plugin, true);
+          await clearAllHashes(this.plugin);
+          showSyncNotice($("setting.debug.clear_cache_success"));
+        })();
+      },
     });
 
     this.plugin.addCommand({

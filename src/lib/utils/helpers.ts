@@ -273,6 +273,22 @@ export const isPathExcluded = function (path: string, plugin: FastSync): boolean
 }
 
 /**
+ * 检查文件夹路径是否被同步排除（专用于 FolderSync）
+ * Check if a folder path is excluded from synchronization (specifically for FolderSync)
+ * 强制跳过 Obsidian 的系统配置目录及其子目录
+ * Force skip Obsidian's system configuration directory and its subdirectories
+ */
+export const isFolderSyncPathExcluded = function (path: string, plugin: FastSync): boolean {
+  const normalizedPath = path.replace(/\\/g, "/")
+  const configDir = plugin.app.vault.configDir.replace(/\\/g, "/")
+  if (normalizedPath === configDir || normalizedPath.startsWith(configDir + "/")) {
+    return true
+  }
+  return isPathExcluded(path, plugin)
+}
+
+
+/**
  * 排除监听文件的集合 (缓存)
  */
 const CONFIG_EXCLUDE_SET = new Set<string>()

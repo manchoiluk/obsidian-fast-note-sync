@@ -146,7 +146,10 @@ export class SyncLogManager {
      */
     public logReceivedMessage(action: string, data: unknown, currentSyncType: string): void {
         // 过滤不需要记录的消息类型
-        const excludedActions = ["Pong", "Authorization", "ClientInfo", "FileUploadCheck", "FileChunkDownload", "NoteSyncNeedPush", "FileSyncUpdate", "FileSyncChunkDownload"];
+        const excludedActions = [
+            "Pong", "Authorization", "ClientInfo", "FileUploadCheck", "FileChunkDownload", "NoteSyncNeedPush", "FileSyncUpdate", "FileSyncChunkDownload",
+            "FolderSyncBatchAck", "NoteSyncBatchAck", "FileSyncBatchAck", "SettingSyncBatchAck"
+        ];
         if (excludedActions.includes(action)) {
             return;
         }
@@ -214,7 +217,10 @@ export class SyncLogManager {
      */
     public logSentMessage(action: string, data: object | string, currentSyncType: string): void {
         // 过滤不需要记录的消息类型
-        const excludedActions = ["Ping", "Authorization", "ClientInfo", "FileUploadCheck", "FileChunkDownload", "NoteSyncNeedPush"];
+        const excludedActions = [
+            "Ping", "Authorization", "ClientInfo", "FileUploadCheck", "FileChunkDownload", "NoteSyncNeedPush",
+            "FolderSyncBatchAck", "NoteSyncBatchAck", "FileSyncBatchAck", "SettingSyncBatchAck"
+        ];
         if (excludedActions.includes(action)) {
             return;
         }

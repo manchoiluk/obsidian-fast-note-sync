@@ -4109,6 +4109,9 @@ export namespace proto {
             /** FileChunkDownloadRequest chunkIndex. */
             chunkIndex: (number|Long);
 
+            /** FileChunkDownloadRequest context. */
+            context: string;
+
             /**
              * Creates a new FileChunkDownloadRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -4208,6 +4211,9 @@ export namespace proto {
                 /** FileChunkDownloadRequest chunkIndex */
                 chunkIndex?: (number|Long|null);
 
+                /** FileChunkDownloadRequest context */
+                context?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -4243,6 +4249,12 @@ export namespace proto {
 
             /** FileGetRequest pathHash. */
             pathHash: string;
+
+            /** FileGetRequest isRecycle. */
+            isRecycle: boolean;
+
+            /** FileGetRequest context. */
+            context: string;
 
             /**
              * Creates a new FileGetRequest instance using the specified properties.
@@ -4336,6 +4348,12 @@ export namespace proto {
 
                 /** FileGetRequest pathHash */
                 pathHash?: (string|null);
+
+                /** FileGetRequest isRecycle */
+                isRecycle?: (boolean|null);
+
+                /** FileGetRequest context */
+                context?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];

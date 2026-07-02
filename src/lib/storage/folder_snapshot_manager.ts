@@ -1,6 +1,6 @@
 import { TFolder } from "obsidian";
 
-import { dump, isPathExcluded } from "../utils/helpers";
+import { dump, isFolderSyncPathExcluded } from "../utils/helpers";
 import type FastSync from "../../main";
 
 
@@ -47,7 +47,7 @@ export class FolderSnapshotManager {
             const now = Date.now();
             for (const file of files) {
                 if (file instanceof TFolder) {
-                    if (file.path === "/" || isPathExcluded(file.path, this.plugin)) continue;
+                    if (file.path === "/" || isFolderSyncPathExcluded(file.path, this.plugin)) continue;
 
                     // 初始快照时，所有文件夹的 mtime 设为当前时间 (虚拟化)
                     this.snapshotMap.set(file.path, now);

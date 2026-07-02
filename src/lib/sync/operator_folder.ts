@@ -1,7 +1,7 @@
 import { TFolder, normalizePath } from "obsidian";
 
 import { SyncEndData, FolderSyncRenameMessage } from "../utils/types";
-import { hashContent, dump, dumpError, isPathExcluded, waitForFolderEmpty, vaultDelete, checkAndNotifyCaseConflict } from "../utils/helpers";
+import { hashContent, dump, dumpError, isFolderSyncPathExcluded, waitForFolderEmpty, vaultDelete, checkAndNotifyCaseConflict } from "../utils/helpers";
 import { SyncLogManager } from "./sync_log_manager";
 import type FastSync from "../../main";
 
@@ -12,7 +12,7 @@ import type FastSync from "../../main";
 export const folderModify = async function (folder: TFolder, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
     if (eventEnter && plugin.isIgnoredFile(folder.path)) return
-    if (isPathExcluded(folder.path, plugin)) return
+    if (isFolderSyncPathExcluded(folder.path, plugin)) return
 
     await plugin.lockManager.withLock(folder.path, async () => {
         plugin.addIgnoredFile(folder.path)
@@ -39,7 +39,7 @@ export const folderModify = async function (folder: TFolder, plugin: FastSync, e
 export const folderDelete = async function (folder: TFolder, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
     if (eventEnter && plugin.isIgnoredFile(folder.path)) return
-    if (isPathExcluded(folder.path, plugin)) return
+    if (isFolderSyncPathExcluded(folder.path, plugin)) return
 
     // --- 新增：删除拦截 ---
     if (plugin.lastSyncPathDeleted.has(folder.path)) {
@@ -71,7 +71,7 @@ export const folderDelete = async function (folder: TFolder, plugin: FastSync, e
  */
 export const folderDeleteByPath = async function (folderPath: string, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
-    if (isPathExcluded(folderPath, plugin)) return
+    if (isFolderSyncPathExcluded(folderPath, plugin)) return
     if (plugin.lastSyncPathDeleted.has(folderPath)) return
 
     await plugin.lockManager.withLock(folderPath, async () => {
@@ -98,8 +98,8 @@ export const folderDeleteByPath = async function (folderPath: string, plugin: Fa
 export const folderRename = async function (folder: TFolder, oldPath: string, plugin: FastSync, eventEnter: boolean = false) {
     if (plugin.settings.syncEnabled == false || plugin.settings.readonlySyncEnabled) return
     if (eventEnter && plugin.isIgnoredFile(folder.path)) return
-    const newExcluded = isPathExcluded(folder.path, plugin)
-    const oldExcluded = isPathExcluded(oldPath, plugin)
+    const newExcluded = isFolderSyncPathExcluded(folder.path, plugin)
+    const oldExcluded = isFolderSyncPathExcluded(oldPath, plugin)
 
     // Cross-exclusion-boundary rename handling
     // 跨排除边界重命名处理
@@ -154,9 +154,8 @@ export const folderRename = async function (folder: TFolder, oldPath: string, pl
  */
 export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
-    if (isPathExcluded(data.path, plugin)) {
+    if (isFolderSyncPathExcluded(data.path, plugin)) {
         plugin.folderSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('folder');
         return
     }
     dump(`Receive folder modify:`, data.path, data.pathHash)
@@ -198,7 +197,6 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
         plugin.folderSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('folder');
     }
 }
 
@@ -207,9 +205,8 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
  */
 export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
-    if (isPathExcluded(data.path, plugin)) {
+    if (isFolderSyncPathExcluded(data.path, plugin)) {
         plugin.folderSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('folder');
         return
     }
     dump(`Receive folder delete:`, data.path, data.pathHash)
@@ -246,7 +243,6 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
         plugin.folderSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('folder');
     }
 }
 
@@ -255,9 +251,8 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
  */
 export const receiveFolderSyncRename = async function (data: FolderSyncRenameMessage, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
-    if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
+    if (isFolderSyncPathExcluded(data.path, plugin) || isFolderSyncPathExcluded(data.oldPath, plugin)) {
         plugin.folderSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('folder');
         return
     }
 
@@ -318,7 +313,6 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
         plugin.folderSyncTasks.completed++
-        plugin.progressTracker.recordDownloadComplete('folder');
     }
 }
 

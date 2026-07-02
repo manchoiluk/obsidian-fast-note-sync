@@ -276,7 +276,7 @@ export class FileHashManager {
    */
   async rebuildHashMap(): Promise<void> {
     dump("FileHashManager: 手动重建哈希映射");
-    this.hashMap.clear();
+    this.clearAll();
     await this.buildFileHashMap();
   }
 
