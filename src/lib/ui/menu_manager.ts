@@ -438,10 +438,12 @@ export class MenuManager {
     const isShow = this.plugin.settings.showConcurrencyIndicator;
 
     if (isEnabled && isShow) {
+      this.concurrencyStatusBarItem.removeClass("fns-hidden");
       this.concurrencyStatusBarItem.addClass("fns-status-bar-item");
       const limit = this.plugin.settings.maxConcurrentUploads;
       this.concurrencyStatusBarItem.setAttribute("aria-label", $("setting.sync.concurrency_limit_tip", { count: limit }));
     } else {
+      this.concurrencyStatusBarItem.addClass("fns-hidden");
       this.concurrencyStatusBarItem.removeClass("fns-status-bar-item");
     }
   }
