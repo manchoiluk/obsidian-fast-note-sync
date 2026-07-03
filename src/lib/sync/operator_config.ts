@@ -282,7 +282,7 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
     await plugin.concurrencyLimiter.waitForSlot(data.path)
     void plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
         plugin.removeIgnoredConfigFile(data.path);
-    }, (data as any).context);
+    }, (data as ReceivePathMessage & { context?: string }).context);
 };
 
 export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {

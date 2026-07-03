@@ -9,8 +9,8 @@ import { RuleEditorModal } from "./views/rule-editor-modal";
 import { PathSuggestOptions } from "./views/path-suggest";
 import { DebugLogModal } from "./views/debug-log-modal";
 import { ConfirmModal } from "./views/confirm-modal";
-import { RuleEditor } from "./views/rule-editor";
 import { AppWithInternal } from "./lib/utils/types";
+import { RuleEditor } from "./views/rule-editor";
 import { $ } from "./i18n/lang";
 import FastSync from "./main";
 
@@ -169,8 +169,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   protobufEnabled: true,
   noteSyncLimit: 20,
   attachmentSyncLimit: 50,
-  hashSyncLimitEnabled: true,
-  hashSyncLimit: 20000,
+  hashSyncLimitEnabled: false,
+  hashSyncLimit: 50000,
 }
 
 export type TabId = "GENERAL" | "DISPLAY" | "SHORTCUT" | "REMOTE" | "SYNC" | "CLOUD" | "DEBUG"
@@ -609,51 +609,51 @@ export class SettingTab extends PluginSettingTab {
         apiToken: this.plugin.settings.apiToken ? "***HIDDEN***" : "",
       },
       runtimeInfo: {
-          runApi: maskValue(this.plugin.runApi),
-          runWsApi: maskValue(this.plugin.runWsApi),
-          isInitSync: this.plugin.localStorageManager.getMetadata("isInitSync"),
-          lastNoteSyncTime: this.plugin.localStorageManager.getMetadata("lastNoteSyncTime"),
-          lastFileSyncTime: this.plugin.localStorageManager.getMetadata("lastFileSyncTime"),
-          lastConfigSyncTime: this.plugin.localStorageManager.getMetadata("lastConfigSyncTime"),
-          clientName: this.plugin.localStorageManager.getMetadata("clientName"),
+        runApi: maskValue(this.plugin.runApi),
+        runWsApi: maskValue(this.plugin.runWsApi),
+        isInitSync: this.plugin.localStorageManager.getMetadata("isInitSync"),
+        lastNoteSyncTime: this.plugin.localStorageManager.getMetadata("lastNoteSyncTime"),
+        lastFileSyncTime: this.plugin.localStorageManager.getMetadata("lastFileSyncTime"),
+        lastConfigSyncTime: this.plugin.localStorageManager.getMetadata("lastConfigSyncTime"),
+        clientName: this.plugin.localStorageManager.getMetadata("clientName"),
 
-          serverConnectionStatus: this.plugin.websocket.isConnected() ? "connected" : "disconnected",
-          ...(this.plugin.websocket.isConnected()
-            ? {
-              serverVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
-            }
-            : {
-              serverLastConnectVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
-            }),
+        serverConnectionStatus: this.plugin.websocket.isConnected() ? "connected" : "disconnected",
+        ...(this.plugin.websocket.isConnected()
+          ? {
+            serverVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
+          }
+          : {
+            serverLastConnectVersion: this.plugin.localStorageManager.getMetadata("serverVersion"),
+          }),
 
-          serverVersionIsNew: this.plugin.versionManager.isServerNew(),
-          pluginVersionIsNew: this.plugin.versionManager.isPluginNew(),
-        },
-        systemInfo: {
-          isDesktop: Platform.isDesktopApp,
-          isMobile: Platform.isMobile,
-          isTablet: Platform.isTablet,
-          platform: typeof process !== "undefined" ? (process.platform ?? "unknown") : "unknown",
-          arch: typeof process !== "undefined" ? (process.arch ?? "unknown") : "unknown",
-          userAgent: "Obsidian/" + ((this.app as unknown as { version: string }).version || "unknown"),
-          versions:
-            typeof process !== "undefined" && process.versions
-              ? {
-                node: process.versions.node,
-                electron: process.versions.electron,
-                chrome: process.versions.chrome,
-                v8: process.versions.v8,
-              }
-              : {},
-          capacitor: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor
+        serverVersionIsNew: this.plugin.versionManager.isServerNew(),
+        pluginVersionIsNew: this.plugin.versionManager.isPluginNew(),
+      },
+      systemInfo: {
+        isDesktop: Platform.isDesktopApp,
+        isMobile: Platform.isMobile,
+        isTablet: Platform.isTablet,
+        platform: typeof process !== "undefined" ? (process.platform ?? "unknown") : "unknown",
+        arch: typeof process !== "undefined" ? (process.arch ?? "unknown") : "unknown",
+        userAgent: "Obsidian/" + ((this.app as unknown as { version: string }).version || "unknown"),
+        versions:
+          typeof process !== "undefined" && process.versions
             ? {
-              platform: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor.getPlatform(),
-              isNative: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor.isNative,
+              node: process.versions.node,
+              electron: process.versions.electron,
+              chrome: process.versions.chrome,
+              v8: process.versions.v8,
             }
-            : "not found",
-          obsidianVersion: (this.app as unknown as { version: string }).version || "unknown",
-        },
-        pluginVersion: this.plugin.manifest.version,
+            : {},
+        capacitor: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor
+          ? {
+            platform: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor.getPlatform(),
+            isNative: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor.isNative,
+          }
+          : "not found",
+        obsidianVersion: (this.app as unknown as { version: string }).version || "unknown",
+      },
+      pluginVersion: this.plugin.manifest.version,
     }
     // sanitize 兜底敏感扫描作为次防线，避免遗漏任何敏感信息
     // sanitize as a secondary line to catch any missed sensitive info
@@ -986,121 +986,121 @@ export class SettingTab extends PluginSettingTab {
       confirmMsg,
       () => {
         void (async () => {
-        dump("[fast-note-sync] ConfirmModal confirmed. Disabling button...");
+          dump("[fast-note-sync] ConfirmModal confirmed. Disabling button...");
 
-        btn.disabled = true;
-        const originalText = btn.textContent || "";
-        dump("[fast-note-sync] original button text:", originalText);
-        btn.textContent = $("setting.debug.version_installing") || "正在安装...";
+          btn.disabled = true;
+          const originalText = btn.textContent || "";
+          dump("[fast-note-sync] original button text:", originalText);
+          btn.textContent = $("setting.debug.version_installing") || "正在安装...";
 
-        try {
-          const source = this.plugin.settings.updateSource || "github";
-          const zipFileName = `fast-note-sync-v${latest}.zip`;
-          const pluginDir = getPluginDir(this.plugin);
+          try {
+            const source = this.plugin.settings.updateSource || "github";
+            const zipFileName = `fast-note-sync-v${latest}.zip`;
+            const pluginDir = getPluginDir(this.plugin);
 
-          let url = "";
-          if (source === "github") {
-            url = `https://github.com/haierkeys/obsidian-fast-note-sync/releases/download/${latest}/${zipFileName}`;
-          } else {
-            // CNB 链接格式：releases/download/{version}/fast-note-sync-v{version}.zip
-            url = `https://cnb.cool/haierkeys/obsidian-fast-note-sync/-/releases/download/${latest}/${zipFileName}`;
-          }
-
-          dump(`[fast-note-sync] preparing download. Source: ${source}, Tag: ${tag}, Zip: ${zipFileName}, Dir: ${pluginDir}, URL: ${url}`);
-          showSyncNotice($("ui.version.downloading_file", { file: zipFileName }) || `正在下载 ${zipFileName}...`);
-
-          // 3. 跨域下载 Zip 包 / Download zip with requestUrl to bypass CORS and gain speed
-          dump("[fast-note-sync] initiating requestUrl request to:", url);
-          const response = await requestUrl({
-            url: url,
-            method: "GET",
-          });
-
-          dump("[fast-note-sync] requestUrl returned. status:", response.status);
-          if (response.status !== 200) {
-            throw new Error(`Failed to download ${zipFileName}: ${response.status}`);
-          }
-
-          showSyncNotice("下载成功，正在解密与提取文件...");
-          const arrayBuffer = response.arrayBuffer;
-          dump("[fast-note-sync] arrayBuffer loaded. size in bytes:", arrayBuffer.byteLength);
-
-          dump("[fast-note-sync] unzipping file contents with fflate...");
-          const unzipped: Record<string, Uint8Array> = unzipSync(new Uint8Array(arrayBuffer));
-          dump("[fast-note-sync] unzip completed. Total items in zip:", Object.keys(unzipped).length);
-
-          // 4. 自动检测根目录前缀（寻找 manifest.json 所在位置） / Automatically detect root prefix in zip
-          let rootPrefix = "";
-          const fileNames = Object.keys(unzipped);
-          const manifestFile = fileNames.find((f) => f.endsWith("manifest.json"));
-          if (manifestFile) {
-            rootPrefix = manifestFile.replace("manifest.json", "");
-          }
-          dump("[fast-note-sync] zip root prefix detected:", rootPrefix || "(none)");
-
-          const files = Object.entries(unzipped).filter(([name]) => !name.endsWith("/") && name.startsWith(rootPrefix));
-          dump("[fast-note-sync] total files filtered to extract:", files.length);
-
-          // 5. 递归解压并覆盖写入 / Extract and overwrite recursively
-          let count = 0;
-          for (const [realFilename, content] of files) {
-            const relativeFilename = realFilename.substring(rootPrefix.length);
-            if (!relativeFilename) continue;
-
-            const path = `${pluginDir}/${relativeFilename}`;
-            dump(`[fast-note-sync] extracting file [${++count}/${files.length}]: ${relativeFilename} -> ${path}`);
-
-            // 确保父目录存在 / Ensure parent directory exists
-            const pathParts = relativeFilename.split("/");
-            if (pathParts.length > 1) {
-              let currentPath = pluginDir;
-              for (let i = 0; i < pathParts.length - 1; i++) {
-                currentPath += `/${pathParts[i]}`;
-                if (!(await this.plugin.app.vault.adapter.exists(currentPath))) {
-                  dump(`[fast-note-sync] creating directory: ${currentPath}`);
-                  await this.plugin.app.vault.adapter.mkdir(currentPath);
-                }
-              }
+            let url = "";
+            if (source === "github") {
+              url = `https://github.com/haierkeys/obsidian-fast-note-sync/releases/download/${latest}/${zipFileName}`;
+            } else {
+              // CNB 链接格式：releases/download/{version}/fast-note-sync-v{version}.zip
+              url = `https://cnb.cool/haierkeys/obsidian-fast-note-sync/-/releases/download/${latest}/${zipFileName}`;
             }
 
-            dump(`[fast-note-sync] writing binary data to: ${path}`);
-            await this.plugin.app.vault.adapter.writeBinary(path, content.buffer as ArrayBuffer);
+            dump(`[fast-note-sync] preparing download. Source: ${source}, Tag: ${tag}, Zip: ${zipFileName}, Dir: ${pluginDir}, URL: ${url}`);
+            showSyncNotice($("ui.version.downloading_file", { file: zipFileName }) || `正在下载 ${zipFileName}...`);
+
+            // 3. 跨域下载 Zip 包 / Download zip with requestUrl to bypass CORS and gain speed
+            dump("[fast-note-sync] initiating requestUrl request to:", url);
+            const response = await requestUrl({
+              url: url,
+              method: "GET",
+            });
+
+            dump("[fast-note-sync] requestUrl returned. status:", response.status);
+            if (response.status !== 200) {
+              throw new Error(`Failed to download ${zipFileName}: ${response.status}`);
+            }
+
+            showSyncNotice("下载成功，正在解密与提取文件...");
+            const arrayBuffer = response.arrayBuffer;
+            dump("[fast-note-sync] arrayBuffer loaded. size in bytes:", arrayBuffer.byteLength);
+
+            dump("[fast-note-sync] unzipping file contents with fflate...");
+            const unzipped: Record<string, Uint8Array> = unzipSync(new Uint8Array(arrayBuffer));
+            dump("[fast-note-sync] unzip completed. Total items in zip:", Object.keys(unzipped).length);
+
+            // 4. 自动检测根目录前缀（寻找 manifest.json 所在位置） / Automatically detect root prefix in zip
+            let rootPrefix = "";
+            const fileNames = Object.keys(unzipped);
+            const manifestFile = fileNames.find((f) => f.endsWith("manifest.json"));
+            if (manifestFile) {
+              rootPrefix = manifestFile.replace("manifest.json", "");
+            }
+            dump("[fast-note-sync] zip root prefix detected:", rootPrefix || "(none)");
+
+            const files = Object.entries(unzipped).filter(([name]) => !name.endsWith("/") && name.startsWith(rootPrefix));
+            dump("[fast-note-sync] total files filtered to extract:", files.length);
+
+            // 5. 递归解压并覆盖写入 / Extract and overwrite recursively
+            let count = 0;
+            for (const [realFilename, content] of files) {
+              const relativeFilename = realFilename.substring(rootPrefix.length);
+              if (!relativeFilename) continue;
+
+              const path = `${pluginDir}/${relativeFilename}`;
+              dump(`[fast-note-sync] extracting file [${++count}/${files.length}]: ${relativeFilename} -> ${path}`);
+
+              // 确保父目录存在 / Ensure parent directory exists
+              const pathParts = relativeFilename.split("/");
+              if (pathParts.length > 1) {
+                let currentPath = pluginDir;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                  currentPath += `/${pathParts[i]}`;
+                  if (!(await this.plugin.app.vault.adapter.exists(currentPath))) {
+                    dump(`[fast-note-sync] creating directory: ${currentPath}`);
+                    await this.plugin.app.vault.adapter.mkdir(currentPath);
+                  }
+                }
+              }
+
+              dump(`[fast-note-sync] writing binary data to: ${path}`);
+              await this.plugin.app.vault.adapter.writeBinary(path, content.buffer as ArrayBuffer);
+            }
+            dump("[fast-note-sync] all files successfully extracted and written to filesystem.");
+
+            // 6. 热重载插件 / Hot reload plugin
+            showSyncNotice($("setting.debug.version_installing_notice") || "正在安装指定版本插件...");
+            dump("[fast-note-sync] initiating plugin hot reload...");
+
+            const app = this.app as AppWithInternal;
+            const plugins = app.plugins;
+            if (!plugins) {
+              throw new Error("Cannot find plugin manager.");
+            }
+
+            const id = this.plugin.manifest.id;
+            dump("[fast-note-sync] target plugin ID to reload:", id);
+
+            await new Promise((resolve) => window.setTimeout(resolve, 500));
+
+            dump("[fast-note-sync] disabling plugin...");
+            await plugins.disablePlugin(id);
+            dump("[fast-note-sync] loading plugin manifests...");
+            await plugins.loadManifests();
+            dump("[fast-note-sync] enabling plugin...");
+            await plugins.enablePlugin(id);
+
+            dump("[fast-note-sync] hot reload finished successfully.");
+            showSyncNotice($("setting.debug.version_install_success") || "插件安装并重载成功", 10000);
+          } catch (e) {
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            dumpError("[fast-note-sync] manual version install failed with error:", e);
+            showSyncNotice(($("setting.debug.version_install_fail") || "插件安装失败") + ": " + errorMsg);
+          } finally {
+            dump("[fast-note-sync] startVersionInstall execution completed. Restoring button state.");
+            btn.disabled = false;
+            btn.textContent = originalText || "开始安装";
           }
-          dump("[fast-note-sync] all files successfully extracted and written to filesystem.");
-
-          // 6. 热重载插件 / Hot reload plugin
-          showSyncNotice($("setting.debug.version_installing_notice") || "正在安装指定版本插件...");
-          dump("[fast-note-sync] initiating plugin hot reload...");
-
-          const app = this.app as AppWithInternal;
-          const plugins = app.plugins;
-          if (!plugins) {
-            throw new Error("Cannot find plugin manager.");
-          }
-
-          const id = this.plugin.manifest.id;
-          dump("[fast-note-sync] target plugin ID to reload:", id);
-
-          await new Promise((resolve) => window.setTimeout(resolve, 500));
-
-          dump("[fast-note-sync] disabling plugin...");
-          await plugins.disablePlugin(id);
-          dump("[fast-note-sync] loading plugin manifests...");
-          await plugins.loadManifests();
-          dump("[fast-note-sync] enabling plugin...");
-          await plugins.enablePlugin(id);
-
-          dump("[fast-note-sync] hot reload finished successfully.");
-          showSyncNotice($("setting.debug.version_install_success") || "插件安装并重载成功", 10000);
-        } catch (e) {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          dumpError("[fast-note-sync] manual version install failed with error:", e);
-          showSyncNotice(($("setting.debug.version_install_fail") || "插件安装失败") + ": " + errorMsg);
-        } finally {
-          dump("[fast-note-sync] startVersionInstall execution completed. Restoring button state.");
-          btn.disabled = false;
-          btn.textContent = originalText || "开始安装";
-        }
         })();
       },
       $("ui.button.confirm"),

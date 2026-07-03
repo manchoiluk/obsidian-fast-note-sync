@@ -92,6 +92,12 @@ export default class FastSync extends Plugin {
     this.progressTracker.onChange = (pct, detail, phase) => {
       this.statusBarManager?.render(pct, detail, phase);
     };
+    this.progressTracker.onProgressChange = (pct, detail, phase) => {
+      // Broadcast progress via workspace event bus to decouple plugin from view reference.
+      // 通过 workspace 事件总线广播进度，解耦 plugin 与 view 的直接引用。
+      (this.app.workspace as unknown as { trigger: (name: string, data: unknown) => void })
+        .trigger('fns:sync-progress', { pct, detail, phase });
+    };
     this.syncState.onCompletedChange = (type) => {
       this.progressTracker.recordCompleted(type);
     };
@@ -106,7 +112,9 @@ export default class FastSync extends Plugin {
 
     if (!action) return;
 
-    const pageState = this.syncPageStateMap.get(type);
+    // 如果是首拉 ACK 信号 (pageIndex === -1)，强行忽略可能残留的 pageState，强制使用当前的 activeSyncContext
+    // If it's the initial ACK signal (pageIndex === -1), ignore any stale pageState and force activeSyncContext
+    const pageState = pageIndex === -1 ? undefined : this.syncPageStateMap.get(type);
     const msgContext = pageState?.context || this.syncState.activeSyncContext || "";
 
     dump(`[sendSyncPageAck] Sending ACK for type: ${type}, action: ${action}, pageIndex: ${pageIndex}, context: ${msgContext}`);
@@ -117,7 +125,11 @@ export default class FastSync extends Plugin {
       pageIndex: pageIndex
     });
 
-    this.syncPageStateMap.delete(type);
+    // 只有当存在真正的 pageState 且非首拉时，才在发送后删除对应状态
+    // Only delete from the map if we used a real pageState and it's not the initial ACK
+    if (pageIndex !== -1) {
+      this.syncPageStateMap.delete(type);
+    }
   }
   /** 运行时 API 配置 / Runtime API configuration */
   readonly runtimeConfig = new RuntimeConfig()
@@ -144,8 +156,6 @@ export default class FastSync extends Plugin {
   set isSyncRequesting(v: boolean) { this.syncState.isSyncRequesting = v }
   get isFirstSync() { return this.syncState.isFirstSync }
   set isFirstSync(v: boolean) { this.syncState.isFirstSync = v }
-  get isWatchEnabled() { return this.syncState.isWatchEnabled }
-  set isWatchEnabled(v: boolean) { this.syncState.isWatchEnabled = v }
   get isWaitClearSync() { return this.syncState.isWaitClearSync }
   set isWaitClearSync(v: boolean) { this.syncState.isWaitClearSync = v }
   get currentSyncType() { return this.syncState.currentSyncType }
@@ -251,18 +261,6 @@ export default class FastSync extends Plugin {
   /** 计算已完成任务数 / Calculate completed task count */
   getCompletedTasks() {
     return this.syncState.getCompletedTasks()
-  }
-
-  getWatchEnabled(): boolean {
-    return this.isWatchEnabled
-  }
-
-  enableWatch() {
-    this.isWatchEnabled = true
-  }
-
-  disableWatch() {
-    this.isWatchEnabled = false
   }
 
   /**
@@ -864,7 +862,6 @@ export default class FastSync extends Plugin {
       this.fileDownloadSessions = new Map()
     } else {
       this.websocket?.unRegister()
-      this.isWatchEnabled = false
       this.ignoredFiles = new Set()
       this.ignoredConfigFiles = new Set()
       this.lastSyncMtime.clear()

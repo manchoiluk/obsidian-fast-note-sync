@@ -35,9 +35,8 @@ export class ConfirmModal extends Modal {
         titleEl.setText(this.titleText);
 
         const messageEl = contentEl.createEl("div", {
-            cls: this.isWarning ? "fns-modal-warning-message" : "fns-modal-info-message"
+        cls: (this.isWarning ? "fns-modal-warning-message" : "fns-modal-info-message") + " fns-modal-pre-wrap"
         });
-        messageEl.style.whiteSpace = "pre-wrap";
         messageEl.setText(this.message);
 
         new Setting(contentEl)

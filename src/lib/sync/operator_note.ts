@@ -339,7 +339,7 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
   await plugin.concurrencyLimiter.waitForSlot(file.path)
   void plugin.websocket.SendMessage("NoteModify", sendData, undefined, () => {
     plugin.removeIgnoredFile(file.path)
-  }, (data as any).context)
+  }, (data as ReceivePathMessage & { context?: string }).context)
   dump(`Note modify send`, sendData.path, sendData.contentHash, sendData.mtime, sendData.pathHash)
 }
 

@@ -227,6 +227,8 @@ export default {
   "ui.menu.full_sync": "Full Sync",
   "ui.menu.full_sync_desc": "Performs a full comparison with the server, syncs all files, and cleans up all empty local folders",
   "ui.menu.reconnecting": "Reconnecting. Will automatically sync after connection is established...",
+  "ui.menu.cancel_full_first": "Please cancel the full sync first before performing the default sync",
+  "ui.menu.cancel_default_first": "Please cancel the default sync first before performing the full sync",
   "ui.menu.enable_sync": "Enable Sync",
   "ui.menu.enable_sync_desc": "All configured syncs are currently enabled.",
   "ui.menu.disable_sync": "Temporarily Disable Sync",
@@ -257,6 +259,7 @@ export default {
   "ui.status.new_version": "New version found: ${version}, click to go to the update page",
   "ui.status.completed": "Sync completed",
   "ui.status.failed": "Sync failed",
+  "ui.status.cancelled": "Sync cancelled",
   "ui.status.conflict": "Sync conflict detected, forced merge applied. Manual handling required for ${path}.",
   "ui.status.no_connection": "Unable to connect to server, please check network connection",
   "ui.status.config_imported": "Authorization configuration imported",
@@ -311,6 +314,8 @@ export default {
   "ui.log.category_other": "Other",
   "ui.log.summary.title_full": "Sync Complete (Full)",
   "ui.log.summary.title_inc": "Sync Complete (Incremental)",
+  "ui.log.summary.title_cancelled_full": "Sync cancelled (full)",
+  "ui.log.summary.title_cancelled_inc": "Sync cancelled (incremental)",
   "ui.log.summary.no_changes": "No changes",
 
   // --- ui.log.action ---

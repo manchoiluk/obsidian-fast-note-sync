@@ -227,6 +227,8 @@ export default {
   "ui.menu.full_sync": "전체 동기화",
   "ui.menu.full_sync_desc": "서버와 전체 비교를 수행하여 모든 파일을 동기화하고 로컬의 모든 빈 폴더를 정리합니다",
   "ui.menu.reconnecting": "재연결 중이며, 연결이 성공하면 자동으로 동기화됩니다...",
+  "ui.menu.cancel_full_first": "기본 동기화를 실행하기 전에 전체 동기화를 먼저 취소하세요",
+  "ui.menu.cancel_default_first": "전체 동기화를 실행하기 전에 기본 동기화를 먼저 취소하세요",
   "ui.menu.enable_sync": "동기화 활성화",
   "ui.menu.enable_sync_desc": "설정된 모든 동기화가 활성화되어 있습니다.",
   "ui.menu.disable_sync": "동기화 일시 중지",
@@ -257,6 +259,7 @@ export default {
   "ui.status.new_version": "새 버전 발견: ${version}, 클릭하면 업데이트 페이지로 이동합니다",
   "ui.status.completed": "동기화 완료",
   "ui.status.failed": "동기화 실패",
+  "ui.status.cancelled": "동기화가 취소되었습니다",
   "ui.status.conflict": "동기화 충돌이 감지되어 강제 병합되었습니다. ${path}를 수동으로 처리해야 합니다.",
   "ui.status.no_connection": "서버에 연결할 수 없습니다. 네트워크 연결을 확인하세요",
   "ui.status.config_imported": "인증 구성이 가져와졌습니다",
@@ -311,6 +314,8 @@ export default {
   "ui.log.category_other": "기타",
   "ui.log.summary.title_full": "동기화 완료 (전체)",
   "ui.log.summary.title_inc": "동기화 완료 (증분)",
+  "ui.log.summary.title_cancelled_full": "동기화가 취소되었습니다 (전체)",
+  "ui.log.summary.title_cancelled_inc": "동기화가 취소되었습니다 (증분)",
   "ui.log.summary.no_changes": "변경 없음",
 
   // --- ui.log.action ---

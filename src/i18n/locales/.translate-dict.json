@@ -444,5 +444,10 @@
   "ui.menu.clear_cache": "1565ac2fd93489f0b8486d1806f839fa",
   "setting.debug.clear_cache_desc": "511897358e1478322b06983a65793923",
   "setting.debug.clear_cache_confirm": "657240d93b4251e36d2937b27f5dfb28",
-  "setting.debug.clear_cache_success": "b935ce6aa120a1edf85b785bdacdf910"
+  "setting.debug.clear_cache_success": "b935ce6aa120a1edf85b785bdacdf910",
+  "ui.menu.cancel_full_first": "f08afaddbf8f0f32d168b7fc30bc009c",
+  "ui.menu.cancel_default_first": "dccf252bdbce0917109c911a7dcfd64f",
+  "ui.status.cancelled": "0bcf3678754f4e02c1ecf4455e18afae",
+  "ui.log.summary.title_cancelled_full": "50207b91555c6726e16169a6a2b038f9",
+  "ui.log.summary.title_cancelled_inc": "1e2aeb7cded76dbd374e890b90c22edb"
 }

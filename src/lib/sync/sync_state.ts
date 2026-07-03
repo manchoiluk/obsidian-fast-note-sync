@@ -32,8 +32,6 @@ export class SyncState {
   isSyncRequesting = false;
   /** 是否为首次同步 / Whether this is the first sync */
   isFirstSync = false;
-  /** 是否启用文件监听 / Whether file watching is enabled */
-  isWatchEnabled = true;
   /** 是否正在等待清理确认以便后续同步 / Whether waiting for clear-sync confirmation */
   isWaitClearSync = false;
   /** 当前同步类型 / Current sync type */
@@ -48,14 +46,13 @@ export class SyncState {
   onCompletedChange?: (type: "note" | "file" | "setting" | "folder") => void;
 
   private createStatsProxy(type: "note" | "file" | "setting" | "folder", initVal: SyncTaskStats): SyncTaskStats {
-    const self = this;
     return new Proxy(initVal, {
-      set(target, prop, value, receiver) {
-        const oldVal = Reflect.get(target, prop, receiver);
+      set: (target, prop, value, receiver) => {
+        const oldVal = Reflect.get(target, prop, receiver) as number;
         const success = Reflect.set(target, prop, value, receiver);
         if (success && prop === "completed" && value !== oldVal) {
-          if (self.onCompletedChange) {
-            self.onCompletedChange(type);
+          if (this.onCompletedChange) {
+            this.onCompletedChange(type);
           }
         }
         return success;
@@ -161,6 +158,8 @@ export class SyncState {
   lastSyncPathRenamed = new Set<string>();
   /** 自动同步定时器 / Auto-sync timer */
   syncTimer: number | null = null;
+  /** 进度检测定时器 ID，供取消同步时使用 / Progress check interval ID for sync cancellation */
+  progressCheckIntervalId: number | null = null;
   /** 文件下载会话管理 / File download session map */
   fileDownloadSessions = new Map<string, FileDownloadSession>();
 
@@ -171,6 +170,10 @@ export class SyncState {
    * Reset all per-session task statistics and sync-end flags
    */
   resetSession() {
+    if (this.progressCheckIntervalId !== null) {
+      window.clearInterval(this.progressCheckIntervalId);
+      this.progressCheckIntervalId = null;
+    }
     this.noteSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
     this.fileSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
     this.configSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };

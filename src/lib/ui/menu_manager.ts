@@ -1,6 +1,6 @@
 import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
 
-import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes } from '../sync/operator';
+import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes, cancelSync } from '../sync/operator';
 import { AppWithInternal, MenuItemWithDom, MenuWithHide, MenuItemWithInternal } from "../utils/types";
 import { NoteHistoryModal } from '../../views/note-history/history-modal';
 import { RecycleBinModal } from '../../views/recycle-bin-modal';
@@ -438,10 +438,12 @@ export class MenuManager {
     const isShow = this.plugin.settings.showConcurrencyIndicator;
 
     if (isEnabled && isShow) {
+      this.concurrencyStatusBarItem.removeClass("fns-hidden");
       this.concurrencyStatusBarItem.addClass("fns-status-bar-item");
       const limit = this.plugin.settings.maxConcurrentUploads;
       this.concurrencyStatusBarItem.setAttribute("aria-label", $("setting.sync.concurrency_limit_tip", { count: limit }));
     } else {
+      this.concurrencyStatusBarItem.addClass("fns-hidden");
       this.concurrencyStatusBarItem.removeClass("fns-status-bar-item");
     }
   }
@@ -469,6 +471,7 @@ export class MenuManager {
           .setIcon("pause")
           .setTitle($("ui.menu.disable_sync"))
           .onClick(async () => {
+            cancelSync(this.plugin);
             void this.plugin.websocket.unRegister(true);
             showSyncNotice($("ui.menu.disable_sync_desc"));
           });
@@ -488,23 +491,67 @@ export class MenuManager {
     }
     menu.addSeparator();
     menu.addItem((item: MenuItem) => {
+      const isCurrentlySyncing = this.plugin.isSyncing || this.plugin.syncState.activeSyncContext !== null;
+      const isRunningIncremental = isCurrentlySyncing && this.plugin.currentSyncType === 'incremental';
+      const isBlockedByFull      = isCurrentlySyncing && this.plugin.currentSyncType === 'full';
+
       item
         .setIcon("cloud")
         .setTitle($("ui.menu.default_sync"))
         .onClick(async () => {
-          void startupSync(this.plugin);
+          if (isRunningIncremental) {
+            cancelSync(this.plugin);
+          } else if (isBlockedByFull) {
+            showSyncNotice($("ui.menu.cancel_full_first"));
+          } else {
+            void startupSync(this.plugin);
+          }
         });
-      (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.default_sync_desc"));
+
+      const dom = (item as unknown as MenuItemWithDom).dom;
+      dom.setAttribute("aria-label", $("ui.menu.default_sync_desc"));
+
+      if (isRunningIncremental) {
+        const titleEl = (item as unknown as MenuItemWithInternal).titleEl;
+        if (titleEl) {
+          const spinner = titleEl.createSpan({ cls: "fns-menu-sync-spinner" });
+          setIcon(spinner, "refresh-cw");
+        }
+      } else if (isBlockedByFull) {
+        dom.addClass("fns-menu-item-disabled");
+      }
     });
     menu.addSeparator();
     menu.addItem((item: MenuItem) => {
+      const isCurrentlySyncing = this.plugin.isSyncing || this.plugin.syncState.activeSyncContext !== null;
+      const isRunningFull         = isCurrentlySyncing && this.plugin.currentSyncType === 'full';
+      const isBlockedByIncremental = isCurrentlySyncing && this.plugin.currentSyncType === 'incremental';
+
       item
         .setIcon("cloudy")
         .setTitle($("ui.menu.full_sync"))
         .onClick(async () => {
-          void startupFullSync(this.plugin);
+          if (isRunningFull) {
+            cancelSync(this.plugin);
+          } else if (isBlockedByIncremental) {
+            showSyncNotice($("ui.menu.cancel_default_first"));
+          } else {
+            void startupFullSync(this.plugin);
+          }
         });
-      (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", $("ui.menu.full_sync_desc"));
+
+      const dom = (item as unknown as MenuItemWithDom).dom;
+      dom.setAttribute("aria-label", $("ui.menu.full_sync_desc"));
+
+      if (isRunningFull) {
+        const titleEl = (item as unknown as MenuItemWithInternal).titleEl;
+        if (titleEl) {
+          const spinner = titleEl.createSpan({ cls: "fns-menu-sync-spinner" });
+          setIcon(spinner, "refresh-cw");
+        }
+      } else if (isBlockedByIncremental) {
+        dom.addClass("fns-menu-item-disabled");
+      }
     });
 
     menu.addSeparator();

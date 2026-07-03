@@ -227,6 +227,8 @@ export default {
   "ui.menu.full_sync": "完全同期",
   "ui.menu.full_sync_desc": "サーバーと完全に比較し、すべてのファイルを同期すると同時に、ローカルのすべての空フォルダを削除します",
   "ui.menu.reconnecting": "再接続中、接続が完了すると自動的に同期されます...",
+  "ui.menu.cancel_full_first": "デフォルト同期を実行する前に、まず完全同期をキャンセルしてください",
+  "ui.menu.cancel_default_first": "完全同期を実行する前に、まずデフォルト同期をキャンセルしてください",
   "ui.menu.enable_sync": "同期を有効化",
   "ui.menu.enable_sync_desc": "設定で有効にしたすべての同期",
   "ui.menu.disable_sync": "一時的に同期を無効化",
@@ -257,6 +259,7 @@ export default {
   "ui.status.new_version": "新しいバージョンが見つかりました: ${version}。クリックすると更新ページに移動します",
   "ui.status.completed": "同期完了",
   "ui.status.failed": "同期に失敗しました",
+  "ui.status.cancelled": "同期がキャンセルされました",
   "ui.status.conflict": "同期の競合が検出されました。強制マージ済みです。${path} を手動で処理する必要があります。",
   "ui.status.no_connection": "サーバーに接続できません。ネットワーク接続を確認してください",
   "ui.status.config_imported": "認証設定をインポートしました",
@@ -311,6 +314,8 @@ export default {
   "ui.log.category_other": "その他",
   "ui.log.summary.title_full": "同期完了（フル）",
   "ui.log.summary.title_inc": "同期完了（増分）",
+  "ui.log.summary.title_cancelled_full": "同期がキャンセルされました (全量)",
+  "ui.log.summary.title_cancelled_inc": "同期がキャンセルされました (増分)",
   "ui.log.summary.no_changes": "変更なし",
 
   // --- ui.log.action ---

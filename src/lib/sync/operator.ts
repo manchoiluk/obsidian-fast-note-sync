@@ -1,7 +1,7 @@
 import { TFolder, TFile, normalizePath } from "obsidian";
 
 import { receiveFileUpload, receiveFileSyncUpdate, receiveFileSyncDelete, receiveFileSyncMtime, receiveFileSyncChunkDownload, receiveFileSyncEnd, checkAndUploadAttachments, receiveFileSyncRename, receiveFileRenameAck, receiveFileUploadAck, receiveFileDeleteAck, isPluginUnloading } from "./operator_file";
-import { hashContent, hashContentAsync, dump, dumpError, isPathExcluded, isFolderSyncPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize } from "../utils/helpers";
+import { hashContent, hashContentAsync, dump, isPathExcluded, isFolderSyncPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize } from "../utils/helpers";
 import { receiveConfigSyncModify, receiveConfigUpload, receiveConfigSyncMtime, receiveConfigSyncDelete, receiveConfigSyncEnd, configAllPaths, receiveConfigSyncClear, receiveConfigModifyAck, receiveConfigDeleteAck } from "./operator_config";
 import { receiveNoteSyncModify, receiveNoteUpload, receiveNoteSyncMtime, receiveNoteSyncDelete, receiveNoteSyncEnd, receiveNoteSyncRename, receiveNoteModifyAck, receiveNoteRenameAck, receiveNoteDeleteAck } from "./operator_note";
 import { SyncMode, SnapFile, SnapFolder, SyncEndData, PathHashFile, NoteSyncData, FileSyncData, ConfigSyncData, FolderSyncData } from "../utils/types";
@@ -48,12 +48,17 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
   // Safety timeout: increased to 300s to support large vaults with many batches, preventing false timeout termination
   const SYNC_TIMEOUT_MS = 300000;
   if (syncStartTime && Date.now() - syncStartTime > SYNC_TIMEOUT_MS) {
-    if (intervalId) window.clearInterval(intervalId);
-    dump(`Sync completion timeout after ${SYNC_TIMEOUT_MS}ms, force enabling watch. Tasks: note=${JSON.stringify(plugin.noteSyncTasks)}, file=${JSON.stringify(plugin.fileSyncTasks)}, folder=${JSON.stringify(plugin.folderSyncTasks)}, config=${JSON.stringify(plugin.configSyncTasks)}`)
+    if (intervalId) {
+      window.clearInterval(intervalId);
+      if (plugin.syncState.progressCheckIntervalId === intervalId) {
+        plugin.syncState.progressCheckIntervalId = null;
+      }
+    }
+    dump(`Sync completion timeout after ${SYNC_TIMEOUT_MS}ms. Tasks: note=${JSON.stringify(plugin.noteSyncTasks)}, file=${JSON.stringify(plugin.fileSyncTasks)}, folder=${JSON.stringify(plugin.folderSyncTasks)}, config=${JSON.stringify(plugin.configSyncTasks)}`)
     plugin.syncState.activeSyncContext = null; // 同步超时，清空活跃的上下文 / Sync timeout, reset the active context
-    plugin.enableWatch();
     plugin.syncTypeCompleteCount = 0;
     plugin.resetSyncTasks();
+    plugin.syncPageStateMap.clear(); // 清空残留的页状态 / Clear stale page state map
     plugin.totalFilesToDownload = 0;
     plugin.downloadedFilesCount = 0;
     plugin.totalChunksToDownload = 0;
@@ -62,7 +67,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     plugin.uploadedChunksCount = 0;
     plugin.progressTracker.forceComplete();
     plugin.updateStatusBar($("ui.status.completed"));
-    window.setTimeout(() => plugin.updateStatusBar(""), 3000);
+    window.setTimeout(() => plugin.updateStatusBar(""), 10000);
     return;
   }
 
@@ -85,7 +90,12 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
   const overallPercentage = plugin.progressTracker.getOverallPct();
 
   if (allSyncDone && allDownloadsComplete && bufferCleared && !plugin.isSyncRequesting) {
-    if (intervalId) window.clearInterval(intervalId);
+    if (intervalId) {
+      window.clearInterval(intervalId);
+      if (plugin.syncState.progressCheckIntervalId === intervalId) {
+        plugin.syncState.progressCheckIntervalId = null;
+      }
+    }
 
     // 收集本轮同步的统计数据并生成小结日志
     // Collect stats of the current sync round and generate summary log
@@ -130,9 +140,9 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     });
 
     plugin.syncState.activeSyncContext = null; // 同步完成，清空活跃的上下文 / Sync completed, reset the active context
-    plugin.enableWatch();
     plugin.syncTypeCompleteCount = 0;
     plugin.resetSyncTasks();
+    plugin.syncPageStateMap.clear(); // 同步完成，清空残留的页状态 / Sync completed, clear page state map
     plugin.totalFilesToDownload = 0;
     plugin.downloadedFilesCount = 0;
     plugin.totalChunksToDownload = 0;
@@ -160,7 +170,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     // Refresh share indicator state after sync completion
     void plugin.shareIndicatorManager?.syncWithServer();
 
-    window.setTimeout(() => plugin.updateStatusBar(""), 3000);
+    window.setTimeout(() => plugin.updateStatusBar(""), 10000);
   } else {
     // --- 强制完成逻辑与 90% 补偿 ---
     let statusText = $("ui.status.syncing");
@@ -289,9 +299,9 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
   tasks.needDelete = syncData.needDeleteCount || 0;
 
   const trueTotal = tasks.needUpload + tasks.needModify + tasks.needSyncMtime + tasks.needDelete;
-  const trackerType = type === "config" ? "setting" : type;
-  plugin.progressTracker.setDownloadTotal(trackerType as SyncType, trueTotal, plugin.syncState.syncDownChunkNum);
-  plugin.progressTracker.recordUploadComplete(trackerType as SyncType, tasks.completed);
+  const trackerType: SyncType = type === "config" ? "setting" : type;
+  plugin.progressTracker.setDownloadTotal(trackerType, trueTotal, plugin.syncState.syncDownChunkNum);
+  plugin.progressTracker.recordUploadComplete(trackerType, tasks.completed);
 
   // 1.1 注意：v1.1 协议中 End 消息不再携带 messages 列表。
   // 排除项的处理将依赖于后端是否推送相关通知。
@@ -366,18 +376,15 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
     plugin.folderSyncEnd = true;
   }
 
-  // 4. 如果所有活跃类型的客户端上传均已就绪（进入 download 推送阶段），批量触发首拉 Ack 信号
-  if (plugin.progressTracker.getPhase() === "download") {
-    for (const t of plugin.progressTracker.getActiveTypes()) {
-      const taskTotal = plugin.progressTracker.getTypeTaskTotal(t);
-      if (taskTotal > 0 && !plugin.progressTracker.isInitialAckSent(t)) {
-        dump(`[Sync] Triggering initial ACK for type: ${t}, total tasks: ${taskTotal}`);
-        plugin.progressTracker.setInitialAckSent(t, true);
-        plugin.sendSyncPageAck(t, -1);
-      } else {
-        dump(`[Sync] Skipping initial ACK for type: ${t} because total tasks is 0 or initial ACK already sent`);
-      }
-    }
+  // 4. 针对已就绪的本模块，如果存在服务端待下载任务，且尚未发送过首拉，则立即触发首拉 Ack 信号
+  // 4. For the ready module, if there are pending tasks to download and initial ACK is not sent, trigger it immediately
+  const taskTotal = plugin.progressTracker.getTypeTaskTotal(trackerType);
+  if (taskTotal > 0 && !plugin.progressTracker.isInitialAckSent(trackerType)) {
+    dump(`[Sync] Triggering initial ACK for type: ${trackerType}, total tasks: ${taskTotal}`);
+    plugin.progressTracker.setInitialAckSent(trackerType, true);
+    plugin.sendSyncPageAck(trackerType, -1);
+  } else {
+    dump(`[Sync] Skipping initial ACK for type: ${trackerType} because total tasks is 0 or initial ACK already sent`);
   }
 }
 
@@ -409,11 +416,6 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
       plugin.syncState.activeSyncContext = null; // 早期退出，清空上下文 / Early return, reset the context
       return;
     }
-    if (!plugin.getWatchEnabled()) {
-      showSyncNotice($("ui.status.last_sync_not_completed"), 4000);
-      plugin.syncState.activeSyncContext = null; // 早期退出，清空上下文 / Early return, reset the context
-      return;
-    }
 
     if (plugin.settings.readonlySyncEnabled) {
       dump("Read-only mode: Proceeding with state gathering for remote-to-local sync.");
@@ -437,6 +439,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
       activeTypes.push('setting');
     }
     plugin.progressTracker.reset(activeTypes);
+    plugin.syncPageStateMap.clear(); // 开始新一轮同步，清空上一轮的页状态残留，防 Context 错乱 / Start new sync, clear stale page states
     plugin.totalFilesToDownload = 0;
     plugin.downloadedFilesCount = 0;
     plugin.totalChunksToDownload = 0;
@@ -462,7 +465,6 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.pendingConfigDeleteAcks.clear()
     plugin.pendingConfigModifies.clear()
     plugin.localStorageManager.clearPending('pendingConfigModifies')
-    plugin.disableWatch();
 
     let expectedCount = 0;
     if (plugin.settings.syncEnabled && shouldSyncNotes) {
@@ -475,7 +477,6 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     if (plugin.settings.configSyncEnabled && shouldSyncConfigs) expectedCount += 1;
     plugin.expectedSyncCount = expectedCount;
     if (expectedCount === 0) {
-      plugin.enableWatch();
       plugin.updateStatusBar("");
       plugin.syncState.activeSyncContext = null; // 无同步任务，清空上下文 / No tasks, reset the context
       return;
@@ -902,10 +903,10 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     const progressCheckInterval = window.setInterval(() => {
       checkSyncCompletion(plugin, progressCheckInterval, syncStartTime);
     }, 100);
+    plugin.syncState.progressCheckIntervalId = progressCheckInterval;
   } catch (error) {
     dump("Sync failed with error: " + error);
     plugin.syncState.activeSyncContext = null; // 同步失败，清空上下文 / Sync failed, reset the context
-    plugin.enableWatch();
     plugin.updateStatusBar($("ui.status.failed") || "Sync Failed");
     window.setTimeout(() => plugin.updateStatusBar(""), 3000);
   } finally {
@@ -914,6 +915,70 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.isSyncing = false;
   }
 };
+
+/**
+ * 取消当前正在进行的同步，并重置所有运行时状态。
+ * Cancel the current sync and reset all runtime states.
+ */
+export function cancelSync(plugin: FastSync): void {
+  if (plugin.syncState.progressCheckIntervalId !== null) {
+    window.clearInterval(plugin.syncState.progressCheckIntervalId);
+    plugin.syncState.progressCheckIntervalId = null;
+  }
+
+  plugin.syncState.activeSyncContext = null;
+  plugin.syncTypeCompleteCount = 0;
+  plugin.resetSyncTasks();
+  plugin.syncPageStateMap.clear();
+  plugin.totalFilesToDownload = 0;
+  plugin.downloadedFilesCount = 0;
+  plugin.totalChunksToDownload = 0;
+  plugin.downloadedChunksCount = 0;
+  plugin.totalChunksToUpload = 0;
+  plugin.uploadedChunksCount = 0;
+
+  // 清理待确认与重命名队列 / Clear pending queues and renames
+  plugin.pendingFileRenames = [];
+  plugin.pendingNoteRenames = [];
+  plugin.pendingDeleteNotePaths.clear();
+  plugin.pendingDeleteFilePaths.clear();
+  plugin.pendingDeleteFolderPaths.clear();
+  plugin.pendingDeleteConfigPaths.clear();
+  plugin.pendingNoteDeleteAcks.clear();
+  plugin.pendingFileDeleteAcks.clear();
+  plugin.pendingConfigDeleteAcks.clear();
+  plugin.pendingConfigModifies.clear();
+  plugin.localStorageManager.clearPending('pendingConfigModifies');
+  plugin.pendingNoteModifies.clear();
+  plugin.localStorageManager.clearPending('pendingNoteModifies');
+  plugin.pendingUploadHashes.clear();
+  plugin.localStorageManager.clearPending('pendingUploadHashes');
+
+  plugin.progressTracker.forceComplete();
+  plugin.updateStatusBar($("ui.status.cancelled") || "Sync Cancelled");
+  window.setTimeout(() => plugin.updateStatusBar(""), 3000);
+
+  // 记录一条“同步取消”的小结日志，供同步日志视图渲染卡片 / Record a "Sync Cancelled" summary log for rendering in the Sync Log View
+  const syncType = plugin.syncState.currentSyncType;
+  const summaryMessage = JSON.stringify({
+    syncType,
+    hasChanges: false
+  });
+
+  SyncLogManager.getInstance().addOrUpdateLog({
+    id: `summary-${Date.now()}`,
+    type: 'info',
+    action: 'SyncSummary',
+    status: 'cancelled',
+    message: summaryMessage,
+    timestamp: Date.now()
+  });
+
+  // 确保重置同步状态标志 / Ensure sync state flag is reset
+  plugin.isSyncing = false;
+
+  dump("Sync cancelled by user");
+}
 
 
 /**
@@ -969,7 +1034,7 @@ async function sendSyncInBatches<T1, T2, T3>(
           }
         };
         plugin.websocket.on(batchAckEvent, ackHandler);
-        plugin.websocket.SendMessage(action, payload);
+        void plugin.websocket.SendMessage(action, payload);
 
         window.setTimeout(() => {
           plugin.websocket.off(batchAckEvent, ackHandler);
@@ -979,7 +1044,7 @@ async function sendSyncInBatches<T1, T2, T3>(
     } else {
       // 最后批：发送后调用回调，交由原有 SyncEnd 流程完成
       // Final batch: send then invoke callback; existing SyncEnd flow handles completion
-      plugin.websocket.SendMessage(action, payload, undefined, () => {
+      void plugin.websocket.SendMessage(action, payload, undefined, () => {
         onLastBatchAcked?.();
       });
     }
@@ -1069,7 +1134,7 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
       }),
       () => {
         for (const note of noteData.notes) {
-          plugin.pendingNoteModifies.set(note.path, note.contentHash as string);
+          plugin.pendingNoteModifies.set(note.path, note.contentHash);
         }
         plugin.localStorageManager.savePending('pendingNoteModifies', plugin.pendingNoteModifies);
       }
@@ -1135,7 +1200,7 @@ export const handleRequestSend = async function (plugin: FastSync, syncMode: Syn
       }),
       () => {
         for (const config of configData.configs) {
-          plugin.pendingConfigModifies.set(config.path, config.contentHash as string);
+          plugin.pendingConfigModifies.set(config.path, config.contentHash);
         }
         plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies);
       }

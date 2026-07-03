@@ -157,7 +157,7 @@ export class StatusBarManager {
         if (this.statusBarProgressBar) this.statusBarProgressBar.addClass("fns-hidden");
         if (this.statusBarPhaseLabel) this.statusBarPhaseLabel.addClass("fns-hidden");
 
-        const isCompleted = text.includes("完成") || text.includes("Complete");
+        const isCompleted = text.includes("完成") || text.toLowerCase().includes("complete");
         if (isCompleted) {
           if (this.statusBarCheck) this.statusBarCheck.removeClass("fns-hidden");
         } else {

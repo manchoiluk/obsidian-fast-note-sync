@@ -125,17 +125,22 @@ const SyncSummaryCard = ({ log }: { log: SyncLog }) => {
     };
 
     const timeStr = moment(log.timestamp).format("HH:mm:ss");
-    const titleText = syncType === 'full' 
-        ? ($("ui.log.summary.title_full") || "同步完成 (全量)") 
-        : ($("ui.log.summary.title_inc") || "同步完成 (增量)");
+    const isCancelled = log.status === 'cancelled';
+    const titleText = isCancelled
+        ? (syncType === 'full' 
+            ? ($("ui.log.summary.title_cancelled_full") || "同步已取消 (全量)") 
+            : ($("ui.log.summary.title_cancelled_inc") || "同步已取消 (增量)"))
+        : (syncType === 'full' 
+            ? ($("ui.log.summary.title_full") || "同步完成 (全量)") 
+            : ($("ui.log.summary.title_inc") || "同步完成 (增量)"));
 
     return (
-        <div className={`fns-sync-summary-card ${!hasChanges ? 'no-changes-card' : ''}`}>
-            <div className={`fns-summary-header ${hasChanges ? 'has-border' : ''}`}>
+        <div className={`fns-sync-summary-card ${isCancelled ? 'is-cancelled-card' : ''} ${(!hasChanges || isCancelled) ? 'no-changes-card' : ''}`}>
+            <div className={`fns-summary-header ${(hasChanges && !isCancelled) ? 'has-border' : ''}`}>
                 <div className="fns-summary-title">
-                    <ObsidianIcon icon="check-circle-2" />
+                    <ObsidianIcon icon={isCancelled ? "x-circle" : "check-circle-2"} />
                     <span>{titleText}</span>
-                    {!hasChanges && (
+                    {!hasChanges && !isCancelled && (
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '6px' }}>
                             ({$("ui.log.summary.no_changes") || "无内容变更"})
                         </span>
@@ -146,7 +151,7 @@ const SyncSummaryCard = ({ log }: { log: SyncLog }) => {
                     <span>{timeStr}</span>
                 </div>
             </div>
-            {hasChanges && (
+            {hasChanges && !isCancelled && (
                 <div className="fns-summary-rows">
                     {renderRow("dot-note", $("ui.log.category_note") || "笔记", note)}
                     {renderRow("dot-attachment", $("ui.log.category_attachment") || "附件", file)}
@@ -209,6 +214,67 @@ const VaultScanningSummaryCard = ({ log }: { log: SyncLog }) => {
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'bold', marginLeft: '4px' }}>{configCount}</span>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+interface SyncProgressState {
+    pct: number;
+    detail: string;
+    phase: 'hash' | 'upload' | 'download' | 'idle';
+    visible: boolean;
+}
+
+interface SyncProgressPayload {
+    pct: number;
+    detail: string;
+    phase: SyncProgressState['phase'];
+}
+
+const SyncProgressBanner = ({ plugin }: { plugin: FastSync }) => {
+    const [progress, setProgress] = React.useState<SyncProgressState>({
+        pct: 0, detail: '', phase: 'idle', visible: false
+    });
+
+    React.useEffect(() => {
+        let hideTimer: number | null = null;
+
+        const handler = (data: SyncProgressPayload) => {
+            if (hideTimer) window.clearTimeout(hideTimer);
+            setProgress({ ...data, visible: true });
+
+            if (data.pct === 100) {
+                // Auto-hide 2s after completion / 完成后 2 秒自动隐藏
+                hideTimer = window.setTimeout(() => {
+                    setProgress(prev => ({ ...prev, visible: false }));
+                }, 2000);
+            }
+        };
+
+        (plugin.app.workspace as unknown as { on: (name: string, cb: (data: SyncProgressPayload) => void) => void })
+            .on('fns:sync-progress', handler);
+
+        return () => {
+            if (hideTimer) window.clearTimeout(hideTimer);
+            (plugin.app.workspace as unknown as { off: (name: string, cb: (data: SyncProgressPayload) => void) => void })
+                .off('fns:sync-progress', handler);
+        };
+    }, [plugin]);
+
+    if (!progress.visible) return null;
+
+    const phaseIcon = progress.phase === 'hash' ? '\uD83D\uDD0D' : progress.phase === 'upload' ? '\u2191' : '\u2193';
+    const isComplete = progress.pct === 100;
+
+    return (
+        <div className={`fns-mobile-progress-banner${isComplete ? ' is-complete' : ''}`}>
+            <div className="fns-mobile-progress-header">
+                <span className="fns-mobile-progress-phase">{isComplete ? '\u2713' : phaseIcon}</span>
+                <div className="fns-mobile-progress-bar-wrap">
+                    <div className="fns-mobile-progress-fill" style={{ width: `${progress.pct}%` }} />
+                </div>
+                <span className="fns-mobile-progress-pct">{progress.pct}%</span>
             </div>
         </div>
     );
@@ -632,6 +698,10 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                     </button>
                 </div>
             )}
+
+            {/* 移动端同步进度横幅（仅移动端渲染，位于底部）*/}
+            {/* Mobile sync progress banner, only rendered on mobile, at the bottom */}
+            {Platform.isMobile && <SyncProgressBanner plugin={plugin} />}
         </div>
     );
 };
