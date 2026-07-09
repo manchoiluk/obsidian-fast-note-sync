@@ -1,5 +1,5 @@
 import { moment } from "obsidian";
-import { dump, dumpError, isWsUrl } from "../utils/helpers";
+import { dump, dumpError, isWsUrl, showSyncNotice } from "../utils/helpers";
 
 // WebSocket 连接常量
 const RECONNECT_BASE_DELAY = 1000; // 重连基础延迟 (毫秒)
@@ -53,6 +53,8 @@ export class WebSocketClient {
   public checkConnection: number;
   public checkReConnectTimeout: number;
   public timeConnect = 0;
+  // 是否已经在本轮重连失败序列中提示过用户（首次达到原上限第 16 次时提示一次，重连成功后重置）
+  private hasNotifiedReconnectFailure = false;
   public count = 0;
   private registerPromise: Promise<void> | null = null;
   public isRegister = true;
@@ -188,6 +190,7 @@ export class WebSocketClient {
 
       this.ws.onopen = (e: Event): void => {
         this.timeConnect = 0;
+        this.hasNotifiedReconnectFailure = false;
         this.isAuth = false;
         this.useProtobuf = false;
         this.isOpen = true;
@@ -309,6 +312,7 @@ export class WebSocketClient {
   public unRegister(setUnregistered = false) {
     window.clearTimeout(this.checkReConnectTimeout);
     this.timeConnect = 0;
+    this.hasNotifiedReconnectFailure = false;
     this.isOpen = false;
     this.isAuth = false;
     this.useProtobuf = false;
@@ -327,12 +331,16 @@ export class WebSocketClient {
 
   public checkReconnect() {
     window.clearTimeout(this.checkReConnectTimeout);
-    if (this.timeConnect > 15) {
-      return;
-    }
+    // 不再设硬上限：超过原上限（15 次）后仍持续重试，退避延迟封顶 30 分钟；
+    // 首次达到原上限时提示用户一次，之后静默在后台继续重试
     if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
       this.timeConnect++;
-      
+
+      if (this.timeConnect === 16 && !this.hasNotifiedReconnectFailure) {
+        this.hasNotifiedReconnectFailure = true;
+        showSyncNotice("同步连接持续失败，将继续在后台重试");
+      }
+
       // Delay backoff: first 3 times 1s, then exponential growth up to 30 min
       const delay = this.timeConnect <= 3
         ? RECONNECT_BASE_DELAY
@@ -349,6 +357,7 @@ export class WebSocketClient {
   public triggerReconnect() {
     dump("Triggering manual reconnect due to network change");
     this.timeConnect = 0;
+    this.hasNotifiedReconnectFailure = false;
     window.clearTimeout(this.checkReConnectTimeout);
     void this.register();
   }
