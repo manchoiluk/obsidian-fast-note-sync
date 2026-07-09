@@ -303,7 +303,17 @@ async function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "f
     // If it's the last page, no need to send confirmation ACK (cache cleared by server)
     if (pageMsg.isLast) {
       dump(`[PageSync] Page ${pageMsg.pageIndex} for ${type} is the last page and empty. Skipping ACK.`);
+    } else if (plugin.syncState.pipelineWindowDown > 0) {
+      // 新旧路径选路点：协商下行窗口 W_down>0 时可能有多页在途，空页也要遵守 ack 水位线顺序，
+      // 不能无条件立即发（可能因为前面的页还没完成而应暂缓）——交给 pages Map 水位线机制判定
+      // Route selection point: with a negotiated download window W_down>0, multiple pages may be
+      // in flight, so even an empty page must respect ack-watermark ordering (may need to hold
+      // back if an earlier page isn't done yet) — defer to the pages-Map watermark mechanism
+      plugin.progressTracker.tryAckEmptyPage(type, pageMsg.pageIndex);
     } else {
+      // W_down==0（旧服务端未协商 / 回滚开关）：同一时刻只有一页在途，立即触发与现状完全一致
+      // W_down==0 (pre-negotiation server / rollback switch): only one page is ever in flight at a
+      // time, so firing immediately is exactly equivalent to the current behavior
       plugin.progressTracker.onPageComplete?.(type, pageMsg.pageIndex);
     }
     return;
@@ -519,6 +529,12 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.pendingNoteDeleteAcks.clear()
     plugin.pendingFileDeleteAcks.clear()
     plugin.pendingConfigDeleteAcks.clear()
+    // 清空上一轮 NeedPush→Ack 页归属查找表（C3，见 sync_state.ts 注释），避免残留条目误归账到新一轮的页
+    // Clear the previous round's NeedPush->Ack page-attribution lookup maps (C3, see sync_state.ts
+    // comment), preventing stale entries from misattributing completions in the new round
+    plugin.syncState.pendingNotePushPageIndex.clear()
+    plugin.syncState.pendingFilePushPageIndex.clear()
+    plugin.syncState.pendingConfigPushPageIndex.clear()
     // 注意：不清空 pendingConfigModifies，与 pendingNoteModifies 对齐——
     // 该集合记录扫描期间用户本地新改动的配置路径，需保留到扫描阶段用于跳过判断，
     // 由 receiveSyncEndWrapper (config SyncEnd) 或 cancelSync 负责清空
@@ -1073,6 +1089,9 @@ export function cancelSync(plugin: FastSync): void {
   plugin.pendingNoteDeleteAcks.clear();
   plugin.pendingFileDeleteAcks.clear();
   plugin.pendingConfigDeleteAcks.clear();
+  plugin.syncState.pendingNotePushPageIndex.clear();
+  plugin.syncState.pendingFilePushPageIndex.clear();
+  plugin.syncState.pendingConfigPushPageIndex.clear();
   plugin.pendingConfigModifies.clear();
   plugin.localStorageManager.clearPending('pendingConfigModifies');
   plugin.pendingNoteModifies.clear();

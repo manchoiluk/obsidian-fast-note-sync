@@ -152,10 +152,10 @@ export const folderRename = async function (folder: TFolder, oldPath: string, pl
 /**
  * 接收服务端文件夹修改通知
  */
-export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
+export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin)) {
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
         return
     }
     dump(`Receive folder modify:`, data.path, data.pathHash)
@@ -197,17 +197,17 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
     }
 }
 
 /**
  * 接收服务端文件夹删除通知
  */
-export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string }, plugin: FastSync) {
+export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin)) {
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
         return
     }
     dump(`Receive folder delete:`, data.path, data.pathHash)
@@ -253,7 +253,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
     }
 }
 
@@ -263,7 +263,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
 export const receiveFolderSyncRename = async function (data: FolderSyncRenameMessage, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin) || isFolderSyncPathExcluded(data.oldPath, plugin)) {
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
         return
     }
 
@@ -324,7 +324,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
     }
 }
 

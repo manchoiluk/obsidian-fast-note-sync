@@ -81,7 +81,7 @@ const cleanupFileDownloadSession = async (plugin: FastSync, session: FileDownloa
   plugin.fileDownloadSessions.delete(session.sessionId)
   if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
   if (failed) plugin.fileSyncTasks.failed++
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', session.pageIndex)
 }
 
 const failFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession, message: string, releaseSlot = true) => {
@@ -428,11 +428,11 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
 
   if (plugin.settings.readonlySyncEnabled) {
     dump(`Read-only mode: Intercepted file upload request for ${data.path}`)
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
   }
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
   }
   dump(`Receive file need upload (queued): `, data.path, data.sessionId)
@@ -441,14 +441,23 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
   const file = plugin.app.vault.getFileByPath(normalizePath(data.path))
   if (!file) {
     dump(`File not found for upload: ${data.path} `)
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
   }
   if (isLargeBinarySyncRisk(file.stat.size, plugin)) {
     dump(`Skip file upload for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, file.stat.size)
     showSyncNotice(`Fast Note Sync skipped large file upload: ${data.path}`, 5000)
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
+  }
+
+  // NeedPush(FileUpload) 驱动的上传-回执往返：FileUploadAck 本身不带 pageIndex，按 path 记下所属页
+  // 供 Ack 到达时查表归账（见 sync_state.ts pendingFilePushPageIndex 注释）
+  // NeedPush(FileUpload)-driven upload/ack round trip: FileUploadAck carries no pageIndex; record
+  // the owning page by path for the Ack to look up on arrival (see sync_state.ts
+  // pendingFilePushPageIndex comment)
+  if (data.pageIndex !== undefined) {
+    plugin.syncState.pendingFilePushPageIndex.set(data.path, data.pageIndex)
   }
 
   const chunkSize = data.chunkSize || 1024 * 1024
@@ -479,7 +488,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       if (!content) {
         plugin.totalChunksToUpload -= actualTotalChunks
         plugin.concurrencyLimiter.releaseSlot(data.path)
-        plugin.fileSyncTasks.completed++
+        plugin.recordSyncCompleted('file', data.pageIndex)
         return;
       }
 
@@ -620,7 +629,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
           // Clear checkpoint on cancel to avoid stale session reuse
           try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
           plugin.concurrencyLimiter.releaseSlot(data.path)
-          plugin.fileSyncTasks.completed++
+          plugin.recordSyncCompleted('file', data.pageIndex)
           return;
         }
 
@@ -677,7 +686,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
       plugin.totalChunksToUpload -= actualTotalChunks
       plugin.concurrencyLimiter.releaseSlot(data.path);
-      plugin.fileSyncTasks.completed++
+      plugin.recordSyncCompleted('file', data.pageIndex)
     } finally {
       // 任务结束（完成或取消/失败），移除活跃标记
       activeUploadsMap.delete(data.path);
@@ -699,13 +708,13 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
   // Server push means path has new content; clear stale deleteAck pending to protect newly-written hash
   plugin.pendingFileDeleteAcks.delete(data.path)
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
   if (isLargeBinarySyncRisk(data.size, plugin)) {
     dump(`Skip file download for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, data.size)
     showSyncNotice(`Fast Note Sync skipped large file download: ${data.path}`, 5000)
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -716,13 +725,13 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file download: ${data.path}`);
-        plugin.fileSyncTasks.completed++;
+        plugin.recordSyncCompleted('file', data.pageIndex);
         return;
       }
     } else {
       // 未开启类型限制：由于启用了云预览，跳过所有附件下载
       dump(`Cloud Preview: Skipping all file downloads: ${data.path}`);
-      plugin.fileSyncTasks.completed++;
+      plugin.recordSyncCompleted('file', data.pageIndex);
       return;
     }
   }
@@ -748,6 +757,10 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       sessionId: "",
       totalChunks: 0,
       size: data.size,
+      // 所属下载页透传（C3），供分片下载会话最终完成时归账（见 handleFileChunkDownloadComplete）
+      // Owning download page passthrough (C3), consumed when the chunk download session finally
+      // completes (see handleFileChunkDownloadComplete)
+      pageIndex: data.pageIndex,
       ...createDownloadStorage(plugin, `init_${data.pathHash}`, data.size),
     }
     plugin.fileDownloadSessions.set(tempKey, tempSession)
@@ -778,7 +791,7 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -787,12 +800,12 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file delete: ${data.path}`);
-        plugin.fileSyncTasks.completed++;
+        plugin.recordSyncCompleted('file', data.pageIndex);
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file deletes: ${data.path}`);
-      plugin.fileSyncTasks.completed++;
+      plugin.recordSyncCompleted('file', data.pageIndex);
       return;
     }
   }
@@ -829,7 +842,7 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
     plugin.fileSyncTasks.failed++
   });
 
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', data.pageIndex)
 }
 
 /**
@@ -839,7 +852,7 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -848,12 +861,12 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file mtime update: ${data.path}`);
-        plugin.fileSyncTasks.completed++;
+        plugin.recordSyncCompleted('file', data.pageIndex);
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file mtime updates: ${data.path}`);
-      plugin.fileSyncTasks.completed++;
+      plugin.recordSyncCompleted('file', data.pageIndex);
       return;
     }
   }
@@ -899,7 +912,7 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
   // FileSyncMtime 表示文件已在服务端存在（无需上传），释放 fileModify 中获取的并发槽位
   // FileSyncMtime indicates file already exists on server (no upload needed), release slot acquired by fileModify
   if (data.path) plugin.concurrencyLimiter.releaseSlot(data.path)
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', data.pageIndex)
 }
 
 /**
@@ -936,6 +949,7 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
       sessionId: data.sessionId,
       totalChunks: data.totalChunks,
       size: data.size,
+      pageIndex: tempSession.pageIndex,
       ...createDownloadStorage(plugin, data.sessionId, data.size),
     }
     plugin.fileDownloadSessions.set(data.sessionId, session)
@@ -1165,11 +1179,11 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
 /**
  * 接收服务端文件重命名通知
  */
-export const receiveFileSyncRename = async function (data: { oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string }, plugin: FastSync) {
+export const receiveFileSyncRename = async function (data: { oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string; pageIndex?: number }, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
 
     if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -1230,14 +1244,14 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
         if (sizeMatch) {
           if (isLargeBinarySyncRisk(targetFile.stat.size, plugin)) {
             dump(`Skip rename target hash for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, targetFile.stat.size)
-            plugin.fileSyncTasks.completed++
+            plugin.recordSyncCompleted('file', data.pageIndex)
             return
           }
           const localContentHash = await hashFileAsync(plugin.app, targetFile.path)
           if (localContentHash === data.contentHash) {
             dump(`Target attachment already exists and matches hash, skipping rename: ${data.path}`)
             plugin.fileHashManager.setFileHash(data.path, data.contentHash, targetFile.stat.mtime, targetFile.stat.size)
-            plugin.fileSyncTasks.completed++
+            plugin.recordSyncCompleted('file', data.pageIndex)
             return
           }
         }
@@ -1263,7 +1277,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
     plugin.fileSyncTasks.failed++
   });
 
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', data.pageIndex)
 }
 
 /**
@@ -1363,7 +1377,7 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
     if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
     plugin.downloadedFilesCount++
     plugin.progressTracker.recordDownloadComplete('file');
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', session.pageIndex)
   } catch (e) {
     dumpError(`Error completing file download for ${session.path}`, e)
     if (!checkAndNotifyCaseConflict(e, session.path, plugin, 'FileDownload')) {
@@ -1428,7 +1442,12 @@ export const receiveFileUploadAck = function (data: { lastTime?: number; path?: 
   if (data.path) {
     plugin.concurrencyLimiter.releaseSlot(data.path)
   }
-  plugin.fileSyncTasks.completed++
+  // 查表归账所属下载页（NeedPush=FileUpload 驱动）；查不到说明是本地用户自发编辑触发的上传 Ack，走旧路径
+  // Look up the owning download page (NeedPush=FileUpload-driven); a miss means a local
+  // user-initiated edit triggered this upload Ack, falls back to the legacy path
+  const pushPageIndex = data.path ? plugin.syncState.pendingFilePushPageIndex.get(data.path) : undefined;
+  if (data.path) plugin.syncState.pendingFilePushPageIndex.delete(data.path)
+  plugin.recordSyncCompleted('file', pushPageIndex)
 }
 
 // 收到 FileDeleteAck，仅当路径仍在 pending set 中时才从 hashManager 移除

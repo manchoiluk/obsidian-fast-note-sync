@@ -36,6 +36,15 @@ export interface StructuredMessageData {
   data?: Record<string, unknown> | null;
   vault?: string;
   context?: string; // 当前同步上下文 / Current sync context
+  // WSResponse 信封 pageIndex，线上值 1-based：0/undefined=非分页消息，n>0=下载第 n-1 页（设计稿 §4.3，
+  // 用户澄清覆盖设计稿 §2.4 的旧假设）。JSON 模式下该字段随服务端顶层 JSON 天然携带；pb 模式由
+  // protobuf_mapper.ts 的 deReceivePacket 透传。1-based->0-based 转换统一在 handleStructuredMessage 做。
+  // WSResponse envelope pageIndex, wire value is 1-based: 0/undefined=non-paginated message,
+  // n>0=download page n-1 (design §4.3; this supersedes design §2.4's original assumption per
+  // user clarification). JSON mode carries it naturally as a top-level key; pb mode passes it
+  // through via protobuf_mapper.ts's deReceivePacket. The 1-based->0-based conversion happens in
+  // exactly one place: handleStructuredMessage below.
+  pageIndex?: number;
 }
 
 function normalizeNoticeValue(value: unknown): string {
@@ -386,9 +395,23 @@ export class WebSocketManager {
 
       const handler = receiveOperators.get(msgAction);
       if (handler) {
-        const payload = (typeof data.data === 'object' && data.data !== null && data.context)
-          ? { ...data.data, context: data.context }
-          : data.data;
+        // WSResponse 信封 pageIndex 转换（设计稿 §4.3，唯一转换点）：线上 1-based，
+        // 0/undefined = 非分页消息（不并入 payload，下游按 undefined 走旧路径）；
+        // n>0 = 下载第 n-1 页，转换为内部 0-based 值并入 payload.pageIndex
+        // WSResponse envelope pageIndex conversion (design §4.3, the single conversion point):
+        // wire value is 1-based. 0/undefined = non-paginated (not merged into payload, downstream
+        // reads undefined and takes the legacy path); n>0 = download page n-1, converted to the
+        // internal 0-based value and merged into payload.pageIndex
+        const rawPageIndex = typeof data.pageIndex === 'number' ? data.pageIndex : 0;
+        const pageIndex = rawPageIndex > 0 ? rawPageIndex - 1 : undefined;
+
+        let payload: unknown = data.data;
+        if (typeof data.data === 'object' && data.data !== null) {
+          const merged = { ...data.data };
+          if (data.context) merged.context = data.context;
+          if (pageIndex !== undefined) merged.pageIndex = pageIndex;
+          payload = merged;
+        }
         void handler(payload, this.plugin);
         this.client.notifyActivity();
       }

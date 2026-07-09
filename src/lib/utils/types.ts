@@ -40,6 +40,13 @@ export interface ReceiveMessage {
     mtime: number;
     lastTime: number;
     context?: string;
+    // 所属下载页（0-based，内部值，由 websocket_manager.ts 从 WSResponse 信封 1-based 转换后并入 payload）；
+    // 旧服务端/非分页项为 undefined，下游按 undefined 走旧的单页全局计数路径（设计稿 §4.3）
+    // Owning download page (0-based, internal value, merged into payload by websocket_manager.ts
+    // after converting from the WSResponse envelope's 1-based wire value); undefined for old
+    // servers / non-paginated items, downstream falls back to the legacy single-page global
+    // counting path on undefined (design §4.3)
+    pageIndex?: number;
 }
 
 export interface SyncMessage {
@@ -56,6 +63,8 @@ export interface ReceiveFileSyncUpdateMessage {
     mtime: number;
     ctime: number;
     lastTime: number;
+    /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
+    pageIndex?: number;
 }
 
 export interface FileUploadMessage {
@@ -65,6 +74,8 @@ export interface FileUploadMessage {
     mtime: number;
     sessionId: string;
     chunkSize: number;
+    /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
+    pageIndex?: number;
 }
 
 export interface FileSyncChunkDownloadMessage {
@@ -90,6 +101,8 @@ export interface FileDownloadSession {
     chunks?: Map<number, ArrayBuffer>;
     tempDir?: string;
     downloadedChunks?: Set<number>;
+    /** 所属下载页（0-based），从 receiveFileSyncUpdate 的 pageIndex 透传，供分片下载会话完成时归账（见 ReceiveMessage.pageIndex 注释） */
+    pageIndex?: number;
 }
 
 export interface ReceiveMtimeMessage {
@@ -97,11 +110,15 @@ export interface ReceiveMtimeMessage {
     ctime: number;
     mtime: number;
     lastTime?: number;
+    /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
+    pageIndex?: number;
 }
 
 export interface ReceivePathMessage {
     path: string;
     lastTime?: number;
+    /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
+    pageIndex?: number;
 }
 
 export interface SyncEndData {
@@ -156,6 +173,8 @@ export interface FolderSyncRenameMessage {
     oldPath: string;
     oldPathHash: string;
     lastTime?: number;
+    /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
+    pageIndex?: number;
 }
 
 export interface FolderSyncData {

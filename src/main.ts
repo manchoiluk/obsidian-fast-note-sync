@@ -100,8 +100,28 @@ export default class FastSync extends Plugin {
         .trigger('fns:sync-progress', { pct, detail, phase });
     };
     this.syncState.onCompletedChange = (type) => {
-      this.progressTracker.recordCompleted(type);
+      // pageIndex 由 recordSyncCompleted() 通过 syncState 瞬时字段传入（见 sync_state.ts 注释），
+      // 读取后立即清空；裸 `xxxSyncTasks.completed++` 调用点读到的会是 undefined，天然回退旧路径
+      // pageIndex is smuggled in via the syncState transient field by recordSyncCompleted() (see
+      // sync_state.ts comment); read and clear immediately. Bare `xxxSyncTasks.completed++` call
+      // sites read undefined here, naturally falling back to the legacy path.
+      const pageIndex = this.syncState.pendingCompletionPageIndex;
+      this.syncState.pendingCompletionPageIndex = undefined;
+      this.progressTracker.recordCompleted(type, pageIndex);
     };
+  }
+
+  /**
+   * 记录一条下行同步条目完成（设计稿 §4.3 C3）。pageIndex 有值时归账到对应下载页（多页在途场景，
+   * 供 ack 水位线推进）；undefined 时走 progressTracker 的旧路径（单页全局计数），语义与改造前一致。
+   * Record completion of one downstream sync item (design §4.3, C3). When pageIndex is provided,
+   * it's attributed to that download page (multi-page-in-flight case, drives the ack watermark);
+   * undefined falls back to progressTracker's legacy path (single-page global count), unchanged.
+   */
+  recordSyncCompleted(type: "note" | "file" | "setting" | "folder", pageIndex?: number): void {
+    this.syncState.pendingCompletionPageIndex = pageIndex;
+    const tasks = type === "note" ? this.noteSyncTasks : type === "file" ? this.fileSyncTasks : type === "setting" ? this.configSyncTasks : this.folderSyncTasks;
+    tasks.completed++;
   }
 
   sendSyncPageAck(type: "note" | "file" | "setting" | "folder", pageIndex: number) {

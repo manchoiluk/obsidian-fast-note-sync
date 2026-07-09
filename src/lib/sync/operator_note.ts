@@ -219,7 +219,7 @@ export const noteRename = async function (file: TAbstractFile, oldfile: string, 
 export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note modify:`, data.path, data.contentHash, data.mtime, data.pathHash)
@@ -307,7 +307,7 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
     }
     plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -318,22 +318,31 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
   if (plugin.settings.syncEnabled == false) return
   if (plugin.settings.readonlySyncEnabled) {
     dump(`Read-only mode: Intercepted note upload request for ${data.path}`)
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note need push:`, data.path)
   if (!data.path.endsWith(".md")) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   const file = plugin.app.vault.getFileByPath(normalizePath(data.path))
   if (!file) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
+  }
+
+  // NeedPush 驱动的上传-回执往返：Ack（receiveNoteModifyAck）本身不带 pageIndex，
+  // 在此按 path 记下所属页，供 Ack 到达时查表归账（见 sync_state.ts pendingNotePushPageIndex 注释）
+  // NeedPush-driven upload/ack round trip: the Ack (receiveNoteModifyAck) carries no pageIndex;
+  // record the owning page by path here so the Ack can look it up on arrival (see sync_state.ts
+  // pendingNotePushPageIndex comment)
+  if (data.pageIndex !== undefined) {
+    plugin.syncState.pendingNotePushPageIndex.set(file.path, data.pageIndex)
   }
 
   plugin.addIgnoredFile(file.path)
@@ -378,7 +387,7 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
 export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note sync mtime:`, data.path, data.mtime)
@@ -419,7 +428,7 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
     }
     plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -429,7 +438,7 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
 export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note delete:`, data.path, data.mtime, data.pathHash)
@@ -469,7 +478,7 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
     SyncLogManager.getInstance().addLog('receive', 'NoteDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
     plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -496,10 +505,10 @@ export const receiveNoteSyncEnd = async function (data: unknown, plugin: FastSyn
 /**
  * 接收服务端笔记重命名通知
  */
-export const receiveNoteSyncRename = async function (data: { path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
+export const receiveNoteSyncRename = async function (data: { path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
 
@@ -590,7 +599,7 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
     }
     plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -617,7 +626,14 @@ export const receiveNoteModifyAck = function (data: { lastTime?: number; path?: 
   if (data.path) {
     plugin.concurrencyLimiter.releaseSlot(data.path)
   }
-  plugin.noteSyncTasks.completed++
+  // 该 Ack 若对应服务端 NeedPush 驱动的上传，查表取回其所属下载页归账（供 ack 水位线推进）；
+  // 查不到说明是本地用户自发编辑触发的 Ack，不属于任何页，走旧路径（现状语义不变）
+  // If this Ack corresponds to a server NeedPush-driven upload, look up its owning download page
+  // for correct accounting (drives the ack watermark); a miss means a local user-initiated edit
+  // triggered it — doesn't belong to any page, falls back to the legacy path (unchanged semantics)
+  const pushPageIndex = data.path ? plugin.syncState.pendingNotePushPageIndex.get(data.path) : undefined;
+  if (data.path) plugin.syncState.pendingNotePushPageIndex.delete(data.path)
+  plugin.recordSyncCompleted('note', pushPageIndex)
 }
 
 // 收到 NoteRenameAck，从 FIFO 队列取出待确认条目并更新 hashManager

@@ -32,6 +32,38 @@ export class SyncState {
   /** 本次连接是否已完成 pv2 协商（auth 响应携带协商块）/ Whether this connection completed pv2 negotiation (auth response carried a negotiation block) */
   negotiated = false;
 
+  // ─── C3 多页在途归属：completed 计数的 pageIndex 透传通道 ─────────────────────
+  /**
+   * 瞬时字段：FastSync.recordSyncCompleted() 在自增 xxxSyncTasks.completed 前写入，
+   * 由 onCompletedChange（同一同步调用栈内触发，无 await 间隙）读取后立即清空，
+   * 用于把 pageIndex 从调用点"смuggle"到 Proxy 的 set trap 回调里，无需改动 Proxy 签名。
+   * Transient field: FastSync.recordSyncCompleted() writes it right before incrementing
+   * xxxSyncTasks.completed; onCompletedChange (fired synchronously in the same call stack, no
+   * await in between) reads and clears it immediately. Smuggles pageIndex from the call site into
+   * the Proxy's set-trap callback without changing the Proxy's signature.
+   */
+  pendingCompletionPageIndex: number | undefined = undefined;
+
+  /**
+   * NeedPush 驱动的上传-回执往返（NoteSyncNeedPush/FileUpload/SettingSyncNeedUpload → 对应 Ack）
+   * 中，Ack 消息本身不携带 pageIndex（它是响应客户端自己发起的上传请求，不是服务端下行页推送）。
+   * 在 NeedPush 明细到达时按 path 记下其所属 pageIndex，等对应 Ack 到达时查表消费，
+   * 从而把该条目的完成正确归账到发起它的下载页（供 ack 水位线正确推进）。
+   * 查不到（本地用户自发编辑触发的 Ack，非服务端 NeedPush 驱动）时退回不带 pageIndex 的旧路径，
+   * 语义正确（这类条目本就不属于任何页）。
+   *
+   * In the NeedPush-driven upload/ack round trip, the Ack message itself carries no pageIndex (it
+   * responds to the client's own upload request, not a server-side page push). Record the
+   * originating pageIndex by path when the NeedPush detail arrives; consume it when the matching
+   * Ack arrives, so the completion is attributed to the correct download page (needed for the ack
+   * watermark to advance correctly). A miss (Ack from a local user-initiated edit, not server
+   * NeedPush) correctly falls back to the pageIndex-less legacy path — such items never belonged to
+   * a page in the first place.
+   */
+  pendingNotePushPageIndex = new Map<string, number>();
+  pendingFilePushPageIndex = new Map<string, number>();
+  pendingConfigPushPageIndex = new Map<string, number>();
+
   // ─── Sync-session control flags ──────────────────────────────────────────────
   /** 是否正在执行同步流程 / Whether sync process is running */
   isSyncing = false;
