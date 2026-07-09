@@ -463,8 +463,12 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     plugin.pendingNoteDeleteAcks.clear()
     plugin.pendingFileDeleteAcks.clear()
     plugin.pendingConfigDeleteAcks.clear()
-    plugin.pendingConfigModifies.clear()
-    plugin.localStorageManager.clearPending('pendingConfigModifies')
+    // 注意：不清空 pendingConfigModifies，与 pendingNoteModifies 对齐——
+    // 该集合记录扫描期间用户本地新改动的配置路径，需保留到扫描阶段用于跳过判断，
+    // 由 receiveSyncEndWrapper (config SyncEnd) 或 cancelSync 负责清空
+    // Note: do NOT clear pendingConfigModifies here, mirroring pendingNoteModifies —
+    // it tracks configs locally modified since last scan and must survive into the
+    // scan filter below; cleared by receiveSyncEndWrapper (config SyncEnd) or cancelSync
 
     let expectedCount = 0;
     if (plugin.settings.syncEnabled && shouldSyncNotes) {
@@ -758,7 +762,9 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
           dump(`Skip scanning large config file (${describeBinarySyncLimit(plugin)} limit): ${path}`, stat.size);
           continue;
         }
-        if (isLoadLastTime && stat.mtime < Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))) continue;
+        if (isLoadLastTime
+          && stat.mtime < Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))
+          && !plugin.pendingConfigModifies.has(path)) continue;
 
         // 处理大配置文件时更新消息
         if (stat.size > 2 * 1024 * 1024) {
