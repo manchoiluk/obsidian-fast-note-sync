@@ -220,7 +220,16 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
                 plugin.addIgnoredFile(normalizedPath)
                 try {
                     // 必须检测并等到 目录里的所有文件数量 为 0 之后再执行
-                    await waitForFolderEmpty(normalizedPath, plugin);
+                    const isEmpty = await waitForFolderEmpty(normalizedPath, plugin);
+                    if (!isEmpty) {
+                        // 超时后目录仍非空（可能有文件未下载完或用户新建了文件），放弃本次删除，
+                        // 避免强制递归删除误删用户数据；等待下一轮同步重新判定
+                        // Folder still non-empty after timeout (e.g. pending downloads or new user files);
+                        // skip the delete instead of force-recursing, wait for next sync round
+                        dump(`[FastSync] Folder not empty after wait, skip delete: ${normalizedPath}`);
+                        SyncLogManager.getInstance().addLog('receive', 'FolderDeleteSkipped', `目录非空，跳过删除，等待下轮同步: ${normalizedPath}`, 'cancelled', data.path);
+                        return
+                    }
                     // 记录待删除路径
                     plugin.lastSyncPathDeleted.add(normalizedPath)
                     await vaultDelete(plugin.app.vault, folder, true)
