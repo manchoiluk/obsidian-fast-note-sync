@@ -70,6 +70,11 @@ export class WebSocketManager {
   public client: WebSocketClient;
   private plugin: FastSync;
   private currentStartHandleId = 0;
+  // startupDelay 按设置文案（setting.sync.startup_delay_desc）本意是只延迟"首次"检查更新，
+  // 用于错开 Obsidian 启动时其他插件并发加载造成的卡顿；不应在每次断线重连时都重复套用。
+  // startupDelay is documented as delaying only the "first" update check, to avoid contending
+  // with other plugins loading at Obsidian startup — it should not be re-applied on every reconnect.
+  private hasAppliedStartupDelay = false;
 
   // --- 轻量事件总线，用于分批发送时等待服务端 BatchAck ---
   // Lightweight event bus for awaiting server BatchAck during batch send
@@ -378,7 +383,8 @@ export class WebSocketManager {
     const handleId = ++this.currentStartHandleId;
     dump(`Service start handle, id: ${handleId}`);
 
-    if (this.plugin.settings.startupDelay > 0) {
+    if (this.plugin.settings.startupDelay > 0 && !this.hasAppliedStartupDelay) {
+      this.hasAppliedStartupDelay = true;
       dump(`Startup delay: ${this.plugin.settings.startupDelay}ms`);
       await new Promise((resolve) => window.setTimeout(resolve, this.plugin.settings.startupDelay));
     }
