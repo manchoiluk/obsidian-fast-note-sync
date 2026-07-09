@@ -71,10 +71,16 @@ const formatDownloadError = (e: unknown) => {
   return e instanceof Error ? e.message : String(e)
 }
 
-const cleanupFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession) => {
+// failed=true 表示本次会话是因下载/写盘失败而清理，需计入 fileSyncTasks.failed，
+// 与 completed（驱动完成判定/翻页 ACK，语义不变）区分开，避免失败被状态栏当作成功展示
+// failed=true means this session is being cleaned up due to a download/write failure and
+// should count toward fileSyncTasks.failed, kept separate from completed (which still drives
+// completion detection / page ACK unchanged), so failures aren't surfaced as success in the status bar
+const cleanupFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession, failed = false) => {
   releaseSessionMemory(session)
   plugin.fileDownloadSessions.delete(session.sessionId)
   if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
+  if (failed) plugin.fileSyncTasks.failed++
   plugin.fileSyncTasks.completed++
 }
 
@@ -90,7 +96,7 @@ const failFileDownloadSession = async (plugin: FastSync, session: FileDownloadSe
     progress: session.totalChunks === 0 ? 0 : Math.floor((completedCount / session.totalChunks) * 100),
     message
   });
-  await cleanupFileDownloadSession(plugin, session)
+  await cleanupFileDownloadSession(plugin, session, true)
   if (releaseSlot) {
     plugin.concurrencyLimiter.releaseSlot(`download_${session.path}`)
   }
@@ -820,6 +826,7 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
   }, { maxRetries: 5, retryInterval: 100 }).catch(e => {
     dumpError(`[FastSync] Failed to receiveFileSyncDelete: ${normalizedPath}`, e);
     SyncLogManager.getInstance().addLog('receive', 'FileDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+    plugin.fileSyncTasks.failed++
   });
 
   plugin.fileSyncTasks.completed++
@@ -886,6 +893,7 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileMtime')) {
       SyncLogManager.getInstance().addLog('receive', 'FileMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.fileSyncTasks.failed++
   });
 
   // FileSyncMtime 表示文件已在服务端存在（无需上传），释放 fileModify 中获取的并发槽位
@@ -1236,6 +1244,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileRename')) {
       SyncLogManager.getInstance().addLog('receive', 'FileRename', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.fileSyncTasks.failed++
   });
 
   plugin.fileSyncTasks.completed++
@@ -1352,7 +1361,7 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
         message: `Failed to complete download: ${formatDownloadError(e)}`
       });
     }
-    await cleanupFileDownloadSession(plugin, session)
+    await cleanupFileDownloadSession(plugin, session, true)
   } finally {
     plugin.concurrencyLimiter.releaseSlot(slotKey)
   }
@@ -1432,6 +1441,7 @@ export const receiveFileUploadSessionNotFound = function (sessionId: string, plu
       active.cancelled = true
     }
     plugin.concurrencyLimiter.releaseSlot(path)
+    plugin.fileSyncTasks.failed++
     plugin.fileSyncTasks.completed++
     dump(`FileUploadSessionNotFound: Cleaned active state and completed task for path: ${path} (${sessionId})`)
   }

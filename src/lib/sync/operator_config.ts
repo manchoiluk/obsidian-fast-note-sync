@@ -226,6 +226,7 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigModify')) {
             SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.configSyncTasks.failed++
     }
 
     await configReload(data.path, plugin, false, data.content)
@@ -301,6 +302,7 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
         }
     } catch (error) {
         dumpError("读取配置文件出错:", error);
+        plugin.configSyncTasks.failed++;
         plugin.configSyncTasks.completed++;
         return
     }
@@ -360,6 +362,7 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigMtime')) {
             SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.configSyncTasks.failed++
     }
     plugin.removeIgnoredConfigFile(data.path)
 
@@ -405,6 +408,7 @@ export const receiveConfigSyncDelete = async function (data: { path: string, las
     } catch (e) {
         dumpError("[receiveConfigSyncDelete] error:", e)
         SyncLogManager.getInstance().addLog('receive', 'ConfigDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+        plugin.configSyncTasks.failed++
     }
 
     // 更新 ConfigManager 的文件状态

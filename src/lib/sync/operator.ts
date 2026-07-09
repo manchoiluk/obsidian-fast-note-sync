@@ -145,12 +145,21 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
       Object.values(configStats).some(v => v > 0)
     );
 
+    // 汇总本轮写盘失败数：completed 仍然是"已处理数量"（成功+失败），驱动完成判定不变；
+    // failed 是单独计数的失败子集，仅用于向用户如实展示"完成但有 N 项失败"，避免误报全部成功
+    // Total write failures this round: completed still means "processed count" (success+failure)
+    // and keeps driving completion detection unchanged; failed is a separate failure subset used
+    // only to honestly surface "completed with N failures" instead of falsely reporting full success
+    const totalFailed = plugin.noteSyncTasks.failed + plugin.fileSyncTasks.failed
+      + plugin.configSyncTasks.failed + plugin.folderSyncTasks.failed;
+
     const summaryMessage = JSON.stringify({
       syncType,
       hasChanges,
       note: noteStats,
       file: fileStats,
-      config: configStats
+      config: configStats,
+      failed: totalFailed
     });
 
     SyncLogManager.getInstance().addOrUpdateLog({
@@ -175,10 +184,13 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
 
     plugin.progressTracker.forceComplete();
 
+    const completionText = totalFailed > 0
+      ? $("ui.status.completed_with_failures", { count: String(totalFailed) })
+      : $("ui.status.completed");
     if (plugin.settings.isShowNotice) {
-      showSyncNotice($("ui.status.completed"));
+      showSyncNotice(completionText);
     }
-    plugin.updateStatusBar($("ui.status.completed"));
+    plugin.updateStatusBar(completionText);
 
     if (plugin.expectedSyncCount > 0 && !plugin.localStorageManager.getMetadata("isInitSync")) {
       plugin.localStorageManager.setMetadata("isInitSync", true);

@@ -305,6 +305,7 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteModify')) {
       SyncLogManager.getInstance().addLog('receive', 'NoteModify', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.noteSyncTasks.failed++
   } finally {
     plugin.noteSyncTasks.completed++
   }
@@ -416,6 +417,7 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteMtime')) {
       SyncLogManager.getInstance().addLog('receive', 'NoteMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.noteSyncTasks.failed++
   } finally {
     plugin.noteSyncTasks.completed++
   }
@@ -465,6 +467,7 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
   } catch (e) {
     dumpError(`[FastSync] Failed to receiveNoteSyncDelete: ${normalizedPath}`, e);
     SyncLogManager.getInstance().addLog('receive', 'NoteDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+    plugin.noteSyncTasks.failed++
   } finally {
     plugin.noteSyncTasks.completed++
   }
@@ -585,6 +588,7 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteRename')) {
       SyncLogManager.getInstance().addLog('receive', 'NoteRename', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.noteSyncTasks.failed++
   } finally {
     plugin.noteSyncTasks.completed++
   }

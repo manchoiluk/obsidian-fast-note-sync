@@ -190,6 +190,7 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify')) {
             SyncLogManager.getInstance().addLog('receive', 'FolderModify', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
@@ -245,6 +246,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
     } catch (e) {
         dumpError(`[FastSync] Failed to receiveFolderSyncDelete: ${normalizedPath}`, e);
         SyncLogManager.getInstance().addLog('receive', 'FolderDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+        plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
@@ -315,6 +317,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename')) {
             SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side

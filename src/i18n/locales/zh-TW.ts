@@ -258,6 +258,7 @@ export default {
   "ui.status.starting": "開始同步",
   "ui.status.new_version": "發現新版本: ${version}, 點擊後跳轉更新頁面",
   "ui.status.completed": "同步完成",
+  "ui.status.completed_with_failures": "同步完成，其中 ${count} 項失敗",
   "ui.status.failed": "同步失敗",
   "ui.status.cancelled": "同步已取消",
   "ui.status.conflict": "檢測到同步衝突，已強制合併，需要手動處理 ${path}。",

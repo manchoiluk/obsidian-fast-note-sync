@@ -258,6 +258,7 @@ export default {
   "ui.status.starting": "Starting sync",
   "ui.status.new_version": "New version found: ${version}, click to go to the update page",
   "ui.status.completed": "Sync completed",
+  "ui.status.completed_with_failures": "Sync completed with ${count} item(s) failed",
   "ui.status.timeout_partial": "Sync timed out with files still downloading; will resume next sync",
   "ui.status.failed": "Sync failed",
   "ui.status.cancelled": "Sync cancelled",
