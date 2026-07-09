@@ -43,7 +43,22 @@ export const clearAllHashes = async (plugin: FastSync) => {
 /**
  * 检查同步是否完成
  */
-export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncStartTime?: number) {
+export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncStartTime?: number, ownerContext?: string) {
+  // 会话归属守卫：本轮检测所属的 context 已被新会话取代，说明是旧会话的迟到定时器
+  // （例如断线重连后旧会话的 BatchAck 超时才姗姗来迟），此时只清理自己的 interval，
+  // 不再触碰任何共享同步状态，避免把新会话的进度/上下文误清掉
+  // Ownership guard: if this check's context has been superseded by a newer sync
+  // session (e.g. a stale timer from an old session after reconnect), only clean up
+  // its own interval and leave shared sync state untouched to avoid clobbering the new session.
+  if (ownerContext && plugin.syncState.activeSyncContext !== ownerContext) {
+    if (intervalId) {
+      window.clearInterval(intervalId);
+      if (plugin.syncState.progressCheckIntervalId === intervalId) {
+        plugin.syncState.progressCheckIntervalId = null;
+      }
+    }
+    return;
+  }
   // 超时保底：调大为 300s 以支持超大库（多批次）的分批同步，防止误判超时终止
   // Safety timeout: increased to 300s to support large vaults with many batches, preventing false timeout termination
   const SYNC_TIMEOUT_MS = 300000;
@@ -419,8 +434,11 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     return;
   }
   plugin.isSyncing = true;
+  // 提到 try 外部，使 catch/finally 也能引用本次会话的 context 做归属判断
+  // Hoisted outside try so catch/finally can reference this session's context for ownership checks
+  let context = "";
   try {
-    const context = generateUUID();
+    context = generateUUID();
     plugin.syncState.activeSyncContext = context; // 记录活跃的同步上下文 / Record the active sync context
     dump(`Sync context generated: ${context}`);
     if (!plugin.menuManager.ribbonIconStatus) {
@@ -923,18 +941,31 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     // 同时记录开始时间，用于超时保底
     const syncStartTime = Date.now();
     const progressCheckInterval = window.setInterval(() => {
-      checkSyncCompletion(plugin, progressCheckInterval, syncStartTime);
+      checkSyncCompletion(plugin, progressCheckInterval, syncStartTime, context);
     }, 100);
     plugin.syncState.progressCheckIntervalId = progressCheckInterval;
   } catch (error) {
     dump("Sync failed with error: " + error);
-    plugin.syncState.activeSyncContext = null; // 同步失败，清空上下文 / Sync failed, reset the context
-    plugin.updateStatusBar($("ui.status.failed") || "Sync Failed");
-    window.setTimeout(() => plugin.updateStatusBar(""), 3000);
+    // 归属判断：只有当前活跃上下文仍是本次会话时才清空/重置，防止旧会话的迟到异常
+    // （例如断线重连后旧会话 BatchAck 15s 超时才抛出）把已经在跑的新会话状态清掉
+    // Ownership guard: only clear/reset when the active context still belongs to this
+    // invocation, so a late exception from a superseded (stale) sync session cannot
+    // clobber a newer session that has already taken over.
+    if (plugin.syncState.activeSyncContext === context) {
+      plugin.syncState.activeSyncContext = null; // 同步失败，清空上下文 / Sync failed, reset the context
+      plugin.updateStatusBar($("ui.status.failed") || "Sync Failed");
+      window.setTimeout(() => plugin.updateStatusBar(""), 3000);
+    } else {
+      dump(`[SyncContext] Stale sync session (context=${context}) failed after being superseded; skip clobbering active state.`);
+    }
   } finally {
-    // 确保 isSyncing 在所有退出路径（正常完成、early return、异常）下都被重置
-    // Ensure isSyncing is reset on all exit paths: normal completion, early return, or exception
-    plugin.isSyncing = false;
+    // 同上：仅当自己仍是活跃会话（或已无活跃会话）时才重置 isSyncing，
+    // 避免旧会话迟到的 finally 打断已经在跑的新会话
+    // Same guard: only reset isSyncing when this invocation still owns the active
+    // session (or no session is active), so a stale session cannot interrupt a running new one.
+    if (plugin.syncState.activeSyncContext === context || plugin.syncState.activeSyncContext === null) {
+      plugin.isSyncing = false;
+    }
   }
 };
 
