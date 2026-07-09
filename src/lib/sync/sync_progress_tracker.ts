@@ -28,6 +28,9 @@ interface TypeProgress {
   uploadTasksBase: number;    // 上传阶段完成任务的基准数（避免影响 isTypeFullyDone 计算）
   expectedPages: number;      // 预期分页总数
   initialAckSent: boolean;    // Has the initial ACK (pageIndex = -1) been sent / 是否已发送初始 ACK
+
+  // 已处理过的分页索引集合，用于 recordPageProgress 按 pageIndex 去重，防止重复/乱序页重复计数
+  receivedPageIndexes: Set<number>;
 }
 
 /**
@@ -114,7 +117,8 @@ export class SyncProgressTracker {
         downloadPageDone: 0,
         uploadTasksBase: 0,
         expectedPages: 0,
-        initialAckSent: false
+        initialAckSent: false,
+        receivedPageIndexes: new Set<number>()
       });
     }
 
@@ -211,6 +215,14 @@ export class SyncProgressTracker {
     const prog = this.progressMap.get(type);
     if (!prog) return;
 
+    // 分页幂等：同一 pageIndex 重复到达（重传/乱序）时直接忽略，防止 receivedTaskTotal
+    // 盲累加、allPagesReceived 被旧包覆盖，导致完成判定永远达不到，卡在 300s 超时分支
+    if (prog.receivedPageIndexes.has(pageIndex)) {
+      dump(`[SyncProgressTracker] [recordPageProgress] duplicate pageIndex ${pageIndex} for type: ${type}, ignoring`);
+      return;
+    }
+    prog.receivedPageIndexes.add(pageIndex);
+
     prog.downloadPageIndex = totalCount === 0 ? -1 : pageIndex;
     prog.downloadPageCount = totalCount;
     prog.downloadPageDone = 0;
@@ -219,9 +231,12 @@ export class SyncProgressTracker {
 
     // Accumulate precisely received total task count from server / 累加绝对精准的已收到任务总数
     prog.receivedTaskTotal += totalCount;
-    
-    // 如果收到最后一页标志，则标记所有页均已收到
-    prog.allPagesReceived = isLast;
+
+    // 如果收到最后一页标志，则标记所有页均已收到；isLast 只能置 true 不可回退，
+    // 防止晚到的非末页（isLast: false）把已经确认的 allPagesReceived 覆盖回 false
+    if (isLast) {
+      prog.allPagesReceived = true;
+    }
 
     // Correct UI total if received count exceeds it / 如果实际收到的数量超过了估算值，调大估算分母
     if (prog.pageTaskTotal < prog.receivedTaskTotal) {

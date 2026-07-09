@@ -258,6 +258,7 @@ export default {
   "ui.status.starting": "开始同步",
   "ui.status.new_version": "发现新版本: ${version}, 点击后跳转更新页面",
   "ui.status.completed": "同步完成",
+  "ui.status.timeout_partial": "同步超时，部分文件未完成，将在下一轮同步继续",
   "ui.status.failed": "同步失败",
   "ui.status.cancelled": "同步已取消",
   "ui.status.conflict": "检测到同步冲突，已强制合并，需要手动处理 ${path}。",

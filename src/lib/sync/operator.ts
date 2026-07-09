@@ -66,7 +66,15 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     plugin.totalChunksToUpload = 0;
     plugin.uploadedChunksCount = 0;
     plugin.progressTracker.forceComplete();
-    plugin.updateStatusBar($("ui.status.completed"));
+    // 超时保底不代表真正完成：仍有下载会话未结束时，如实提示"部分未完成"，而非静默上报成功
+    // A safety timeout does not mean genuine completion: if download sessions are still pending,
+    // surface "partially incomplete" instead of silently reporting success
+    if (plugin.fileDownloadSessions.size > 0) {
+      dump(`Sync completion timeout with ${plugin.fileDownloadSessions.size} unfinished file download session(s), reporting partial completion.`);
+      plugin.updateStatusBar($("ui.status.timeout_partial"));
+    } else {
+      plugin.updateStatusBar($("ui.status.completed"));
+    }
     window.setTimeout(() => plugin.updateStatusBar(""), 10000);
     return;
   }
