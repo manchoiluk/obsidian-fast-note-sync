@@ -239,10 +239,22 @@ export class WebSocketManager {
     this.client.triggerReconnect();
   }
   public SendMessage(action: WSAction.WSSendAction, data: unknown, before?: () => boolean, after?: () => void, context?: string) {
-    return this.client.SendMessage(action, this.injectContext(data, context), before, after);
+    const injectedData = this.injectContext(data, context);
+    return this.client.SendMessage(action, injectedData, before, () => {
+      // Record the send event in sync logs
+      // 在同步日志中记录发送事件
+      SyncLogManager.getInstance().logSentMessage(action, injectedData as object | string, this.plugin.currentSyncType);
+      after?.();
+    });
   }
   public Send(action: WSAction.WSSendAction, data: unknown, after?: () => void, context?: string) {
-    this.client.Send(action, this.injectContext(data, context), after);
+    const injectedData = this.injectContext(data, context);
+    this.client.Send(action, injectedData, () => {
+      // Record the send event in sync logs
+      // 在同步日志中记录发送事件
+      SyncLogManager.getInstance().logSentMessage(action, injectedData as object | string, this.plugin.currentSyncType);
+      after?.();
+    });
   }
 
   /**
