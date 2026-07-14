@@ -112,9 +112,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.type != null && $Object.hasOwnProperty.call(message, "type"))
+                if (message.type != null && $Object.hasOwnProperty.call(message, "type") && message.type !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.type);
-                if (message.data != null && $Object.hasOwnProperty.call(message, "data"))
+                if (message.data != null && $Object.hasOwnProperty.call(message, "data") && message.data.length)
                     writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.data);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -132,7 +132,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             WSMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -337,6 +337,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [details] WSResponse details
              * @property {string|null} [vault] WSResponse vault
              * @property {string|null} [context] WSResponse context
+             * @property {number|null} [pageIndex] WSResponse pageIndex
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -425,6 +426,14 @@ export const proto = $root.proto = (() => {
             WSResponse.prototype.context = "";
 
             /**
+             * WSResponse pageIndex.
+             * @member {number} pageIndex
+             * @memberof proto.v1.WSResponse
+             * @instance
+             */
+            WSResponse.prototype.pageIndex = 0;
+
+            /**
              * Creates a new WSResponse instance using the specified properties.
              * @function create
              * @memberof proto.v1.WSResponse
@@ -456,20 +465,22 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.code != null && $Object.hasOwnProperty.call(message, "code"))
+                if (message.code != null && $Object.hasOwnProperty.call(message, "code") && message.code !== 0)
                     writer.uint32(/* id 1, wireType 0 =*/8).int32(message.code);
-                if (message.status != null && $Object.hasOwnProperty.call(message, "status"))
+                if (message.status != null && $Object.hasOwnProperty.call(message, "status") && message.status !== false)
                     writer.uint32(/* id 2, wireType 0 =*/16).bool(message.status);
-                if (message.message != null && $Object.hasOwnProperty.call(message, "message"))
+                if (message.message != null && $Object.hasOwnProperty.call(message, "message") && message.message !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.message);
-                if (message.data != null && $Object.hasOwnProperty.call(message, "data"))
+                if (message.data != null && $Object.hasOwnProperty.call(message, "data") && message.data.length)
                     writer.uint32(/* id 4, wireType 2 =*/34).bytes(message.data);
-                if (message.details != null && $Object.hasOwnProperty.call(message, "details"))
+                if (message.details != null && $Object.hasOwnProperty.call(message, "details") && message.details !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.details);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.vault);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 7, wireType 2 =*/58).string(message.context);
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
+                    writer.uint32(/* id 8, wireType 0 =*/64).int32(message.pageIndex);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -486,7 +497,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             WSResponse.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -580,6 +591,15 @@ export const proto = $root.proto = (() => {
                                 delete message.context;
                             continue;
                         }
+                    case 8: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.int32())
+                                message.pageIndex = value;
+                            else
+                                delete message.pageIndex;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -644,6 +664,9 @@ export const proto = $root.proto = (() => {
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     if (!$util.isString(message.context))
                         return "context: string expected";
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                    if (!$util.isInteger(message.pageIndex))
+                        return "pageIndex: integer expected";
                 return null;
             };
 
@@ -689,6 +712,9 @@ export const proto = $root.proto = (() => {
                 if (object.context != null)
                     if (typeof object.context !== "string" || object.context.length)
                         message.context = $String(object.context);
+                if (object.pageIndex != null)
+                    if ($Number(object.pageIndex) !== 0)
+                        message.pageIndex = object.pageIndex | 0;
                 return message;
             };
 
@@ -723,6 +749,7 @@ export const proto = $root.proto = (() => {
                     object.details = "";
                     object.vault = "";
                     object.context = "";
+                    object.pageIndex = 0;
                 }
                 if (message.code != null && $Object.hasOwnProperty.call(message, "code"))
                     object.code = message.code;
@@ -738,6 +765,8 @@ export const proto = $root.proto = (() => {
                     object.vault = message.vault;
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     object.context = message.context;
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                    object.pageIndex = message.pageIndex;
                 return object;
             };
 
@@ -945,29 +974,29 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.name != null && $Object.hasOwnProperty.call(message, "name"))
+                if (message.name != null && $Object.hasOwnProperty.call(message, "name") && message.name !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.name);
-                if (message.version != null && $Object.hasOwnProperty.call(message, "version"))
+                if (message.version != null && $Object.hasOwnProperty.call(message, "version") && message.version !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.version);
-                if (message.type != null && $Object.hasOwnProperty.call(message, "type"))
+                if (message.type != null && $Object.hasOwnProperty.call(message, "type") && message.type !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.type);
-                if (message.isDesktop != null && $Object.hasOwnProperty.call(message, "isDesktop"))
+                if (message.isDesktop != null && $Object.hasOwnProperty.call(message, "isDesktop") && message.isDesktop !== false)
                     writer.uint32(/* id 4, wireType 0 =*/32).bool(message.isDesktop);
-                if (message.isMobile != null && $Object.hasOwnProperty.call(message, "isMobile"))
+                if (message.isMobile != null && $Object.hasOwnProperty.call(message, "isMobile") && message.isMobile !== false)
                     writer.uint32(/* id 5, wireType 0 =*/40).bool(message.isMobile);
-                if (message.isPhone != null && $Object.hasOwnProperty.call(message, "isPhone"))
+                if (message.isPhone != null && $Object.hasOwnProperty.call(message, "isPhone") && message.isPhone !== false)
                     writer.uint32(/* id 6, wireType 0 =*/48).bool(message.isPhone);
-                if (message.isTablet != null && $Object.hasOwnProperty.call(message, "isTablet"))
+                if (message.isTablet != null && $Object.hasOwnProperty.call(message, "isTablet") && message.isTablet !== false)
                     writer.uint32(/* id 7, wireType 0 =*/56).bool(message.isTablet);
-                if (message.isMacOS != null && $Object.hasOwnProperty.call(message, "isMacOS"))
+                if (message.isMacOS != null && $Object.hasOwnProperty.call(message, "isMacOS") && message.isMacOS !== false)
                     writer.uint32(/* id 8, wireType 0 =*/64).bool(message.isMacOS);
-                if (message.isWin != null && $Object.hasOwnProperty.call(message, "isWin"))
+                if (message.isWin != null && $Object.hasOwnProperty.call(message, "isWin") && message.isWin !== false)
                     writer.uint32(/* id 9, wireType 0 =*/72).bool(message.isWin);
-                if (message.isLinux != null && $Object.hasOwnProperty.call(message, "isLinux"))
+                if (message.isLinux != null && $Object.hasOwnProperty.call(message, "isLinux") && message.isLinux !== false)
                     writer.uint32(/* id 10, wireType 0 =*/80).bool(message.isLinux);
-                if (message.offlineSyncStrategy != null && $Object.hasOwnProperty.call(message, "offlineSyncStrategy"))
+                if (message.offlineSyncStrategy != null && $Object.hasOwnProperty.call(message, "offlineSyncStrategy") && message.offlineSyncStrategy !== "")
                     writer.uint32(/* id 11, wireType 2 =*/90).string(message.offlineSyncStrategy);
-                if (message.protobuf != null && $Object.hasOwnProperty.call(message, "protobuf"))
+                if (message.protobuf != null && $Object.hasOwnProperty.call(message, "protobuf") && message.protobuf !== false)
                     writer.uint32(/* id 12, wireType 0 =*/96).bool(message.protobuf);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -985,7 +1014,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             ClientInfoMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -1435,9 +1464,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.version != null && $Object.hasOwnProperty.call(message, "version"))
+                if (message.version != null && $Object.hasOwnProperty.call(message, "version") && message.version !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.version);
-                if (message.changelogContent != null && $Object.hasOwnProperty.call(message, "changelogContent"))
+                if (message.changelogContent != null && $Object.hasOwnProperty.call(message, "changelogContent") && message.changelogContent !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.changelogContent);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -1455,7 +1484,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             HistoricalVersion.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -1659,6 +1688,8 @@ export const proto = $root.proto = (() => {
              * @property {Array.<proto.v1.HistoricalVersion.$Properties>|null} [pluginVersionHistory] CheckVersionInfo pluginVersionHistory
              * @property {number|null} [syncUpChunkNum] CheckVersionInfo syncUpChunkNum
              * @property {number|null} [syncDownChunkNum] CheckVersionInfo syncDownChunkNum
+             * @property {number|null} [pipelineWindowUp] CheckVersionInfo pipelineWindowUp
+             * @property {number|null} [pipelineWindowDown] CheckVersionInfo pipelineWindowDown
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -1813,6 +1844,22 @@ export const proto = $root.proto = (() => {
             CheckVersionInfo.prototype.syncDownChunkNum = 0;
 
             /**
+             * CheckVersionInfo pipelineWindowUp.
+             * @member {number} pipelineWindowUp
+             * @memberof proto.v1.CheckVersionInfo
+             * @instance
+             */
+            CheckVersionInfo.prototype.pipelineWindowUp = 0;
+
+            /**
+             * CheckVersionInfo pipelineWindowDown.
+             * @member {number} pipelineWindowDown
+             * @memberof proto.v1.CheckVersionInfo
+             * @instance
+             */
+            CheckVersionInfo.prototype.pipelineWindowDown = 0;
+
+            /**
              * Creates a new CheckVersionInfo instance using the specified properties.
              * @function create
              * @memberof proto.v1.CheckVersionInfo
@@ -1844,38 +1891,42 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.githubAvailable != null && $Object.hasOwnProperty.call(message, "githubAvailable"))
+                if (message.githubAvailable != null && $Object.hasOwnProperty.call(message, "githubAvailable") && message.githubAvailable !== false)
                     writer.uint32(/* id 1, wireType 0 =*/8).bool(message.githubAvailable);
-                if (message.versionIsNew != null && $Object.hasOwnProperty.call(message, "versionIsNew"))
+                if (message.versionIsNew != null && $Object.hasOwnProperty.call(message, "versionIsNew") && message.versionIsNew !== false)
                     writer.uint32(/* id 2, wireType 0 =*/16).bool(message.versionIsNew);
-                if (message.versionNewName != null && $Object.hasOwnProperty.call(message, "versionNewName"))
+                if (message.versionNewName != null && $Object.hasOwnProperty.call(message, "versionNewName") && message.versionNewName !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.versionNewName);
-                if (message.versionNewLink != null && $Object.hasOwnProperty.call(message, "versionNewLink"))
+                if (message.versionNewLink != null && $Object.hasOwnProperty.call(message, "versionNewLink") && message.versionNewLink !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.versionNewLink);
-                if (message.versionNewChangelog != null && $Object.hasOwnProperty.call(message, "versionNewChangelog"))
+                if (message.versionNewChangelog != null && $Object.hasOwnProperty.call(message, "versionNewChangelog") && message.versionNewChangelog !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.versionNewChangelog);
-                if (message.versionNewChangelogContent != null && $Object.hasOwnProperty.call(message, "versionNewChangelogContent"))
+                if (message.versionNewChangelogContent != null && $Object.hasOwnProperty.call(message, "versionNewChangelogContent") && message.versionNewChangelogContent !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.versionNewChangelogContent);
                 if (message.versionHistory != null && message.versionHistory.length)
                     for (let i = 0; i < message.versionHistory.length; ++i)
                         $root.proto.v1.HistoricalVersion.encode(message.versionHistory[i], writer.uint32(/* id 7, wireType 2 =*/58).fork(), _depth + 1).ldelim();
-                if (message.pluginVersionIsNew != null && $Object.hasOwnProperty.call(message, "pluginVersionIsNew"))
+                if (message.pluginVersionIsNew != null && $Object.hasOwnProperty.call(message, "pluginVersionIsNew") && message.pluginVersionIsNew !== false)
                     writer.uint32(/* id 8, wireType 0 =*/64).bool(message.pluginVersionIsNew);
-                if (message.pluginVersionNewName != null && $Object.hasOwnProperty.call(message, "pluginVersionNewName"))
+                if (message.pluginVersionNewName != null && $Object.hasOwnProperty.call(message, "pluginVersionNewName") && message.pluginVersionNewName !== "")
                     writer.uint32(/* id 9, wireType 2 =*/74).string(message.pluginVersionNewName);
-                if (message.pluginVersionNewLink != null && $Object.hasOwnProperty.call(message, "pluginVersionNewLink"))
+                if (message.pluginVersionNewLink != null && $Object.hasOwnProperty.call(message, "pluginVersionNewLink") && message.pluginVersionNewLink !== "")
                     writer.uint32(/* id 10, wireType 2 =*/82).string(message.pluginVersionNewLink);
-                if (message.pluginVersionNewChangelog != null && $Object.hasOwnProperty.call(message, "pluginVersionNewChangelog"))
+                if (message.pluginVersionNewChangelog != null && $Object.hasOwnProperty.call(message, "pluginVersionNewChangelog") && message.pluginVersionNewChangelog !== "")
                     writer.uint32(/* id 11, wireType 2 =*/90).string(message.pluginVersionNewChangelog);
-                if (message.pluginVersionNewChangelogContent != null && $Object.hasOwnProperty.call(message, "pluginVersionNewChangelogContent"))
+                if (message.pluginVersionNewChangelogContent != null && $Object.hasOwnProperty.call(message, "pluginVersionNewChangelogContent") && message.pluginVersionNewChangelogContent !== "")
                     writer.uint32(/* id 12, wireType 2 =*/98).string(message.pluginVersionNewChangelogContent);
                 if (message.pluginVersionHistory != null && message.pluginVersionHistory.length)
                     for (let i = 0; i < message.pluginVersionHistory.length; ++i)
                         $root.proto.v1.HistoricalVersion.encode(message.pluginVersionHistory[i], writer.uint32(/* id 13, wireType 2 =*/106).fork(), _depth + 1).ldelim();
-                if (message.syncUpChunkNum != null && $Object.hasOwnProperty.call(message, "syncUpChunkNum"))
+                if (message.syncUpChunkNum != null && $Object.hasOwnProperty.call(message, "syncUpChunkNum") && message.syncUpChunkNum !== 0)
                     writer.uint32(/* id 14, wireType 0 =*/112).int32(message.syncUpChunkNum);
-                if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum"))
+                if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum") && message.syncDownChunkNum !== 0)
                     writer.uint32(/* id 15, wireType 0 =*/120).int32(message.syncDownChunkNum);
+                if (message.pipelineWindowUp != null && $Object.hasOwnProperty.call(message, "pipelineWindowUp") && message.pipelineWindowUp !== 0)
+                    writer.uint32(/* id 16, wireType 0 =*/128).int32(message.pipelineWindowUp);
+                if (message.pipelineWindowDown != null && $Object.hasOwnProperty.call(message, "pipelineWindowDown") && message.pipelineWindowDown !== 0)
+                    writer.uint32(/* id 17, wireType 0 =*/136).int32(message.pipelineWindowDown);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -1892,7 +1943,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             CheckVersionInfo.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -2056,6 +2107,24 @@ export const proto = $root.proto = (() => {
                                 delete message.syncDownChunkNum;
                             continue;
                         }
+                    case 16: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.int32())
+                                message.pipelineWindowUp = value;
+                            else
+                                delete message.pipelineWindowUp;
+                            continue;
+                        }
+                    case 17: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.int32())
+                                message.pipelineWindowDown = value;
+                            else
+                                delete message.pipelineWindowDown;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -2156,6 +2225,12 @@ export const proto = $root.proto = (() => {
                 if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum"))
                     if (!$util.isInteger(message.syncDownChunkNum))
                         return "syncDownChunkNum: integer expected";
+                if (message.pipelineWindowUp != null && $Object.hasOwnProperty.call(message, "pipelineWindowUp"))
+                    if (!$util.isInteger(message.pipelineWindowUp))
+                        return "pipelineWindowUp: integer expected";
+                if (message.pipelineWindowDown != null && $Object.hasOwnProperty.call(message, "pipelineWindowDown"))
+                    if (!$util.isInteger(message.pipelineWindowDown))
+                        return "pipelineWindowDown: integer expected";
                 return null;
             };
 
@@ -2236,6 +2311,12 @@ export const proto = $root.proto = (() => {
                 if (object.syncDownChunkNum != null)
                     if ($Number(object.syncDownChunkNum) !== 0)
                         message.syncDownChunkNum = object.syncDownChunkNum | 0;
+                if (object.pipelineWindowUp != null)
+                    if ($Number(object.pipelineWindowUp) !== 0)
+                        message.pipelineWindowUp = object.pipelineWindowUp | 0;
+                if (object.pipelineWindowDown != null)
+                    if ($Number(object.pipelineWindowDown) !== 0)
+                        message.pipelineWindowDown = object.pipelineWindowDown | 0;
                 return message;
             };
 
@@ -2274,6 +2355,8 @@ export const proto = $root.proto = (() => {
                     object.pluginVersionNewChangelogContent = "";
                     object.syncUpChunkNum = 0;
                     object.syncDownChunkNum = 0;
+                    object.pipelineWindowUp = 0;
+                    object.pipelineWindowDown = 0;
                 }
                 if (message.githubAvailable != null && $Object.hasOwnProperty.call(message, "githubAvailable"))
                     object.githubAvailable = message.githubAvailable;
@@ -2311,6 +2394,10 @@ export const proto = $root.proto = (() => {
                     object.syncUpChunkNum = message.syncUpChunkNum;
                 if (message.syncDownChunkNum != null && $Object.hasOwnProperty.call(message, "syncDownChunkNum"))
                     object.syncDownChunkNum = message.syncDownChunkNum;
+                if (message.pipelineWindowUp != null && $Object.hasOwnProperty.call(message, "pipelineWindowUp"))
+                    object.pipelineWindowUp = message.pipelineWindowUp;
+                if (message.pipelineWindowDown != null && $Object.hasOwnProperty.call(message, "pipelineWindowDown"))
+                    object.pipelineWindowDown = message.pipelineWindowDown;
                 return object;
             };
 
@@ -2455,15 +2542,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.ctime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -2481,7 +2568,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -2837,9 +2924,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -2857,7 +2944,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncDelNote.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -3184,11 +3271,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.lastTime);
                 if (message.notes != null && message.notes.length)
                     for (let i = 0; i < message.notes.length; ++i)
@@ -3199,9 +3286,9 @@ export const proto = $root.proto = (() => {
                 if (message.missingNotes != null && message.missingNotes.length)
                     for (let i = 0; i < message.missingNotes.length; ++i)
                         $root.proto.v1.NoteSyncDelNote.encode(message.missingNotes[i], writer.uint32(/* id 6, wireType 2 =*/50).fork(), _depth + 1).ldelim();
-                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex"))
+                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex") && message.batchIndex !== 0)
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batchIndex);
-                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches"))
+                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches") && message.totalBatches !== 0)
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.totalBatches);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -3219,7 +3306,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -3741,27 +3828,27 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash"))
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash") && message.baseHash !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.baseHash);
-                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing") && message.baseHashMissing !== false)
                     writer.uint32(/* id 5, wireType 0 =*/40).bool(message.baseHashMissing);
-                if (message.content != null && $Object.hasOwnProperty.call(message, "content"))
+                if (message.content != null && $Object.hasOwnProperty.call(message, "content") && message.content !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.content);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 7, wireType 2 =*/58).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 8, wireType 0 =*/64).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 9, wireType 0 =*/72).int64(message.mtime);
-                if (message.createOnly != null && $Object.hasOwnProperty.call(message, "createOnly"))
+                if (message.createOnly != null && $Object.hasOwnProperty.call(message, "createOnly") && message.createOnly !== false)
                     writer.uint32(/* id 10, wireType 0 =*/80).bool(message.createOnly);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 11, wireType 2 =*/90).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -3779,7 +3866,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteModifyOrCreateRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -4279,17 +4366,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.mtime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -4307,7 +4394,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteUpdateCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -4699,13 +4786,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -4723,7 +4810,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteDeleteRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -5065,17 +5152,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath"))
+                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath") && message.oldPath !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.oldPath);
-                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
+                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -5093,7 +5180,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteRenameRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -5453,13 +5540,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle"))
+                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle") && message.isRecycle !== false)
                     writer.uint32(/* id 4, wireType 0 =*/32).bool(message.isRecycle);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -5477,7 +5564,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteGetRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -5828,19 +5915,19 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.content != null && $Object.hasOwnProperty.call(message, "content"))
+                if (message.content != null && $Object.hasOwnProperty.call(message, "content") && message.content !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.content);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -5858,7 +5945,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncModifyMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -6302,17 +6389,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.size);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -6330,7 +6417,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncDeleteMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -6799,23 +6886,23 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.mtime);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.size);
-                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath"))
+                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath") && message.oldPath !== "")
                     writer.uint32(/* id 7, wireType 2 =*/58).string(message.oldPath);
-                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
+                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 8, wireType 2 =*/66).string(message.oldPathHash);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 9, wireType 0 =*/72).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -6833,7 +6920,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncRenameMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -7311,13 +7398,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -7335,7 +7422,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncMtimeMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -7716,15 +7803,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.needUploadCount != null && $Object.hasOwnProperty.call(message, "needUploadCount"))
+                if (message.needUploadCount != null && $Object.hasOwnProperty.call(message, "needUploadCount") && (typeof message.needUploadCount === "object" ? message.needUploadCount.low || message.needUploadCount.high : message.needUploadCount !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.needUploadCount);
-                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount"))
+                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount") && (typeof message.needModifyCount === "object" ? message.needModifyCount.low || message.needModifyCount.high : message.needModifyCount !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.needModifyCount);
-                if (message.needSyncMtimeCount != null && $Object.hasOwnProperty.call(message, "needSyncMtimeCount"))
+                if (message.needSyncMtimeCount != null && $Object.hasOwnProperty.call(message, "needSyncMtimeCount") && (typeof message.needSyncMtimeCount === "object" ? message.needSyncMtimeCount.low || message.needSyncMtimeCount.high : message.needSyncMtimeCount !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.needSyncMtimeCount);
-                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount"))
+                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount") && (typeof message.needDeleteCount === "object" ? message.needDeleteCount.low || message.needDeleteCount.high : message.needDeleteCount !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.needDeleteCount);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -7742,7 +7829,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncEndMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -8146,9 +8233,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -8166,7 +8253,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncNeedPushMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -8445,11 +8532,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -8467,7 +8554,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteModifyAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -8780,11 +8867,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -8802,7 +8889,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteRenameAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -9115,11 +9202,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -9137,7 +9224,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteDeleteAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -9498,11 +9585,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.lastTime);
                 if (message.files != null && message.files.length)
                     for (let i = 0; i < message.files.length; ++i)
@@ -9513,9 +9600,9 @@ export const proto = $root.proto = (() => {
                 if (message.missingFiles != null && message.missingFiles.length)
                     for (let i = 0; i < message.missingFiles.length; ++i)
                         $root.proto.v1.FileSyncDelFile.encode(message.missingFiles[i], writer.uint32(/* id 6, wireType 2 =*/50).fork(), _depth + 1).ldelim();
-                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex"))
+                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex") && message.batchIndex !== 0)
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batchIndex);
-                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches"))
+                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches") && message.totalBatches !== 0)
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.totalBatches);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -9533,7 +9620,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -10010,17 +10097,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.size);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.mtime);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -10038,7 +10125,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -10428,9 +10515,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -10448,7 +10535,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncDelFile.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -10772,21 +10859,21 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.contentHash);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.size);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.mtime);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 8, wireType 2 =*/66).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -10804,7 +10891,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileUploadCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -11248,13 +11335,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -11272,7 +11359,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileDeleteRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -11614,17 +11701,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath"))
+                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath") && message.oldPath !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.oldPath);
-                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
+                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -11642,7 +11729,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileRenameRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -12020,17 +12107,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.sessionId);
-                if (message.chunkIndex != null && $Object.hasOwnProperty.call(message, "chunkIndex"))
+                if (message.chunkIndex != null && $Object.hasOwnProperty.call(message, "chunkIndex") && (typeof message.chunkIndex === "object" ? message.chunkIndex.low || message.chunkIndex.high : message.chunkIndex !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.chunkIndex);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -12048,7 +12135,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileChunkDownloadRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -12433,15 +12520,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle"))
+                if (message.isRecycle != null && $Object.hasOwnProperty.call(message, "isRecycle") && message.isRecycle !== false)
                     writer.uint32(/* id 4, wireType 0 =*/32).bool(message.isRecycle);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -12459,7 +12546,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileGetRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -12828,19 +12915,19 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.size);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -12858,7 +12945,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncModifyMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -13318,17 +13405,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.size);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -13346,7 +13433,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncDeleteMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -13815,23 +13902,23 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.mtime);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.size);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.lastTime);
-                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath"))
+                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath") && message.oldPath !== "")
                     writer.uint32(/* id 8, wireType 2 =*/66).string(message.oldPath);
-                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
+                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 9, wireType 2 =*/74).string(message.oldPathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -13849,7 +13936,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncRenameMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -14327,13 +14414,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -14351,7 +14438,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncMtimeMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -14732,15 +14819,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.needUploadCount != null && $Object.hasOwnProperty.call(message, "needUploadCount"))
+                if (message.needUploadCount != null && $Object.hasOwnProperty.call(message, "needUploadCount") && (typeof message.needUploadCount === "object" ? message.needUploadCount.low || message.needUploadCount.high : message.needUploadCount !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.needUploadCount);
-                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount"))
+                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount") && (typeof message.needModifyCount === "object" ? message.needModifyCount.low || message.needModifyCount.high : message.needModifyCount !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.needModifyCount);
-                if (message.needSyncMtimeCount != null && $Object.hasOwnProperty.call(message, "needSyncMtimeCount"))
+                if (message.needSyncMtimeCount != null && $Object.hasOwnProperty.call(message, "needSyncMtimeCount") && (typeof message.needSyncMtimeCount === "object" ? message.needSyncMtimeCount.low || message.needSyncMtimeCount.high : message.needSyncMtimeCount !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.needSyncMtimeCount);
-                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount"))
+                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount") && (typeof message.needDeleteCount === "object" ? message.needDeleteCount.low || message.needDeleteCount.high : message.needDeleteCount !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.needDeleteCount);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -14758,7 +14845,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncEndMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -15180,13 +15267,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.sessionId);
-                if (message.chunkSize != null && $Object.hasOwnProperty.call(message, "chunkSize"))
+                if (message.chunkSize != null && $Object.hasOwnProperty.call(message, "chunkSize") && (typeof message.chunkSize === "object" ? message.chunkSize.low || message.chunkSize.high : message.chunkSize !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.chunkSize);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -15204,7 +15291,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncUploadMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -15580,21 +15667,21 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.sessionId);
-                if (message.chunkSize != null && $Object.hasOwnProperty.call(message, "chunkSize"))
+                if (message.chunkSize != null && $Object.hasOwnProperty.call(message, "chunkSize") && (typeof message.chunkSize === "object" ? message.chunkSize.low || message.chunkSize.high : message.chunkSize !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.chunkSize);
-                if (message.totalChunks != null && $Object.hasOwnProperty.call(message, "totalChunks"))
+                if (message.totalChunks != null && $Object.hasOwnProperty.call(message, "totalChunks") && (typeof message.totalChunks === "object" ? message.totalChunks.low || message.totalChunks.high : message.totalChunks !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.totalChunks);
-                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 8, wireType 0 =*/64).int64(message.size);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -15612,7 +15699,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncDownloadMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -16079,11 +16166,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -16101,7 +16188,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileRenameAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -16414,11 +16501,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -16436,7 +16523,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileUploadAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -16749,11 +16836,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -16771,7 +16858,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileDeleteAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -17132,11 +17219,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.lastTime);
                 if (message.settings != null && message.settings.length)
                     for (let i = 0; i < message.settings.length; ++i)
@@ -17147,9 +17234,9 @@ export const proto = $root.proto = (() => {
                 if (message.missingSettings != null && message.missingSettings.length)
                     for (let i = 0; i < message.missingSettings.length; ++i)
                         $root.proto.v1.SettingSyncDelSetting.encode(message.missingSettings[i], writer.uint32(/* id 6, wireType 2 =*/50).fork(), _depth + 1).ldelim();
-                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex"))
+                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex") && message.batchIndex !== 0)
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batchIndex);
-                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches"))
+                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches") && message.totalBatches !== 0)
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.totalBatches);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -17167,7 +17254,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -17635,15 +17722,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.ctime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -17661,7 +17748,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -18017,9 +18104,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -18037,7 +18124,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncDelSetting.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -18361,21 +18448,21 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.content != null && $Object.hasOwnProperty.call(message, "content"))
+                if (message.content != null && $Object.hasOwnProperty.call(message, "content") && message.content !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.content);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.mtime);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 8, wireType 2 =*/66).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -18393,7 +18480,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingModifyOrCreateRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -18839,17 +18926,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.mtime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -18867,7 +18954,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingUpdateCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -19259,13 +19346,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -19283,7 +19370,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingDeleteRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -19598,11 +19685,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -19620,7 +19707,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingGetRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -19899,7 +19986,7 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -19917,7 +20004,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingClearRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -20222,21 +20309,21 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.content != null && $Object.hasOwnProperty.call(message, "content"))
+                if (message.content != null && $Object.hasOwnProperty.call(message, "content") && message.content !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.content);
-                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.contentHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 8, wireType 0 =*/64).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -20254,7 +20341,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncModifyMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -20707,15 +20794,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -20733,7 +20820,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncDeleteMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -21123,13 +21210,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -21147,7 +21234,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncMtimeMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -21528,15 +21615,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.needUploadCount != null && $Object.hasOwnProperty.call(message, "needUploadCount"))
+                if (message.needUploadCount != null && $Object.hasOwnProperty.call(message, "needUploadCount") && (typeof message.needUploadCount === "object" ? message.needUploadCount.low || message.needUploadCount.high : message.needUploadCount !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.needUploadCount);
-                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount"))
+                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount") && (typeof message.needModifyCount === "object" ? message.needModifyCount.low || message.needModifyCount.high : message.needModifyCount !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.needModifyCount);
-                if (message.needSyncMtimeCount != null && $Object.hasOwnProperty.call(message, "needSyncMtimeCount"))
+                if (message.needSyncMtimeCount != null && $Object.hasOwnProperty.call(message, "needSyncMtimeCount") && (typeof message.needSyncMtimeCount === "object" ? message.needSyncMtimeCount.low || message.needSyncMtimeCount.high : message.needSyncMtimeCount !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.needSyncMtimeCount);
-                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount"))
+                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount") && (typeof message.needDeleteCount === "object" ? message.needDeleteCount.low || message.needDeleteCount.high : message.needDeleteCount !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.needDeleteCount);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -21554,7 +21641,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncEndMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -21949,7 +22036,7 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -21967,7 +22054,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncNeedUploadMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -22227,11 +22314,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -22249,7 +22336,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingModifyAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -22562,11 +22649,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -22584,7 +22671,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingDeleteAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -22897,11 +22984,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.mtime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -22919,7 +23006,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncCheckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -23223,9 +23310,9 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -23243,7 +23330,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncDelFolder.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -23570,11 +23657,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.lastTime);
                 if (message.folders != null && message.folders.length)
                     for (let i = 0; i < message.folders.length; ++i)
@@ -23585,9 +23672,9 @@ export const proto = $root.proto = (() => {
                 if (message.missingFolders != null && message.missingFolders.length)
                     for (let i = 0; i < message.missingFolders.length; ++i)
                         $root.proto.v1.FolderSyncDelFolder.encode(message.missingFolders[i], writer.uint32(/* id 6, wireType 2 =*/50).fork(), _depth + 1).ldelim();
-                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex"))
+                if (message.batchIndex != null && $Object.hasOwnProperty.call(message, "batchIndex") && message.batchIndex !== 0)
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batchIndex);
-                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches"))
+                if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches") && message.totalBatches !== 0)
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.totalBatches);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -23605,7 +23692,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -24064,13 +24151,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -24088,7 +24175,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderCreateRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -24412,13 +24499,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -24436,7 +24523,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderDeleteRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -24778,17 +24865,17 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.vault);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
-                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath"))
+                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath") && message.oldPath !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.oldPath);
-                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
+                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -24806,7 +24893,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderRenameRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -25175,15 +25262,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -25201,7 +25288,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncModifyMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -25600,15 +25687,15 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -25626,7 +25713,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncDeleteMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -26043,19 +26130,19 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
-                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ctime);
-                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.mtime);
-                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath"))
+                if (message.oldPath != null && $Object.hasOwnProperty.call(message, "oldPath") && message.oldPath !== "")
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPath);
-                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
+                if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.oldPathHash);
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.lastTime);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -26073,7 +26160,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncRenameMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -26490,11 +26577,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount"))
+                if (message.needModifyCount != null && $Object.hasOwnProperty.call(message, "needModifyCount") && (typeof message.needModifyCount === "object" ? message.needModifyCount.low || message.needModifyCount.high : message.needModifyCount !== 0))
                     writer.uint32(/* id 2, wireType 0 =*/16).int64(message.needModifyCount);
-                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount"))
+                if (message.needDeleteCount != null && $Object.hasOwnProperty.call(message, "needDeleteCount") && (typeof message.needDeleteCount === "object" ? message.needDeleteCount.low || message.needDeleteCount.high : message.needDeleteCount !== 0))
                     writer.uint32(/* id 3, wireType 0 =*/24).int64(message.needDeleteCount);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -26512,7 +26599,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncEndMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -26857,11 +26944,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -26879,7 +26966,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderModifyAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -27192,11 +27279,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -27214,7 +27301,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderRenameAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -27527,11 +27614,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
+                if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 1, wireType 0 =*/8).int64(message.lastTime);
-                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
-                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -27549,7 +27636,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderDeleteAckMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -27871,13 +27958,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
-                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
+                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize") && message.pageSize !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageSize);
-                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount"))
+                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount") && message.totalCount !== 0)
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.totalCount);
-                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast"))
+                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast") && message.isLast !== false)
                     writer.uint32(/* id 5, wireType 0 =*/40).bool(message.isLast);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -27895,7 +27982,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncPageMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -28210,11 +28297,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageIndex);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -28232,7 +28319,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             NoteSyncPageAckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -28538,13 +28625,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
-                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
+                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize") && message.pageSize !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageSize);
-                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount"))
+                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount") && message.totalCount !== 0)
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.totalCount);
-                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast"))
+                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast") && message.isLast !== false)
                     writer.uint32(/* id 5, wireType 0 =*/40).bool(message.isLast);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -28562,7 +28649,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncPageMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -28877,11 +28964,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageIndex);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -28899,7 +28986,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FileSyncPageAckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -29205,13 +29292,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
-                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
+                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize") && message.pageSize !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageSize);
-                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount"))
+                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount") && message.totalCount !== 0)
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.totalCount);
-                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast"))
+                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast") && message.isLast !== false)
                     writer.uint32(/* id 5, wireType 0 =*/40).bool(message.isLast);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -29229,7 +29316,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncPageMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -29544,11 +29631,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageIndex);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -29566,7 +29653,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             SettingSyncPageAckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -29872,13 +29959,13 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 2, wireType 0 =*/16).int32(message.pageIndex);
-                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize"))
+                if (message.pageSize != null && $Object.hasOwnProperty.call(message, "pageSize") && message.pageSize !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageSize);
-                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount"))
+                if (message.totalCount != null && $Object.hasOwnProperty.call(message, "totalCount") && message.totalCount !== 0)
                     writer.uint32(/* id 4, wireType 0 =*/32).int32(message.totalCount);
-                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast"))
+                if (message.isLast != null && $Object.hasOwnProperty.call(message, "isLast") && message.isLast !== false)
                     writer.uint32(/* id 5, wireType 0 =*/40).bool(message.isLast);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -29896,7 +29983,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncPageMessage.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**
@@ -30211,11 +30298,11 @@ export const proto = $root.proto = (() => {
                     _depth = 0;
                 if (_depth > $util.recursionLimit)
                     throw $Error("max depth exceeded");
-                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.context);
-                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
+                if (message.vault != null && $Object.hasOwnProperty.call(message, "vault") && message.vault !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.vault);
-                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
+                if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 3, wireType 0 =*/24).int32(message.pageIndex);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
@@ -30233,7 +30320,7 @@ export const proto = $root.proto = (() => {
              * @returns {$protobuf.Writer} Writer
              */
             FolderSyncPageAckRequest.encodeDelimited = function(message, writer) {
-                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
             };
 
             /**

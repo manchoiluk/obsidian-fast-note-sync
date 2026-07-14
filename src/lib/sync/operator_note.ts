@@ -201,9 +201,9 @@ export const noteRename = async function (file: TAbstractFile, oldfile: string, 
         oldPathHash: hashContent(oldfile),
       }
 
-      // 将重命名信息推入 FIFO 队列，等待服务端 NoteRenameAck 后再更新 hashManager
-      // Push rename info to FIFO queue, update hashManager only after server NoteRenameAck
-      plugin.pendingNoteRenames.push({ oldPath: oldfile, newPath: file.path, contentHash })
+      // 将重命名信息存入 Map（key 为 newPath），等待服务端 NoteRenameAck 按 path 精确匹配后再更新 hashManager
+      // Store rename info in Map (keyed by newPath), update hashManager only after server NoteRenameAck matches by path
+      plugin.pendingNoteRenames.set(file.path, { oldPath: oldfile, newPath: file.path, contentHash })
       await plugin.concurrencyLimiter.waitForSlot(file.path, true)
       void plugin.websocket.SendMessage("NoteRename", data)
       dump(`Note rename send`, data.path, data.pathHash)
@@ -219,7 +219,7 @@ export const noteRename = async function (file: TAbstractFile, oldfile: string, 
 export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note modify:`, data.path, data.contentHash, data.mtime, data.pathHash)
@@ -232,6 +232,34 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
       plugin.addIgnoredFile(normalizedPath)
       try {
         if (file) {
+          // Fail-safe：写盘前检查本地是否有未推送的编辑，避免服务端推送盲覆盖用户刚做的改动
+          // Fail-safe: before overwriting, check for unsynced local edits so a server push
+          // doesn't blindly clobber changes the user just made
+          const hasPendingLocalEdit = plugin.pendingNoteModifies.has(data.path)
+          let hasDivergedSinceLastSync = false
+          if (!hasPendingLocalEdit) {
+            const knownSyncMtime = plugin.lastSyncMtime.get(data.path)
+            const localMtimeIsNewer = knownSyncMtime !== undefined && file.stat.mtime > knownSyncMtime
+            if (localMtimeIsNewer) {
+              // mtime 已比上次同步记录的新，进一步用内容哈希确认本地内容是否真的偏离了已知基准
+              // mtime is newer than what we last synced; confirm with content hash whether
+              // local content actually diverged from the known baseline
+              const knownBaseHash = plugin.fileHashManager.getPathHash(normalizedPath)
+              let localContentHash = plugin.fileHashManager.getValidHash(normalizedPath, file.stat.mtime, file.stat.size)
+              if (localContentHash === null) {
+                const localContent = await plugin.app.vault.read(file)
+                localContentHash = await hashContentAsync(localContent)
+              }
+              hasDivergedSinceLastSync = localContentHash !== knownBaseHash
+            }
+          }
+
+          if (hasPendingLocalEdit || hasDivergedSinceLastSync) {
+            dump(`[FastSync] Skip overwrite, local unsynced edit detected: ${normalizedPath}`)
+            SyncLogManager.getInstance().addLog('receive', 'NoteModifyConflict', `本地存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${normalizedPath}`, 'cancelled', data.path)
+            return
+          }
+
           await plugin.app.vault.modify(file, data.content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
         } else {
           const folder = normalizedPath.split("/").slice(0, -1).join("/")
@@ -277,8 +305,9 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteModify')) {
       SyncLogManager.getInstance().addLog('receive', 'NoteModify', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -289,22 +318,31 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
   if (plugin.settings.syncEnabled == false) return
   if (plugin.settings.readonlySyncEnabled) {
     dump(`Read-only mode: Intercepted note upload request for ${data.path}`)
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note need push:`, data.path)
   if (!data.path.endsWith(".md")) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   const file = plugin.app.vault.getFileByPath(normalizePath(data.path))
   if (!file) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
+  }
+
+  // NeedPush 驱动的上传-回执往返：Ack（receiveNoteModifyAck）本身不带 pageIndex，
+  // 在此按 path 记下所属页，供 Ack 到达时查表归账（见 sync_state.ts pendingNotePushPageIndex 注释）
+  // NeedPush-driven upload/ack round trip: the Ack (receiveNoteModifyAck) carries no pageIndex;
+  // record the owning page by path here so the Ack can look it up on arrival (see sync_state.ts
+  // pendingNotePushPageIndex comment)
+  if (data.pageIndex !== undefined) {
+    plugin.syncState.pendingNotePushPageIndex.set(file.path, data.pageIndex)
   }
 
   plugin.addIgnoredFile(file.path)
@@ -349,7 +387,7 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
 export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note sync mtime:`, data.path, data.mtime)
@@ -388,8 +426,9 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteMtime')) {
       SyncLogManager.getInstance().addLog('receive', 'NoteMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -399,7 +438,7 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
 export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
   dump(`Receive note delete:`, data.path, data.mtime, data.pathHash)
@@ -437,8 +476,9 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
   } catch (e) {
     dumpError(`[FastSync] Failed to receiveNoteSyncDelete: ${normalizedPath}`, e);
     SyncLogManager.getInstance().addLog('receive', 'NoteDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+    plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -465,10 +505,10 @@ export const receiveNoteSyncEnd = async function (data: unknown, plugin: FastSyn
 /**
  * 接收服务端笔记重命名通知
  */
-export const receiveNoteSyncRename = async function (data: { path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
+export const receiveNoteSyncRename = async function (data: { path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
     return
   }
 
@@ -557,8 +597,9 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteRename')) {
       SyncLogManager.getInstance().addLog('receive', 'NoteRename', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.noteSyncTasks.failed++
   } finally {
-    plugin.noteSyncTasks.completed++
+    plugin.recordSyncCompleted('note', data.pageIndex)
   }
 }
 
@@ -585,15 +626,32 @@ export const receiveNoteModifyAck = function (data: { lastTime?: number; path?: 
   if (data.path) {
     plugin.concurrencyLimiter.releaseSlot(data.path)
   }
-  plugin.noteSyncTasks.completed++
+  // 该 Ack 若对应服务端 NeedPush 驱动的上传，查表取回其所属下载页归账（供 ack 水位线推进）；
+  // 查不到说明是本地用户自发编辑触发的 Ack，不属于任何页，走旧路径（现状语义不变）
+  // If this Ack corresponds to a server NeedPush-driven upload, look up its owning download page
+  // for correct accounting (drives the ack watermark); a miss means a local user-initiated edit
+  // triggered it — doesn't belong to any page, falls back to the legacy path (unchanged semantics)
+  const pushPageIndex = data.path ? plugin.syncState.pendingNotePushPageIndex.get(data.path) : undefined;
+  if (data.path) plugin.syncState.pendingNotePushPageIndex.delete(data.path)
+  plugin.recordSyncCompleted('note', pushPageIndex)
 }
 
-// 收到 NoteRenameAck，从 FIFO 队列取出待确认条目并更新 hashManager
-// Receive NoteRenameAck, shift from FIFO queue and update hashManager
-export const receiveNoteRenameAck = function (data: { lastTime?: number }, plugin: FastSync) {
-  // TCP 保证有序，FIFO 匹配正确
-  // TCP guarantees ordering, FIFO matching is correct
-  const pending = plugin.pendingNoteRenames.shift()
+// 收到 NoteRenameAck，按 data.path 精确匹配待确认条目并更新 hashManager；老服务端不下发 path 时回退 FIFO
+// Receive NoteRenameAck, match pending entry precisely by data.path and update hashManager; falls back to FIFO when legacy server omits path
+export const receiveNoteRenameAck = function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
+  let pending: { oldPath: string; newPath: string; contentHash: string } | undefined
+  if (data.path) {
+    pending = plugin.pendingNoteRenames.get(data.path)
+    if (pending) plugin.pendingNoteRenames.delete(data.path)
+  } else {
+    // 老服务端未下发 path，回退 FIFO（Map 插入顺序取首个）
+    // Legacy server omits path, fall back to FIFO (first inserted entry in Map order)
+    const firstKey = plugin.pendingNoteRenames.keys().next().value as string | undefined
+    if (firstKey !== undefined) {
+      pending = plugin.pendingNoteRenames.get(firstKey)
+      plugin.pendingNoteRenames.delete(firstKey)
+    }
+  }
   if (pending) {
     plugin.fileHashManager.removeFileHash(pending.oldPath)
     // 重命名 Ack 时，内容哈希未变，尝试获取新路径的文件信息

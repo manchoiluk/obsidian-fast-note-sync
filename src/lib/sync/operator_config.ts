@@ -22,6 +22,19 @@ export const CONFIG_THEME_EXTS_TO_WATCH = [".css", ".json"]
 let reloadTimer: number | null = null
 const pendingConfigUpdates: Map<string, string> = new Map()
 
+/**
+ * 清理模块级 reloadTimer（插件卸载时调用，避免定时器在插件卸载后仍触发回调）
+ * Clean up the module-level reloadTimer (called on plugin unload to prevent the
+ * timer callback from firing after the plugin instance has been unloaded)
+ */
+export const cleanupConfigReloadTimer = function (): void {
+    if (reloadTimer) {
+        window.clearTimeout(reloadTimer)
+        reloadTimer = null
+    }
+    pendingConfigUpdates.clear()
+}
+
 export const configModify = async function (path: string, plugin: FastSync, eventEnter: boolean = false, content?: string) {
     if (plugin.settings.configSyncEnabled == false || plugin.settings.readonlySyncEnabled) return
     if (!isPathInConfigSyncDirs(path, plugin)) return
@@ -135,18 +148,18 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
     const isVirtual = data.path.startsWith(plugin.localStorageManager.syncPathPrefix)
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
     if (plugin.ignoredConfigFiles.has(data.path)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
@@ -159,10 +172,10 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
                 if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))) {
                     plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
                 }
-                plugin.configSyncTasks.completed++
+                plugin.recordSyncCompleted('setting', data.pageIndex)
                 return
             }
-            plugin.configSyncTasks.completed++
+            plugin.recordSyncCompleted('setting', data.pageIndex)
             return
         }
 
@@ -174,12 +187,46 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
             }
         }
         const filePath = normalizePath(data.path)
+
+        // Fail-safe：写盘前检查本地是否有未推送的编辑，避免服务端推送盲覆盖用户刚做的改动
+        // Fail-safe: before overwriting, check for unsynced local edits so a server push
+        // doesn't blindly clobber changes the user just made
+        const hasPendingLocalEdit = plugin.pendingConfigModifies.has(data.path)
+        let hasDivergedSinceLastSync = false
+        if (!hasPendingLocalEdit) {
+            const existingStat = await plugin.app.vault.adapter.stat(filePath)
+            if (existingStat) {
+                const knownSyncMtime = plugin.lastSyncMtime.get(data.path)
+                const localMtimeIsNewer = knownSyncMtime !== undefined && existingStat.mtime > knownSyncMtime
+                if (localMtimeIsNewer) {
+                    // mtime 已比上次同步记录的新，进一步用内容哈希确认本地内容是否真的偏离了已知基准
+                    // mtime is newer than what we last synced; confirm with content hash whether
+                    // local content actually diverged from the known baseline
+                    const knownBaseHash = plugin.configHashManager.getPathHash(data.path)
+                    let localContentHash = plugin.configHashManager.getValidHash(data.path, existingStat.mtime, existingStat.size)
+                    if (localContentHash === null) {
+                        localContentHash = await hashFileAsync(plugin.app, filePath)
+                    }
+                    hasDivergedSinceLastSync = localContentHash !== knownBaseHash
+                }
+            }
+        }
+
+        if (hasPendingLocalEdit || hasDivergedSinceLastSync) {
+            dump(`[FastSync] Skip config overwrite, local unsynced edit detected: ${filePath}`)
+            SyncLogManager.getInstance().addLog('receive', 'ConfigModifyConflict', `本地配置存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${filePath}`, 'cancelled', data.path)
+            plugin.removeIgnoredConfigFile(data.path)
+            plugin.recordSyncCompleted('setting', data.pageIndex)
+            return
+        }
+
         await plugin.app.vault.adapter.write(filePath, data.content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
     } catch (e) {
         dumpError("[writeConfigFile] error:", e)
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigModify')) {
             SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.configSyncTasks.failed++
     }
 
     await configReload(data.path, plugin, false, data.content)
@@ -209,25 +256,25 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
         plugin.lastSyncMtime.set(data.path, mtime)
     }
 
-    plugin.configSyncTasks.completed++
+    plugin.recordSyncCompleted('setting', data.pageIndex)
 }
 
 export const receiveConfigUpload = async function (data: ReceivePathMessage, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return;
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
     const isVirtual = data.path.startsWith(plugin.localStorageManager.syncPathPrefix)
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
     if (isVirtual) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
@@ -255,12 +302,13 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
         }
     } catch (error) {
         dumpError("读取配置文件出错:", error);
-        plugin.configSyncTasks.completed++;
+        plugin.configSyncTasks.failed++;
+        plugin.recordSyncCompleted('setting', data.pageIndex);
         return
     }
 
     if (!contentBuf || mtime === 0) {
-        plugin.configSyncTasks.completed++;
+        plugin.recordSyncCompleted('setting', data.pageIndex);
         return;
     }
 
@@ -279,6 +327,13 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
     // Temporarily store hash in pending map, update configHashManager only after server SettingModifyAck
     plugin.pendingConfigModifies.set(data.path, contentHash)
     plugin.localStorageManager.savePending('pendingConfigModifies', plugin.pendingConfigModifies)
+    // NeedPush 驱动的上传-回执往返：SettingModifyAck 本身不带 pageIndex，按 path 记下所属页供 Ack 归账
+    // （见 sync_state.ts pendingConfigPushPageIndex 注释）
+    // NeedPush-driven upload/ack round trip: SettingModifyAck carries no pageIndex; record the
+    // owning page by path for the Ack to look up (see sync_state.ts pendingConfigPushPageIndex comment)
+    if (data.pageIndex !== undefined) {
+        plugin.syncState.pendingConfigPushPageIndex.set(data.path, data.pageIndex)
+    }
     await plugin.concurrencyLimiter.waitForSlot(data.path)
     void plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
         plugin.removeIgnoredConfigFile(data.path);
@@ -289,16 +344,16 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
     if (plugin.ignoredConfigFiles.has(data.path)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
@@ -314,6 +369,7 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigMtime')) {
             SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.configSyncTasks.failed++
     }
     plugin.removeIgnoredConfigFile(data.path)
 
@@ -322,23 +378,23 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
         plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
     }
 
-    plugin.configSyncTasks.completed++
+    plugin.recordSyncCompleted('setting', data.pageIndex)
 }
 
-export const receiveConfigSyncDelete = async function (data: { path: string, lastTime?: number }, plugin: FastSync) {
+export const receiveConfigSyncDelete = async function (data: { path: string, lastTime?: number, pageIndex?: number }, plugin: FastSync) {
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
     if (plugin.ignoredConfigFiles.has(data.path)) {
-        plugin.configSyncTasks.completed++
+        plugin.recordSyncCompleted('setting', data.pageIndex)
         return
     }
 
@@ -359,6 +415,7 @@ export const receiveConfigSyncDelete = async function (data: { path: string, las
     } catch (e) {
         dumpError("[receiveConfigSyncDelete] error:", e)
         SyncLogManager.getInstance().addLog('receive', 'ConfigDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+        plugin.configSyncTasks.failed++
     }
 
     // 更新 ConfigManager 的文件状态
@@ -377,7 +434,7 @@ export const receiveConfigSyncDelete = async function (data: { path: string, las
     }
     if (data.path) { plugin.concurrencyLimiter.releaseSlot(data.path) }
 
-    plugin.configSyncTasks.completed++
+    plugin.recordSyncCompleted('setting', data.pageIndex)
 }
 
 export const receiveConfigSyncEnd = async function (data: unknown, plugin: FastSync) {
@@ -441,7 +498,12 @@ export const receiveConfigModifyAck = async function (data: { lastTime?: number;
     if (data.path) {
         plugin.concurrencyLimiter.releaseSlot(data.path)
     }
-    plugin.configSyncTasks.completed++
+    // 查表归账所属下载页（NeedPush 驱动）；查不到说明是本地用户自发编辑触发的 Ack，走旧路径
+    // Look up the owning download page (NeedPush-driven); a miss means a local user-initiated
+    // edit triggered this Ack, falls back to the legacy path
+    const pushPageIndex = data.path ? plugin.syncState.pendingConfigPushPageIndex.get(data.path) : undefined;
+    if (data.path) plugin.syncState.pendingConfigPushPageIndex.delete(data.path)
+    plugin.recordSyncCompleted('setting', pushPageIndex)
 }
 
 /**

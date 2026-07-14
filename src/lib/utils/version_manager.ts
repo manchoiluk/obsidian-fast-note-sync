@@ -113,6 +113,17 @@ export class VersionManager {
         if (typeof data.syncDownChunkNum === 'number') {
             plugin.syncState.syncDownChunkNum = data.syncDownChunkNum;
         }
+        // 兜底路径（设计稿 §5.1/S1）：ClientInfo 响应同样携带窗口参数，供旧握手流程或后台改配置后
+        // 广播时幂等覆盖；pv2 连接下 auth 协商块已经写过一次，这里再次覆盖为同一值，无副作用。
+        // Fallback path: ClientInfo response also carries window params for idempotent overwrite by
+        // the legacy handshake flow or an admin-side config broadcast; on pv2 connections this simply
+        // re-applies the same value already written from the auth negotiation block.
+        if (typeof data.pipelineWindowUp === 'number') {
+            plugin.syncState.pipelineWindowUp = data.pipelineWindowUp;
+        }
+        if (typeof data.pipelineWindowDown === 'number') {
+            plugin.syncState.pipelineWindowDown = data.pipelineWindowDown;
+        }
 
         // 针对服务端版本 (For server version)
         const serverCurrent = (plugin.localStorageManager.getMetadata("serverVersion") as string) || "";

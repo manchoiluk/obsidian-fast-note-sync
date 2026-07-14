@@ -31,26 +31,36 @@ export class LocalStorageManager {
     }
 
     private getInternalKey(field: string): string {
-        // 使用简短前缀 fns- 并绑定本地仓库名
-        const vaultName = this.plugin.app.vault.getName();
-        return `fns-${vaultName}-${field}`;
+        // Obsidian 的 loadLocalStorage/saveLocalStorage 已按 vault(appId) 隔离，无需再叠加 vault 显示名做前缀。
+        // 旧实现用 `fns-${vaultName}-${field}`：vault 一旦被改名（iCloud 手机端同步冲突会把库文件夹改成 "Vault 1" 等，
+        // 非常常见），新 key 读不到旧值 → api/token/vault 被判为空 → 又被回存覆盖，同步配置永久丢失。
+        // 改用与 vault 名无关的稳定 key，配合 getMetadata 的历史键迁移逻辑找回旧数据。
+        return `fns-${field}`;
     }
 
-    getMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken' | 'apiUrl' | 'vault' | 'autoRedirectEnabled' | 'wsPreProbeEnabled' | 'serverVersionHistory' | 'pluginVersionHistory'): unknown {
+    getMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'lastSyncSuccessTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken' | 'apiUrl' | 'vault' | 'autoRedirectEnabled' | 'wsPreProbeEnabled' | 'serverVersionHistory' | 'pluginVersionHistory'): unknown {
         const newKey = this.getInternalKey(field);
         let value = this.read(newKey);
 
-        // 迁移逻辑
+        // 迁移逻辑：新 key 读不到时，依次回溯历史格式的键，命中即迁移到新的稳定 key
         if (value === null) {
             const vaultName = this.plugin.app.vault.getName();
-            // 尝试读取上一个格式: fast-note-sync-[本地库名]-[field]
-            const prevKey = `fast-note-sync-${vaultName}-${field}`;
-            let oldValue = this.read(prevKey);
+            const remoteVault = this.plugin.settings.vault;
+            // 按由新到旧的顺序尝试历史键格式
+            const legacyKeys = [
+                `fns-${vaultName}-${field}`,                // 上一版：绑定本地库名
+                `fast-note-sync-${vaultName}-${field}`,     // 更早版：绑定本地库名
+            ];
+            // 若设置里存有与当前不同的远端库名，再补上远端库名格式（应对早期改名场景）
+            if (remoteVault && remoteVault !== vaultName) {
+                legacyKeys.push(`fns-${remoteVault}-${field}`);
+                legacyKeys.push(`fast-note-sync-${remoteVault}-${field}`);
+            }
 
-            // 尝试读取最初格式（如果存在远端库名）: fast-note-sync-[远端库名]-[field]
-            if (oldValue === null && this.plugin.settings.vault && this.plugin.settings.vault !== vaultName) {
-                const oldRemoteKey = `fast-note-sync-${this.plugin.settings.vault}-${field}`;
-                oldValue = this.read(oldRemoteKey);
+            let oldValue: string | null = null;
+            for (const legacyKey of legacyKeys) {
+                oldValue = this.read(legacyKey);
+                if (oldValue !== null) break;
             }
 
             if (oldValue !== null) {
@@ -71,7 +81,7 @@ export class LocalStorageManager {
     /**
      * 设置元数据项
      */
-    setMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken' | 'apiUrl' | 'vault' | 'autoRedirectEnabled' | 'wsPreProbeEnabled' | 'serverVersionHistory' | 'pluginVersionHistory', value: unknown): void {
+    setMetadata(field: 'lastNoteSyncTime' | 'lastFileSyncTime' | 'lastConfigSyncTime' | 'lastFolderSyncTime' | 'lastSyncSuccessTime' | 'clientName' | 'isInitSync' | 'serverVersion' | 'serverChangelog' | 'serverVersionIsNew' | 'serverVersionNewName' | 'serverVersionNewLink' | 'serverVersionNewChangelogContent' | 'serverVersionChangelogContent' | 'pluginVersionIsNew' | 'pluginVersionNewName' | 'pluginVersionNewLink' | 'pluginVersionNewChangelogContent' | 'pluginVersionChangelogContent' | 'internalExcludes' | 'apiToken' | 'apiUrl' | 'vault' | 'autoRedirectEnabled' | 'wsPreProbeEnabled' | 'serverVersionHistory' | 'pluginVersionHistory', value: unknown): void {
         this.write(this.getInternalKey(field), String(value));
     }
 

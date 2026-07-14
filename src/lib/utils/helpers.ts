@@ -428,8 +428,19 @@ const FILE_HASH_THRESHOLD = 10 * 1024 * 1024 // 10MB
 const FILE_HASH_SLICE_SIZE = 5 * 1024 * 1024 // 5MB
 
 /**
+ * 计算大文件中段采样起始偏移：以文件中点为中心取一个切片长度的区间，并夹紧到有效范围内
+ * Calculate the start offset of the middle sample slice for large files: centered on the
+ * file's midpoint, clamped to a valid range.
+ */
+function computeMidSliceStart(size: number): number {
+  const idealStart = Math.floor(size / 2) - Math.floor(FILE_HASH_SLICE_SIZE / 2)
+  const maxStart = Math.max(0, size - FILE_HASH_SLICE_SIZE)
+  return Math.min(Math.max(0, idealStart), maxStart)
+}
+
+/**
  * 对 ArrayBuffer 进行哈希 (统一采用 JS 数字滚动哈希以保持一致性)
- * 对于超过 10MB 的数据，仅计算前 5MB 和后 5MB 的哈希值。
+ * 对于超过 10MB 的数据，仅计算前 5MB、中间 5MB (以文件中点为中心) 和后 5MB 的哈希值。
  * 分段计算并适时让出主线程，防止大文件导致 UI 卡顿 (Processed in chunks to yield main thread)
  */
 export const hashArrayBuffer = async function (buffer: ArrayBuffer): Promise<string> {
@@ -439,17 +450,20 @@ export const hashArrayBuffer = async function (buffer: ArrayBuffer): Promise<str
   if (size <= FILE_HASH_THRESHOLD) {
     view = new Uint8Array(buffer)
   } else {
-    // 大文件优化：拼接前 5MB 和后 5MB (Optimize for large files: slice first and last 5MB)
-    view = new Uint8Array(FILE_HASH_SLICE_SIZE * 2)
+    // 大文件优化：拼接前 5MB、中间 5MB 和后 5MB (Optimize for large files: slice first, middle, and last 5MB)
+    view = new Uint8Array(FILE_HASH_SLICE_SIZE * 3)
     const fullView = new Uint8Array(buffer)
 
     // 添加边界保护：确保 subarray 不会超出 view 的预留空间 (Boundary protection: ensure subarray fits in view)
     const headLen = Math.min(size, FILE_HASH_SLICE_SIZE)
     const tailLen = Math.min(size, FILE_HASH_SLICE_SIZE)
     const tailStart = Math.max(0, size - tailLen)
+    const midStart = computeMidSliceStart(size)
+    const midLen = Math.min(FILE_HASH_SLICE_SIZE, size - midStart)
 
     view.set(fullView.subarray(0, headLen), 0)
-    view.set(fullView.subarray(tailStart, size), FILE_HASH_SLICE_SIZE)
+    view.set(fullView.subarray(midStart, midStart + midLen), FILE_HASH_SLICE_SIZE)
+    view.set(fullView.subarray(tailStart, size), FILE_HASH_SLICE_SIZE * 2)
   }
 
   return await computeRollingHash(view)
@@ -493,7 +507,7 @@ async function readRange(app: App, path: string, offset: number, length: number)
 }
 
 /**
- * 直接通过文件路径计算哈希 (优化：大文件仅读取首尾，避免 OOM)
+ * 直接通过文件路径计算哈希 (优化：大文件仅读取头/中/尾，避免 OOM)
  * Calculate hash directly from file path (Optimization: read only head/tail for large files to avoid OOM)
  */
 export const hashFileAsync = async function (app: App, path: string): Promise<string> {
@@ -508,32 +522,38 @@ export const hashFileAsync = async function (app: App, path: string): Promise<st
     const buffer = await app.vault.adapter.readBinary(path)
     view = new Uint8Array(buffer)
   } else {
-    // 大文件优化：优先使用 fetch + Range 仅读取前 5MB 和后 5MB (Large file optimization: try fetch first/last 5MB)
+    // 大文件优化：优先使用 fetch + Range 仅读取前 5MB、中间 5MB 和后 5MB (Large file optimization: try fetch head/middle/tail 5MB)
+    const midOffset = computeMidSliceStart(size)
     try {
       const head = await readRange(app, path, 0, FILE_HASH_SLICE_SIZE)
+      const mid = await readRange(app, path, midOffset, Math.min(FILE_HASH_SLICE_SIZE, size - midOffset))
       const tailOffset = Math.max(0, size - FILE_HASH_SLICE_SIZE)
       const tail = await readRange(app, path, tailOffset, FILE_HASH_SLICE_SIZE)
 
-      view = new Uint8Array(FILE_HASH_SLICE_SIZE * 2)
+      view = new Uint8Array(FILE_HASH_SLICE_SIZE * 3)
       const headUint8 = new Uint8Array(head)
+      const midUint8 = new Uint8Array(mid)
       const tailUint8 = new Uint8Array(tail)
 
       // 强制截断至标准切片大小，防止 Uint8Array.set 越界 (Force slice to standard size to prevent RangeError)
       view.set(headUint8.subarray(0, Math.min(headUint8.length, FILE_HASH_SLICE_SIZE)), 0)
-      view.set(tailUint8.subarray(0, Math.min(tailUint8.length, FILE_HASH_SLICE_SIZE)), FILE_HASH_SLICE_SIZE)
+      view.set(midUint8.subarray(0, Math.min(midUint8.length, FILE_HASH_SLICE_SIZE)), FILE_HASH_SLICE_SIZE)
+      view.set(tailUint8.subarray(0, Math.min(tailUint8.length, FILE_HASH_SLICE_SIZE)), FILE_HASH_SLICE_SIZE * 2)
     } catch (e) {
       dump(`hashFileAsync: readRange failed or timeout, falling back to full read for ${path}: ${(e as Error).message}`);
       // 兜底方案：加载完整文件内容 (Fallback: read full file)
       const buffer = await app.vault.adapter.readBinary(path)
       const fullView = new Uint8Array(buffer)
-      view = new Uint8Array(FILE_HASH_SLICE_SIZE * 2)
+      view = new Uint8Array(FILE_HASH_SLICE_SIZE * 3)
 
       const headLen = Math.min(size, FILE_HASH_SLICE_SIZE)
       const tailLen = Math.min(size, FILE_HASH_SLICE_SIZE)
       const tailStart = Math.max(0, size - tailLen)
+      const midLen = Math.min(FILE_HASH_SLICE_SIZE, size - midOffset)
 
       view.set(fullView.subarray(0, headLen), 0)
-      view.set(fullView.subarray(tailStart, size), FILE_HASH_SLICE_SIZE)
+      view.set(fullView.subarray(midOffset, midOffset + midLen), FILE_HASH_SLICE_SIZE)
+      view.set(fullView.subarray(tailStart, size), FILE_HASH_SLICE_SIZE * 2)
     }
   }
 
@@ -615,6 +635,21 @@ export const getSafeCtime = function (stat: { ctime?: number; mtime?: number }):
 export const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
 /**
+ * 让出主线程 (优先 MessageChannel, 避免 setTimeout(0) 被 Chromium 钳制到 4ms)
+ */
+export const yieldToMain = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (typeof MessageChannel !== "undefined") {
+      const channel = new MessageChannel()
+      channel.port1.onmessage = () => resolve()
+      channel.port2.postMessage(null)
+    } else {
+      window.setTimeout(resolve, 0)
+    }
+  })
+}
+
+/**
  * 防抖函数
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -624,6 +659,108 @@ export function debounce<T extends (...args: unknown[]) => unknown>(func: T, wai
     timeout = window.setTimeout(() => {
       func.apply(this, args)
     }, wait)
+  }
+}
+
+/**
+ * =============================================================================
+ * 本地状态文件镜像 (Local State File Mirror)
+ * =============================================================================
+ */
+
+/**
+ * 本地状态文件镜像器：把某个纯 localStorage 状态额外镜像一份到 vault 内的文件，
+ * 用于移动端 WebView localStorage 被系统清除后的兜底恢复（文件哈希表/配置哈希表/目录快照等）。
+ * 镜像文件路径挂在插件目录下，构造时即通过 configAddPathExcluded 挡在配置同步之外
+ * (内存级排除，不依赖 localStorage，因此不会被同样的清除问题连带影响)。
+ * Local state file mirror: mirrors a piece of localStorage-only state into a file inside the vault,
+ * so it can be recovered after mobile WebView localStorage gets cleared by the system (file hash map /
+ * config hash map / folder snapshot, etc). The mirror path lives under the plugin dir and is excluded
+ * from config sync via configAddPathExcluded at construction time (in-memory exclusion, unaffected by
+ * the same localStorage-clearing issue).
+ */
+export class LocalStateFileMirror {
+  private plugin: FastSync;
+  private mirrorPath: string;
+  private latestData: string | null = null;
+  // 是否存在尚未落盘的最新数据 (Whether latestData hasn't been persisted yet)
+  private pendingWrite: boolean = false;
+  // 写入串行化：写入在途时不并发发起新写入，仅记下需要在写完后重跑一次
+  // Write serialization: don't start a concurrent write while one is in-flight; just remember to rerun once it finishes
+  private isWriting: boolean = false;
+  private rerunAfterWrite: boolean = false;
+  private writeTimer: number | null = null;
+
+  constructor(plugin: FastSync, fileName: string) {
+    this.plugin = plugin;
+    this.mirrorPath = `${getPluginDir(plugin)}/${fileName}`;
+    // 挡在配置同步之外，防止镜像文件本身被当作配置项同步
+    configAddPathExcluded(this.mirrorPath, plugin);
+  }
+
+  /**
+   * 读取镜像文件内容；不存在或异常均返回 null，绝不弹 toast
+   */
+  async read(): Promise<string | null> {
+    try {
+      const exists = await this.plugin.app.vault.adapter.exists(this.mirrorPath);
+      if (!exists) return null;
+      return await this.plugin.app.vault.adapter.read(this.mirrorPath);
+    } catch (error) {
+      dump(`LocalStateFileMirror: 读取镜像文件失败: ${this.mirrorPath}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 安排一次防抖写入 (2000ms)，latest-wins：期间多次调用只保留最新一份数据
+   */
+  scheduleWrite(data: string): void {
+    this.latestData = data;
+    this.pendingWrite = true;
+    if (this.writeTimer) window.clearTimeout(this.writeTimer);
+    this.writeTimer = window.setTimeout(() => {
+      this.writeTimer = null;
+      this.doWrite();
+    }, 2000);
+  }
+
+  /**
+   * 串行化落盘：写入在途时只标记需要重跑，绝不并发 adapter.write；写失败只 dump，不弹 toast
+   */
+  private doWrite(): void {
+    if (!this.pendingWrite || this.latestData === null) return;
+    if (this.isWriting) {
+      this.rerunAfterWrite = true;
+      return;
+    }
+    this.isWriting = true;
+    this.pendingWrite = false;
+    const data = this.latestData;
+    void this.plugin.app.vault.adapter.write(this.mirrorPath, data)
+      .catch((error) => {
+        dump(`LocalStateFileMirror: 写入镜像文件失败: ${this.mirrorPath}`, error);
+      })
+      .finally(() => {
+        this.isWriting = false;
+        if (this.rerunAfterWrite) {
+          this.rerunAfterWrite = false;
+          this.pendingWrite = true;
+          this.doWrite();
+        }
+      });
+  }
+
+  /**
+   * 若有未落盘的数据，取消防抖计时器并立即触发一次写入 (同步上下文调用，void 掉 promise)
+   */
+  flush(): void {
+    if (this.writeTimer) {
+      window.clearTimeout(this.writeTimer);
+      this.writeTimer = null;
+    }
+    if (!this.pendingWrite) return;
+    this.doWrite();
   }
 }
 
@@ -875,10 +1012,9 @@ export async function loadWsPreProbe(app: App, plugin: FastSync, dataJsonEnabled
 }
 
 /**
- * 计算特定 Vault 的混淆 Key
+ * 从任意字符串派生混淆 Key
  */
-function getObfuscationKey(app: App): number {
-  const val = app.vault.getName() + "_" + app.vault.configDir;
+function hashToKey(val: string): number {
   let hash = 0;
   for (let i = 0; i < val.length; i++) {
     hash = (hash << 5) - hash + val.charCodeAt(i);
@@ -888,32 +1024,64 @@ function getObfuscationKey(app: App): number {
 }
 
 /**
- * 对 Token 进行基于当前 Vault 标识的混淆加密
+ * 稳定混淆 Key：不依赖 vault 名/configDir，跨 iCloud 改名恒定。
+ * 混淆本非真加密（key 从源码可推），此处目的仅是「不明文落盘」，用固定盐即可，
+ * 且能让 data.json 里的 token 在多设备间正常解码（同步兜底所需）。
  */
-export function obfuscateToken(app: App, token: string): string {
-  if (!token) return "";
-  const key = getObfuscationKey(app);
-  let result = "";
-  for (let i = 0; i < token.length; i++) {
-    const charCode = token.charCodeAt(i) ^ (key % 256);
-    result += ("0" + charCode.toString(16)).slice(-2);
-  }
-  return "fns-enc:" + result;
+const STABLE_OBFUSCATION_SALT = "fast-note-sync-stable-obf-v1";
+function getStableObfuscationKey(): number {
+  return hashToKey(STABLE_OBFUSCATION_SALT);
 }
 
 /**
- * 对混淆加密的 Token 进行解密
+ * 旧版混淆 Key：绑定 vault 显示名。仅用于兼容解码历史 `fns-enc:` 密文。
+ * 注意：vault 一旦被 iCloud 改名，此 key 就变了 → 旧密文解出乱码（这正是配置丢失根因之一），
+ * 因此新写入一律走稳定 key（fns-enc2:），此函数只在读旧值时兜底。
  */
-export function deobfuscateToken(app: App, encryptedToken: string): string {
-  if (!encryptedToken || !encryptedToken.startsWith("fns-enc:")) return "";
-  const rawHex = encryptedToken.substring(8);
-  const key = getObfuscationKey(app);
+function getLegacyObfuscationKey(app: App): number {
+  return hashToKey(app.vault.getName() + "_" + app.vault.configDir);
+}
+
+function xorHex(input: string, key: number): string {
+  let result = "";
+  for (let i = 0; i < input.length; i++) {
+    const charCode = input.charCodeAt(i) ^ (key % 256);
+    result += ("0" + charCode.toString(16)).slice(-2);
+  }
+  return result;
+}
+
+function unxorHex(rawHex: string, key: number): string {
   let result = "";
   for (let i = 0; i < rawHex.length; i += 2) {
     const charCode = parseInt(rawHex.substring(i, i + 2), 16) ^ (key % 256);
     result += String.fromCharCode(charCode);
   }
   return result;
+}
+
+/**
+ * 对 Token 进行混淆加密（稳定 key，跨 vault 改名/多设备恒定），输出 `fns-enc2:` 格式
+ */
+export function obfuscateToken(app: App, token: string): string {
+  if (!token) return "";
+  return "fns-enc2:" + xorHex(token, getStableObfuscationKey());
+}
+
+/**
+ * 解密混淆 Token：
+ * - `fns-enc2:` 新格式 → 稳定 key 解码
+ * - `fns-enc:`  旧格式 → 旧版 vault 名 key 解码（vault 未改名时可恢复；已改名则为乱码，需重输）
+ */
+export function deobfuscateToken(app: App, encryptedToken: string): string {
+  if (!encryptedToken) return "";
+  if (encryptedToken.startsWith("fns-enc2:")) {
+    return unxorHex(encryptedToken.substring(9), getStableObfuscationKey());
+  }
+  if (encryptedToken.startsWith("fns-enc:")) {
+    return unxorHex(encryptedToken.substring(8), getLegacyObfuscationKey(app));
+  }
+  return "";
 }
 
 /**
@@ -979,12 +1147,22 @@ export async function loadApiToken(app: App, plugin: FastSync, dataJsonToken?: s
       dump("[ApiToken] Found legacy encrypted token, but SafeStorage is removed. Please re-input token.");
       return "";
     }
-    
-    // 如果已经是新版混淆加密格式，进行解密
-    if (token.startsWith("fns-enc:")) {
+
+    // 新版稳定混淆格式：直接解码
+    if (token.startsWith("fns-enc2:")) {
       return deobfuscateToken(app, token);
     }
-    
+
+    // 旧版 vault 名混淆格式：解码后自动升级为稳定格式（vault 未改名时可恢复，已改名则解出乱码，用户需重输）
+    if (token.startsWith("fns-enc:")) {
+      const decoded = deobfuscateToken(app, token);
+      if (decoded) {
+        dump("[ApiToken] Migrating legacy vault-keyed token to stable obfuscation...");
+        void saveApiToken(app, plugin, decoded);
+      }
+      return decoded;
+    }
+
     // 否则，说明是历史保存的明文 Token：
     // 1. 兼容性读取
     const plainToken = token;

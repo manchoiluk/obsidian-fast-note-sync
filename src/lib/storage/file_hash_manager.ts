@@ -1,4 +1,4 @@
-import { hashContentAsync, dump, isPathExcluded, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, logMemorySnapshot, hashFileAsync } from "../utils/helpers";
+import { hashContentAsync, dump, isPathExcluded, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, logMemorySnapshot, hashFileAsync, debounce, LocalStateFileMirror } from "../utils/helpers";
 import type FastSync from "../../main";
 
 
@@ -20,17 +20,46 @@ export class FileHashManager {
   private hashMap: Map<string, HashCache> = new Map();
   private storageKey: string;
   private isInitialized: boolean = false;
+  // 脏标记 + 防抖落盘：高频单条写入（下载/Ack 路径）不再逐条同步整表 JSON.stringify，
+  // 避免高频写 localStorage 阻塞主线程导致界面白屏
+  private isDirty: boolean = false;
+  private debouncedFlush: () => void;
+  // 文件镜像：localStorage 被移动端系统清除后的兜底恢复
+  private mirror: LocalStateFileMirror;
 
   constructor(plugin: FastSync) {
     this.plugin = plugin;
-    // 根据仓库名生成唯一的存储键 (格式: fns-[VaultName]-fileHashMap)
-    const vaultName = this.plugin.app.vault.getName();
-    this.storageKey = `fns-${vaultName}-fileHashMap`;
+    // 与 vault 名无关的稳定存储键：iCloud 手机端会把库文件夹改名，绑定 vault 名的旧 key 会失效
+    // (与 local_storage_manager.ts getInternalKey 的修复同理)，历史键迁移见 loadFromStorage
+    this.storageKey = `fns-fileHashMap`;
+    this.debouncedFlush = debounce(() => this.flush(), 500);
+    this.mirror = new LocalStateFileMirror(plugin, "fileHashMap.json");
+  }
+
+  /**
+   * 标记为脏并安排一次防抖落盘（用于高频单条写入路径）
+   */
+  private scheduleSave(): void {
+    this.isDirty = true;
+    this.debouncedFlush();
+  }
+
+  /**
+   * 立即将脏数据落盘（用于同步结束、插件卸载等需要保证持久化的时机）
+   */
+  flush(): void {
+    if (this.isDirty) {
+      this.isDirty = false;
+      this.saveToStorage();
+    }
+    // 最后冲镜像：既包含 saveToStorage 刚安排的一份，也包含与 isDirty 无关的防抖中镜像写
+    this.mirror.flush();
   }
 
   /**
    * 初始化哈希表
-   * 只在 localStorage 不存在时执行完整的文件遍历
+   * 只在 localStorage 不存在时执行完整的文件遍历；localStorage 未命中时先尝试文件镜像恢复，
+   * 镜像也没有才真正重建 (移动端 localStorage 被系统清除时避免每次启动全量重建 + 弹通知)
    */
   async initialize(): Promise<void> {
     dump("FileHashManager: 开始初始化");
@@ -41,11 +70,21 @@ export class FileHashManager {
     if (loaded) {
       dump(`FileHashManager: 从 localStorage 加载成功,共 ${this.hashMap.size} 个文件`);
       this.isInitialized = true;
-    } else {
-      dump("FileHashManager: localStorage 中无数据,开始构建哈希映射");
-      await this.buildFileHashMap();
-      this.isInitialized = true;
+      return;
     }
+
+    // localStorage 未命中：尝试从文件镜像恢复，不弹通知、不重建
+    const mirrored = await this.mirror.read();
+    if (mirrored && this.parseAndLoad(mirrored)) {
+      dump("FileHashManager: 从文件镜像恢复哈希表");
+      this.saveToStorage();
+      this.isInitialized = true;
+      return;
+    }
+
+    dump("FileHashManager: localStorage 与文件镜像均无数据,开始构建哈希映射");
+    await this.buildFileHashMap();
+    this.isInitialized = true;
   }
 
   /**
@@ -66,6 +105,19 @@ export class FileHashManager {
 
       dump(`FileHashManager: 开始遍历 ${totalFiles} 个文件`);
 
+      // --- PERF: bounded concurrency for cold-build read+hash ---
+      // 冷建路径原先完全串行 read+hash，参照 operator.ts 扫描阶段的 6 路有限并发改造
+      const MAX_CONCURRENT_HASH = 6;
+      const hashInFlight = new Set<Promise<void>>();
+      const scheduleHashTask = async (task: () => Promise<void>) => {
+        let p: Promise<void>;
+        p = task().finally(() => hashInFlight.delete(p));
+        hashInFlight.add(p);
+        if (hashInFlight.size >= MAX_CONCURRENT_HASH) {
+          await Promise.race(hashInFlight);
+        }
+      };
+
       for (const file of files) {
         // 跳过已排除的文件
         if (isPathExcluded(file.path, this.plugin)) {
@@ -73,36 +125,39 @@ export class FileHashManager {
           continue;
         }
 
-        try {
-          let contentHash: string;
-
-          // 根据文件类型选择不同的哈希计算方式
-          if (file.extension === "md") {
-            // md 文件使用文本内容计算哈希
-            let content: string | null = await this.plugin.app.vault.read(file);
-            contentHash = await hashContentAsync(content);
-            content = null; // 显式释放引用 (Explicitly release reference)
-          } else {
-
-            if (isLargeBinarySyncRisk(file.stat.size, this.plugin)) {
-              dump(`FileHashManager: skip large binary hash (${describeBinarySyncLimit(this.plugin)} limit): ${file.path}`, file.stat.size);
-              continue;
-            }
-            contentHash = await hashFileAsync(this.plugin.app, file.path);
-            logMemorySnapshot(`after hash ${file.path}`);
-          }
-
-          this.hashMap.set(file.path, {
-            hash: contentHash,
-            mtime: file.stat.mtime,
-            size: file.stat.size
-          });
-        } catch (error) {
-          // 单个文件哈希计算失败不应中断整个构建过程
-          const msg = error instanceof Error ? error.message : String(error);
-          dump(`FileHashManager: 计算哈希失败，跳过文件: ${file.path}`, error);
-          console.warn(`[FastNoteSync] 跳过文件 ${file.path}: ${msg}`);
+        if (file.extension !== "md" && isLargeBinarySyncRisk(file.stat.size, this.plugin)) {
+          dump(`FileHashManager: skip large binary hash (${describeBinarySyncLimit(this.plugin)} limit): ${file.path}`, file.stat.size);
+          processedFiles++;
+          continue;
         }
+
+        await scheduleHashTask(async () => {
+          try {
+            let contentHash: string;
+
+            // 根据文件类型选择不同的哈希计算方式
+            if (file.extension === "md") {
+              // md 文件使用文本内容计算哈希
+              let content: string | null = await this.plugin.app.vault.read(file);
+              contentHash = await hashContentAsync(content);
+              content = null; // 显式释放引用 (Explicitly release reference)
+            } else {
+              contentHash = await hashFileAsync(this.plugin.app, file.path);
+              logMemorySnapshot(`after hash ${file.path}`);
+            }
+
+            this.hashMap.set(file.path, {
+              hash: contentHash,
+              mtime: file.stat.mtime,
+              size: file.stat.size
+            });
+          } catch (error) {
+            // 单个文件哈希计算失败不应中断整个构建过程
+            const msg = error instanceof Error ? error.message : String(error);
+            dump(`FileHashManager: 计算哈希失败，跳过文件: ${file.path}`, error);
+            console.warn(`[FastNoteSync] 跳过文件 ${file.path}: ${msg}`);
+          }
+        });
 
         processedFiles++;
 
@@ -112,6 +167,11 @@ export class FileHashManager {
           // 让出主线程,避免阻塞 UI
           await new Promise(resolve => window.setTimeout(resolve, 0));
         }
+      }
+
+      // 等待所有并发哈希任务收尾，确保后续落盘基于完整结果
+      if (hashInFlight.size > 0) {
+        await Promise.all(Array.from(hashInFlight));
       }
 
       // 保存到 localStorage
@@ -161,7 +221,7 @@ export class FileHashManager {
    */
   setFileHash(path: string, hash: string, mtime: number = 0, size: number = 0): void {
     this.hashMap.set(path, { hash, mtime, size });
-    this.saveToStorage();
+    this.scheduleSave();
   }
 
   setFileHashes(entries: Iterable<[string, string]>, getStat?: (path: string) => { mtime?: number; size?: number } | null | undefined): void {
@@ -180,7 +240,7 @@ export class FileHashManager {
   removeFileHash(path: string): void {
     const deleted = this.hashMap.delete(path);
     if (deleted) {
-      this.saveToStorage();
+      this.scheduleSave();
     }
   }
 
@@ -189,7 +249,7 @@ export class FileHashManager {
     for (const path of paths) {
       changed = this.hashMap.delete(path) || changed;
     }
-    if (changed) this.saveToStorage();
+    if (changed) this.scheduleSave();
   }
 
   /**
@@ -199,24 +259,18 @@ export class FileHashManager {
     try {
       let data = this.plugin.app.loadLocalStorage(this.storageKey) as string | null;
 
-      // 迁移逻辑：如果新键无数据，尝试读取旧键
+      // 迁移逻辑：如果新键无数据，按由新到旧依次回溯历史键格式
       if (!data) {
         const vaultName = this.plugin.app.vault.getName();
-
-        // 1. 尝试上一个格式: fast-note-sync-[Vault]-fileHashMap
-        const prevKey1 = `fast-note-sync-${vaultName}-fileHashMap`;
-        data = this.plugin.app.loadLocalStorage(prevKey1) as string | null;
-
-        // 2. 尝试更早格式: fast-note-sync-[Vault]-file-hash-map
-        if (!data) {
-          const prevKey2 = `fast-note-sync-${vaultName}-file-hash-map`;
-          data = this.plugin.app.loadLocalStorage(prevKey2) as string | null;
-        }
-
-        // 3. 尝试最原始格式: fast-note-sync-file-hash-map-[Vault]
-        if (!data) {
-          const oldKey = `fast-note-sync-file-hash-map-${vaultName}`;
-          data = this.plugin.app.loadLocalStorage(oldKey) as string | null;
+        const legacyKeys = [
+          `fns-${vaultName}-fileHashMap`,                      // 上一版：绑定本地库名的稳定前缀
+          `fast-note-sync-${vaultName}-fileHashMap`,           // 更早版
+          `fast-note-sync-${vaultName}-file-hash-map`,         // 更更早版
+          `fast-note-sync-file-hash-map-${vaultName}`,         // 最原始格式
+        ];
+        for (const legacyKey of legacyKeys) {
+          data = this.plugin.app.loadLocalStorage(legacyKey) as string | null;
+          if (data) break;
         }
 
         if (data) {
@@ -227,6 +281,19 @@ export class FileHashManager {
         }
       }
 
+      return this.parseAndLoad(data);
+    } catch (error) {
+      dump("FileHashManager: 从 localStorage 加载失败", error);
+      return false;
+    }
+  }
+
+  /**
+   * 解析哈希表数据并装入 this.hashMap，兼容旧版仅存哈希字符串的格式
+   * Parse hash map data and load it into this.hashMap, compatible with the old hash-only string format
+   */
+  private parseAndLoad(data: string): boolean {
+    try {
       const parsed = JSON.parse(data) as Record<string, unknown>;
       // 数据迁移逻辑：如果值是字符串，说明是旧版数据，需要重新构建或设为默认值
       // Data migration: if value is string, it's old version data; need to migrate or default
@@ -250,24 +317,34 @@ export class FileHashManager {
 
       return true;
     } catch (error) {
-      dump("FileHashManager: 从 localStorage 加载失败", error);
+      dump("FileHashManager: 解析哈希表数据失败", error);
       return false;
     }
   }
 
   /**
-   * 保存哈希映射到 localStorage
+   * 保存哈希映射到 localStorage，同时镜像写入文件 (兜底移动端 localStorage 被清除)
    */
   private saveToStorage(): void {
+    let data: string;
     try {
       const obj = Object.fromEntries(this.hashMap);
-      const data = JSON.stringify(obj);
+      data = JSON.stringify(obj);
+    } catch (error) {
+      dump("FileHashManager: 序列化哈希表失败", error);
+      return;
+    }
+
+    try {
       this.plugin.app.saveLocalStorage(this.storageKey, data);
     } catch (error) {
       dump("FileHashManager: 保存到 localStorage 失败", error);
       const msg = error instanceof Error ? error.message : String(error);
       showSyncNotice(`保存文件哈希映射失败: ${msg}`);
     }
+
+    // 即使 localStorage 写入失败 (如配额)，镜像写入也照常进行
+    this.mirror.scheduleWrite(data);
   }
 
   /**
@@ -321,7 +398,7 @@ export class FileHashManager {
 
     if (deletedCount > 0) {
       dump(`FileHashManager: 清理了 ${deletedCount} 个已排除文件的哈希`);
-      this.saveToStorage();
+      this.scheduleSave();
     }
   }
 

@@ -152,10 +152,10 @@ export const folderRename = async function (folder: TFolder, oldPath: string, pl
 /**
  * 接收服务端文件夹修改通知
  */
-export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string }, plugin: FastSync) {
+export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin)) {
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
         return
     }
     dump(`Receive folder modify:`, data.path, data.pathHash)
@@ -190,23 +190,24 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify')) {
             SyncLogManager.getInstance().addLog('receive', 'FolderModify', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
     }
 }
 
 /**
  * 接收服务端文件夹删除通知
  */
-export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string }, plugin: FastSync) {
+export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin)) {
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
         return
     }
     dump(`Receive folder delete:`, data.path, data.pathHash)
@@ -220,7 +221,16 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
                 plugin.addIgnoredFile(normalizedPath)
                 try {
                     // 必须检测并等到 目录里的所有文件数量 为 0 之后再执行
-                    await waitForFolderEmpty(normalizedPath, plugin);
+                    const isEmpty = await waitForFolderEmpty(normalizedPath, plugin);
+                    if (!isEmpty) {
+                        // 超时后目录仍非空（可能有文件未下载完或用户新建了文件），放弃本次删除，
+                        // 避免强制递归删除误删用户数据；等待下一轮同步重新判定
+                        // Folder still non-empty after timeout (e.g. pending downloads or new user files);
+                        // skip the delete instead of force-recursing, wait for next sync round
+                        dump(`[FastSync] Folder not empty after wait, skip delete: ${normalizedPath}`);
+                        SyncLogManager.getInstance().addLog('receive', 'FolderDeleteSkipped', `目录非空，跳过删除，等待下轮同步: ${normalizedPath}`, 'cancelled', data.path);
+                        return
+                    }
                     // 记录待删除路径
                     plugin.lastSyncPathDeleted.add(normalizedPath)
                     await vaultDelete(plugin.app.vault, folder, true)
@@ -236,13 +246,14 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
     } catch (e) {
         dumpError(`[FastSync] Failed to receiveFolderSyncDelete: ${normalizedPath}`, e);
         SyncLogManager.getInstance().addLog('receive', 'FolderDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+        plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
     }
 }
 
@@ -252,7 +263,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
 export const receiveFolderSyncRename = async function (data: FolderSyncRenameMessage, plugin: FastSync) {
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin) || isFolderSyncPathExcluded(data.oldPath, plugin)) {
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
         return
     }
 
@@ -306,13 +317,14 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename')) {
             SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path);
         }
+        plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.folderSyncTasks.completed++
+        plugin.recordSyncCompleted('folder', data.pageIndex)
     }
 }
 

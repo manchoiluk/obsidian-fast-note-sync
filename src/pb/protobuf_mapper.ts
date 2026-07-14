@@ -571,6 +571,12 @@ export interface DeserializedWSResponse {
     details: string;
     vault: string;
     context: string;
+    // WSResponse 信封 pageIndex，线上值为 1-based：0/undefined=非分页消息，n>0=下载第 n-1 页。
+    // 原始值在此透传，1-based→0-based 的转换统一在 websocket_manager.ts 做（见其注释）。
+    // WSResponse envelope pageIndex, wire value is 1-based: 0/undefined=non-paginated message,
+    // n>0=download page n-1. Passed through raw here; the 1-based->0-based conversion is done in
+    // one place, websocket_manager.ts (see its comment).
+    pageIndex: number;
 }
 
 /**
@@ -593,6 +599,7 @@ export function deReceivePacket(data: Uint8Array): DeserializedWSResponse {
         data: dtoData,
         details: wsResp.details || "",
         vault: wsResp.vault || "",
-        context: wsResp.context || ""
+        context: wsResp.context || "",
+        pageIndex: wsResp.pageIndex || 0
     };
 }

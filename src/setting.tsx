@@ -9,6 +9,7 @@ import { RuleEditorModal } from "./views/rule-editor-modal";
 import { PathSuggestOptions } from "./views/path-suggest";
 import { DebugLogModal } from "./views/debug-log-modal";
 import { ConfirmModal } from "./views/confirm-modal";
+import { ShareManageModal } from "./views/share-manage-modal";
 import { AppWithInternal } from "./lib/utils/types";
 import { RuleEditor } from "./views/rule-editor";
 import { $ } from "./i18n/lang";
@@ -110,6 +111,8 @@ export interface PluginSettings {
   hashSyncLimitEnabled: boolean
   /** 哈希计算数量限制 */
   hashSyncLimit: number
+  /** 已提示过大文件跳过同步的 "path|size" 记录，避免同一文件每轮同步重复弹通知 */
+  largeFileNoticeShown: string[]
 }
 
 /**
@@ -155,7 +158,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   updateSource: "github",
   mobileStatusDotPosition: "menu-bar",
   showUpgradeBadge: true,
-  concurrencyControlEnabled: false,
+  concurrencyControlEnabled: true,
   maxConcurrentUploads: 20,
   showConcurrencyIndicator: true,
   showSyncIndicator: false,
@@ -171,6 +174,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   attachmentSyncLimit: 50,
   hashSyncLimitEnabled: false,
   hashSyncLimit: 50000,
+  largeFileNoticeShown: [],
 }
 
 export type TabId = "GENERAL" | "DISPLAY" | "SHORTCUT" | "REMOTE" | "SYNC" | "CLOUD" | "DEBUG"
@@ -211,6 +215,10 @@ export class SettingTab extends PluginSettingTab {
   constructor(app: App, plugin: FastSync) {
     super(app, plugin)
     this.plugin = plugin
+  }
+
+  getSettingDefinitions() {
+    return []
   }
 
   hide(): void {
@@ -1162,6 +1170,13 @@ export class SettingTab extends PluginSettingTab {
     )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.general.show_share_icon_desc"))
 
+    new Setting(set).setName($("setting.general.share_manage")).addButton((btn) =>
+      btn.setButtonText($("setting.general.share_manage_button")).onClick(() => {
+        new ShareManageModal(this.app, this.plugin).open()
+      }),
+    )
+    this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.general.share_manage_desc"))
+
     new Setting(set).setName($("setting.general.show_upgrade_badge")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
       toggle.setValue(this.plugin.settings.showUpgradeBadge).onChange(async (value) => {
         if (value != this.plugin.settings.showUpgradeBadge) {
@@ -1559,7 +1574,7 @@ export class SettingTab extends PluginSettingTab {
             }
           }),
       )
-      this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.sync.attachment_limit_desc"))
+      this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.sync.attachment_limit_desc") + "\n" + $("setting.sync.hash_sampling_desc"))
     }
 
     new Setting(set).setName($("setting.sync.note_limit")).addText((text) =>

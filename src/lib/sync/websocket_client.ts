@@ -1,5 +1,5 @@
 import { moment } from "obsidian";
-import { dump, dumpError, isWsUrl } from "../utils/helpers";
+import { dump, dumpError, isWsUrl, showSyncNotice } from "../utils/helpers";
 
 // WebSocket 连接常量
 const RECONNECT_BASE_DELAY = 1000; // 重连基础延迟 (毫秒)
@@ -53,6 +53,8 @@ export class WebSocketClient {
   public checkConnection: number;
   public checkReConnectTimeout: number;
   public timeConnect = 0;
+  // 是否已经在本轮重连失败序列中提示过用户（首次达到原上限第 16 次时提示一次，重连成功后重置）
+  private hasNotifiedReconnectFailure = false;
   public count = 0;
   private registerPromise: Promise<void> | null = null;
   public isRegister = true;
@@ -188,6 +190,7 @@ export class WebSocketClient {
 
       this.ws.onopen = (e: Event): void => {
         this.timeConnect = 0;
+        this.hasNotifiedReconnectFailure = false;
         this.isAuth = false;
         this.useProtobuf = false;
         this.isOpen = true;
@@ -309,6 +312,7 @@ export class WebSocketClient {
   public unRegister(setUnregistered = false) {
     window.clearTimeout(this.checkReConnectTimeout);
     this.timeConnect = 0;
+    this.hasNotifiedReconnectFailure = false;
     this.isOpen = false;
     this.isAuth = false;
     this.useProtobuf = false;
@@ -327,12 +331,16 @@ export class WebSocketClient {
 
   public checkReconnect() {
     window.clearTimeout(this.checkReConnectTimeout);
-    if (this.timeConnect > 15) {
-      return;
-    }
+    // 不再设硬上限：超过原上限（15 次）后仍持续重试，退避延迟封顶 30 分钟；
+    // 首次达到原上限时提示用户一次，之后静默在后台继续重试
     if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
       this.timeConnect++;
-      
+
+      if (this.timeConnect === 16 && !this.hasNotifiedReconnectFailure) {
+        this.hasNotifiedReconnectFailure = true;
+        showSyncNotice("同步连接持续失败，将继续在后台重试");
+      }
+
       // Delay backoff: first 3 times 1s, then exponential growth up to 30 min
       const delay = this.timeConnect <= 3
         ? RECONNECT_BASE_DELAY
@@ -349,6 +357,7 @@ export class WebSocketClient {
   public triggerReconnect() {
     dump("Triggering manual reconnect due to network change");
     this.timeConnect = 0;
+    this.hasNotifiedReconnectFailure = false;
     window.clearTimeout(this.checkReConnectTimeout);
     void this.register();
   }
@@ -378,7 +387,7 @@ export class WebSocketClient {
 
   public Send(action: string, data: unknown, after?: () => void) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      dump(`Service not connected, queuing message: ${action}`);
+      dump(`Service not connected, message dropped (will rely on next sync cycle): ${action}`);
       return;
     }
 
@@ -417,20 +426,33 @@ export class WebSocketClient {
     }
   }
 
-  public async SendBinary(data: ArrayBuffer | Uint8Array, prefix: string, before?: () => boolean, after?: () => void): Promise<boolean> {
+  /**
+   * 发送二进制分片。返回值细化为三态，避免"连接已断开未发送"和"发送成功"
+   * 都返回 false 而无法区分（分片假成功问题）：
+   * - 'sent': 已实际写入 WebSocket
+   * - 'cancelled': 被调用方 before() 钩子主动取消
+   * - 'closed': 连接不可用，未发送
+   */
+  public async SendBinary(data: ArrayBuffer | Uint8Array, prefix: string, before?: () => boolean, after?: () => void): Promise<'sent' | 'cancelled' | 'closed'> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return false;
+      return 'closed';
     }
 
     if (!prefix || prefix.length !== 2) {
-      return false;
+      return 'closed';
     }
 
     if (before && before()) {
-      return true; // Cancelled
+      return 'cancelled';
     }
 
     await this.waitForBufferDrain();
+
+    // 等待缓冲区排空期间连接可能已断开，发送前再次确认，避免对已关闭的 socket 调用 send()
+    // Connection may have dropped while waiting for the buffer to drain; re-check before sending
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return 'closed';
+    }
 
     const prefixBytes = new TextEncoder().encode(prefix);
     let dataToSend: Uint8Array;
@@ -449,6 +471,6 @@ export class WebSocketClient {
     this.ws.send(dataToSend);
     after?.();
     this.notifyActivity();
-    return false;
+    return 'sent';
   }
 }

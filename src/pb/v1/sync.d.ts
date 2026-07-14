@@ -170,6 +170,9 @@ export namespace proto {
             /** WSResponse context. */
             context: string;
 
+            /** WSResponse pageIndex. */
+            pageIndex: number;
+
             /**
              * Creates a new WSResponse instance using the specified properties.
              * @param [properties] Properties to set
@@ -274,6 +277,9 @@ export namespace proto {
 
                 /** WSResponse context */
                 context?: (string|null);
+
+                /** WSResponse pageIndex */
+                pageIndex?: (number|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -653,6 +659,12 @@ export namespace proto {
             /** CheckVersionInfo syncDownChunkNum. */
             syncDownChunkNum: number;
 
+            /** CheckVersionInfo pipelineWindowUp. */
+            pipelineWindowUp: number;
+
+            /** CheckVersionInfo pipelineWindowDown. */
+            pipelineWindowDown: number;
+
             /**
              * Creates a new CheckVersionInfo instance using the specified properties.
              * @param [properties] Properties to set
@@ -781,6 +793,12 @@ export namespace proto {
 
                 /** CheckVersionInfo syncDownChunkNum */
                 syncDownChunkNum?: (number|null);
+
+                /** CheckVersionInfo pipelineWindowUp */
+                pipelineWindowUp?: (number|null);
+
+                /** CheckVersionInfo pipelineWindowDown */
+                pipelineWindowDown?: (number|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];

@@ -353,5 +353,6 @@ export class EventManager {
           new ShareModal(this.plugin.app, this.plugin, file.path).open()
         })
     })
+
   }
 }

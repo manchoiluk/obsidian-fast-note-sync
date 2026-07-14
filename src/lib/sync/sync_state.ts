@@ -9,7 +9,8 @@ export interface SyncTaskStats {
   needModify: number;   // 需要修改 / Need to modify
   needSyncMtime: number; // 需要同步时间戳 / Need to sync mtime
   needDelete: number;   // 需要删除 / Need to delete
-  completed: number;    // 已完成数量 / Completed count
+  completed: number;    // 已处理数量（含成功与失败，驱动完成判定/翻页 ACK，语义不变） / Processed count (success + failure; drives completion detection / page ACK, semantics unchanged)
+  failed: number;       // 其中处理失败的数量，仅用于统计展示，不参与完成判定 / Subset that failed; stats-only, does not affect completion detection
 }
 
 /**
@@ -24,6 +25,44 @@ export class SyncState {
   syncUpChunkNum = 100;
   /** 下载分片数量 / Download chunk size from server */
   syncDownChunkNum = 50;
+  /** 上行流水线窗口（协商值），0 = stop-and-wait（默认关闭，等 auth 协商块覆盖） / Upload pipeline window (negotiated), 0 = stop-and-wait */
+  pipelineWindowUp = 0;
+  /** 下行流水线窗口（协商值），0 = stop-and-wait（默认关闭，等 auth 协商块覆盖） / Download pipeline window (negotiated), 0 = stop-and-wait */
+  pipelineWindowDown = 0;
+  /** 本次连接是否已完成 pv2 协商（auth 响应携带协商块）/ Whether this connection completed pv2 negotiation (auth response carried a negotiation block) */
+  negotiated = false;
+
+  // ─── C3 多页在途归属：completed 计数的 pageIndex 透传通道 ─────────────────────
+  /**
+   * 瞬时字段：FastSync.recordSyncCompleted() 在自增 xxxSyncTasks.completed 前写入，
+   * 由 onCompletedChange（同一同步调用栈内触发，无 await 间隙）读取后立即清空，
+   * 用于把 pageIndex 从调用点"смuggle"到 Proxy 的 set trap 回调里，无需改动 Proxy 签名。
+   * Transient field: FastSync.recordSyncCompleted() writes it right before incrementing
+   * xxxSyncTasks.completed; onCompletedChange (fired synchronously in the same call stack, no
+   * await in between) reads and clears it immediately. Smuggles pageIndex from the call site into
+   * the Proxy's set-trap callback without changing the Proxy's signature.
+   */
+  pendingCompletionPageIndex: number | undefined = undefined;
+
+  /**
+   * NeedPush 驱动的上传-回执往返（NoteSyncNeedPush/FileUpload/SettingSyncNeedUpload → 对应 Ack）
+   * 中，Ack 消息本身不携带 pageIndex（它是响应客户端自己发起的上传请求，不是服务端下行页推送）。
+   * 在 NeedPush 明细到达时按 path 记下其所属 pageIndex，等对应 Ack 到达时查表消费，
+   * 从而把该条目的完成正确归账到发起它的下载页（供 ack 水位线正确推进）。
+   * 查不到（本地用户自发编辑触发的 Ack，非服务端 NeedPush 驱动）时退回不带 pageIndex 的旧路径，
+   * 语义正确（这类条目本就不属于任何页）。
+   *
+   * In the NeedPush-driven upload/ack round trip, the Ack message itself carries no pageIndex (it
+   * responds to the client's own upload request, not a server-side page push). Record the
+   * originating pageIndex by path when the NeedPush detail arrives; consume it when the matching
+   * Ack arrives, so the completion is attributed to the correct download page (needed for the ack
+   * watermark to advance correctly). A miss (Ack from a local user-initiated edit, not server
+   * NeedPush) correctly falls back to the pageIndex-less legacy path — such items never belonged to
+   * a page in the first place.
+   */
+  pendingNotePushPageIndex = new Map<string, number>();
+  pendingFilePushPageIndex = new Map<string, number>();
+  pendingConfigPushPageIndex = new Map<string, number>();
 
   // ─── Sync-session control flags ──────────────────────────────────────────────
   /** 是否正在执行同步流程 / Whether sync process is running */
@@ -41,6 +80,16 @@ export class SyncState {
   /** 用户通过 ribbon 手动触发的待执行同步类型（断开时暂存，重连成功后执行）
    *  Pending sync type triggered manually via ribbon (stored when disconnected, executed after reconnect) */
   pendingSyncType: 'incremental' | 'full' | null = null;
+  /**
+   * C9: 本轮同步中是否有类型被离线超墓碑期保护拦截（用户点击「取消」）。
+   * checkSyncCompletion 需据此判断本轮是否可信地"完成"，避免无条件刷新 lastSyncSuccessTime
+   * 导致离线时长被清零、下一轮保护形同虚设。
+   * C9: whether any type was intercepted by the offline tombstone-retention guard this round
+   * (user clicked "Cancel"). checkSyncCompletion uses this to decide whether the round can be
+   * trusted as genuinely "complete", so it doesn't unconditionally refresh lastSyncSuccessTime and
+   * silently reset the offline duration, defeating the guard on the very next round.
+   */
+  offlineGuardSkippedThisRound = false;
 
   // ─── Per-type sync task statistics ───────────────────────────────────────────
   onCompletedChange?: (type: "note" | "file" | "setting" | "folder") => void;
@@ -60,19 +109,19 @@ export class SyncState {
     });
   }
 
-  private _noteSyncTasks = this.createStatsProxy("note", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  private _noteSyncTasks = this.createStatsProxy("note", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 });
   get noteSyncTasks() { return this._noteSyncTasks; }
   set noteSyncTasks(v: SyncTaskStats) { this._noteSyncTasks = this.createStatsProxy("note", v); }
 
-  private _fileSyncTasks = this.createStatsProxy("file", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  private _fileSyncTasks = this.createStatsProxy("file", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 });
   get fileSyncTasks() { return this._fileSyncTasks; }
   set fileSyncTasks(v: SyncTaskStats) { this._fileSyncTasks = this.createStatsProxy("file", v); }
 
-  private _configSyncTasks = this.createStatsProxy("setting", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  private _configSyncTasks = this.createStatsProxy("setting", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 });
   get configSyncTasks() { return this._configSyncTasks; }
   set configSyncTasks(v: SyncTaskStats) { this._configSyncTasks = this.createStatsProxy("setting", v); }
 
-  private _folderSyncTasks = this.createStatsProxy("folder", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 });
+  private _folderSyncTasks = this.createStatsProxy("folder", { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 });
   get folderSyncTasks() { return this._folderSyncTasks; }
   set folderSyncTasks(v: SyncTaskStats) { this._folderSyncTasks = this.createStatsProxy("folder", v); }
 
@@ -100,10 +149,12 @@ export class SyncState {
    */
   pendingFileRenames: { oldPath: string; newPath: string; contentHash: string }[] = [];
   /**
-   * 待确认的笔记重命名队列，等待服务端 NoteRenameAck 后再更新 hashManager（FIFO）
-   * Pending note rename FIFO queue, update hashManager only after server NoteRenameAck
+   * 待确认的笔记重命名映射，key 为 newPath，等待服务端 NoteRenameAck（按 path 精确匹配）后再更新 hashManager；
+   * 老服务端不下发 path 时回退 FIFO（按 Map 插入顺序取首个）
+   * Pending note rename map keyed by newPath, update hashManager only after server NoteRenameAck
+   * (matched precisely by path); falls back to FIFO (first inserted entry) when legacy server omits path
    */
-  pendingNoteRenames: { oldPath: string; newPath: string; contentHash: string }[] = [];
+  pendingNoteRenames: Map<string, { oldPath: string; newPath: string; contentHash: string }> = new Map();
   /**
    * 待确认的文件上传 hash 映射，等待服务端 FileUploadAck 后再写入 hashManager
    * Pending upload hash map, update hashManager only after server FileUploadAck
@@ -174,15 +225,16 @@ export class SyncState {
       window.clearInterval(this.progressCheckIntervalId);
       this.progressCheckIntervalId = null;
     }
-    this.noteSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
-    this.fileSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
-    this.configSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
-    this.folderSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0 };
+    this.noteSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 };
+    this.fileSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 };
+    this.configSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 };
+    this.folderSyncTasks = { needUpload: 0, needModify: 0, needSyncMtime: 0, needDelete: 0, completed: 0, failed: 0 };
     this.lastStatusBarPercentage = 0;
     this.noteSyncEnd = false;
     this.fileSyncEnd = false;
     this.configSyncEnd = false;
     this.folderSyncEnd = false;
+    this.offlineGuardSkippedThisRound = false;
     this.scannedNoteHashes.clear();
     this.scannedFileHashes.clear();
     this.scannedConfigHashes.clear();

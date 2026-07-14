@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, moment, setIcon, Platform, MenuItem, Menu, TFile, Notice } from "obsidian";
+import { ItemView, WorkspaceLeaf, moment, setIcon, Platform, MenuItem, Menu, TFile, Notice, FileView } from "obsidian";
 import { createRoot, Root } from "react-dom/client";
 import * as React from "react";
 
@@ -289,6 +289,21 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         }
         const file = plugin.app.vault.getAbstractFileByPath(path);
         if (file instanceof TFile) {
+            // 检查文件是否已经在某个叶子（Tab）中打开，如果是则直接切换到该 Tab
+            // Check if the file is already open in any leaf (Tab), if so, switch to that Tab directly
+            let existingLeaf: WorkspaceLeaf | null = null;
+            plugin.app.workspace.iterateAllLeaves((leaf) => {
+                const view = leaf.view;
+                if (view instanceof FileView && view.file && view.file.path === path) {
+                    existingLeaf = leaf;
+                }
+            });
+
+            if (existingLeaf) {
+                plugin.app.workspace.setActiveLeaf(existingLeaf, { focus: true });
+                return;
+            }
+
             try {
                 const leaf = plugin.app.workspace.getLeaf(Platform.isMobile ? false : 'tab');
                 await leaf.openFile(file);
@@ -313,9 +328,33 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     // 筛选与分页状态
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [typeFilter, setTypeFilter] = React.useState<string>('all');
+    // "仅看失败"：懒初始化时消费一次 SyncLogManager 上挂起的标记（状态栏点红点跳转时设置）
+    // "Failed only": lazily consume the pending flag set on SyncLogManager once (set when jumping
+    // in from the status bar red dot)
+    const [onlyFailed, setOnlyFailed] = React.useState<boolean>(
+        () => SyncLogManager.getInstance().consumePendingOnlyFailedFilter()
+    );
     const [showMobileFilters, setShowMobileFilters] = React.useState<boolean>(false);
     const [currentPage, setCurrentPage] = React.useState<number>(1);
     const pageSize = 20;
+
+    React.useEffect(() => {
+        if (onlyFailed) {
+            SyncLogManager.getInstance().markFailedSeen();
+        }
+    }, [onlyFailed]);
+
+    React.useEffect(() => {
+        // 已挂载状态下，状态栏点击红点跳转也走此事件切到"仅看失败"
+        // While already mounted, clicking the status bar red dot also switches via this event
+        const handler = () => setOnlyFailed(true);
+        (plugin.app.workspace as unknown as { on: (name: string, cb: () => void) => void })
+            .on('fns:log-view-set-only-failed', handler);
+        return () => {
+            (plugin.app.workspace as unknown as { off: (name: string, cb: () => void) => void })
+                .off('fns:log-view-set-only-failed', handler);
+        };
+    }, [plugin]);
 
     React.useEffect(() => {
         const handleSettingsChange = () => {
@@ -381,11 +420,21 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = 0; // 切换筛选/分页时回到顶部
         }
-    }, [currentPage, categoryFilter, typeFilter]);
+    }, [currentPage, categoryFilter, typeFilter, onlyFailed]);
 
     // 筛选逻辑
     const filteredLogs = React.useMemo(() => {
         const list = logs.filter(log => {
+            const matchVault = !log.vault || log.vault === plugin.settings.vault;
+            if (!matchVault) return false;
+
+            // "仅看失败"独立于类别/方向筛选：只看失败项，跳过小结/扫描等非失败卡片
+            // "Failed only" is independent of category/direction filters: only failed items,
+            // skipping non-failure cards like summaries/scans
+            if (onlyFailed) {
+                return log.status === 'error';
+            }
+
             if (log.category === 'summary') {
                 const showSummary = (categoryFilter === 'all' || categoryFilter === 'other') && typeFilter === 'all';
                 if (!showSummary) return false;
@@ -394,8 +443,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                 const matchType = typeFilter === 'all' || log.type === typeFilter;
                 if (!matchCategory || !matchType) return false;
             }
-            const matchVault = !log.vault || log.vault === plugin.settings.vault;
-            return matchVault;
+            return true;
         });
 
         return list.sort((a, b) => {
@@ -407,7 +455,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
             }
             return b.timestamp - a.timestamp;
         });
-    }, [logs, categoryFilter, typeFilter, plugin.settings.vault]);
+    }, [logs, categoryFilter, typeFilter, onlyFailed, plugin.settings.vault]);
 
     // 分页逻辑
     const paginatedLogs = React.useMemo(() => {
@@ -420,7 +468,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     // 当筛选条件改变时重置页码
     React.useEffect(() => {
         setCurrentPage(1);
-    }, [categoryFilter, typeFilter]);
+    }, [categoryFilter, typeFilter, onlyFailed]);
 
     const clearLogs = () => {
         void SyncLogManager.getInstance().clearLogs();
@@ -492,6 +540,16 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
             });
         });
 
+        // "仅看失败"独立开关
+        // "Failed only" standalone toggle
+        menu.addSeparator();
+        menu.addItem((item: MenuItem) => {
+            item.setTitle($("ui.log.filter_only_failed"))
+                .setIcon("octagon-alert")
+                .setChecked(onlyFailed)
+                .onClick(() => setOnlyFailed(prev => !prev));
+        });
+
         menu.addSeparator();
         menu.addItem((item: MenuItem) => {
             item.setTitle($("ui.button.reset"))
@@ -499,6 +557,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                 .onClick(() => {
                     setCategoryFilter('all');
                     setTypeFilter('all');
+                    setOnlyFailed(false);
                 });
         });
 
@@ -536,7 +595,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                     </button>
                     <button
                         onClick={showFilterMenu}
-                        className={`fns-sync-log-clear-btn clickable-icon ${showMobileFilters ? 'is-active' : ''}`}
+                        className={`fns-sync-log-clear-btn clickable-icon ${(showMobileFilters || onlyFailed) ? 'is-active' : ''}`}
                         title={$("ui.log.filter")}
                     >
                         <ObsidianIcon icon="filter" />
@@ -584,12 +643,23 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                             ))}
                         </div>
                     </div>
+                    <div className="filter-group">
+                        <div className="filter-chips">
+                            <div
+                                className={`filter-chip ${onlyFailed ? 'is-active' : ''}`}
+                                onClick={() => setOnlyFailed(prev => !prev)}
+                            >
+                                {$("ui.log.filter_only_failed")}
+                            </div>
+                        </div>
+                    </div>
                     <div className="filter-footer">
-                        <button 
+                        <button
                             className="filter-reset-btn"
                             onClick={() => {
                                 setCategoryFilter('all');
                                 setTypeFilter('all');
+                                setOnlyFailed(false);
                             }}
                         >
                             {$("ui.button.reset")}
@@ -619,6 +689,14 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                         if (log.action.startsWith('VaultScanning') && log.status === 'success') {
                             return <VaultScanningSummaryCard key={log.id} log={log} />;
                         }
+                        // 判断是否为删除操作或配置日志。如果是，则点击时复制路径；否则打开文件。
+                        // Determine if it is a delete operation or configuration log. If so, copy the path on click; otherwise, open the file.
+                        const isDeleteType = log.action.toLowerCase().includes('delete');
+                        const isConfigType = log.category === 'config';
+                        const isCopyable = isDeleteType || isConfigType;
+                        const isNoteOrAttachment = ['note', 'attachment'].includes(log.category);
+                        const isOpenable = isNoteOrAttachment && !isDeleteType;
+
                         return (
                             <div key={log.id} className={`fns-sync-log-item fns-sync-log-category-${log.category} fns-sync-log-status-${log.status} fns-sync-log-type-${log.type}`}>
                                 <div className="fns-sync-log-item-header">
@@ -643,10 +721,24 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                 </div>
                                 {log.path && (
                                     <div 
-                                        className={`fns-sync-log-path ${['note', 'attachment'].includes(log.category) ? 'is-clickable' : ''}`}
-                                        onClick={() => { if (log.path) void handlePathClick(log.path, log.category); }}
+                                        className={`fns-sync-log-path ${(['note', 'attachment'].includes(log.category) || isCopyable) ? 'is-clickable' : ''}`}
+                                        onClick={() => {
+                                            if (!log.path) return;
+                                            if (isCopyable) {
+                                                void navigator.clipboard.writeText(log.path);
+                                                new Notice($("ui.log.path_copied") || "File path copied");
+                                            } else {
+                                                void handlePathClick(log.path, log.category);
+                                            }
+                                        }}
                                     >
-                                        {log.path}
+                                        <span style={{ wordBreak: 'break-all', flex: 1 }}>{log.path}</span>
+                                        {isCopyable && (
+                                            <ObsidianIcon icon="copy" className="fns-path-copy-icon" />
+                                        )}
+                                        {isOpenable && (
+                                            <ObsidianIcon icon="external-link" className="fns-path-open-icon" />
+                                        )}
                                     </div>
                                 )}
                                 {log.message && !['成功', 'success'].includes(log.message.toLowerCase()) && <div className="fns-sync-log-message">{log.message}</div>}

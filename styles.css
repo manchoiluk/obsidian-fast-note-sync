@@ -470,6 +470,22 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
+}
+
+.fns-status-bar-failed-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background-color: var(--text-error);
+  color: var(--text-on-accent);
+  font-size: 9px;
+  line-height: 14px;
+  cursor: pointer;
 }
 
 .fast-note-sync-progress-bar {
@@ -621,6 +637,63 @@
 }
 .note-history-modal .modal-title .title-path {
   font-size: 0.9em;
+}
+
+.conflict-resolve-modal .modal {
+  width: 900px;
+  max-width: 90vw;
+  height: auto;
+  max-height: 85vh;
+}
+.conflict-resolve-modal .modal-title {
+  display: flex;
+  align-items: center;
+}
+.conflict-resolve-modal .modal-title .title-prefix {
+  color: var(--text-faint);
+  font-weight: normal;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.conflict-resolve-modal .modal-title .title-path {
+  font-size: 0.9em;
+}
+
+.conflict-resolve-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.conflict-resolve-diff-wrap {
+  max-height: calc(85vh - 180px);
+}
+
+.conflict-resolve-loading,
+.conflict-resolve-warning {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.conflict-resolve-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.conflict-resolve-actions button {
+  cursor: pointer;
+}
+.conflict-resolve-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.fns-conflict-notice-text {
+  cursor: pointer;
 }
 
 .note-history-view {
@@ -1194,6 +1267,33 @@
   background-color: rgba(0, 0, 0, 0.03);
   padding: 2px 4px;
   border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path .fns-path-copy-icon,
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path .fns-path-open-icon {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path .fns-path-copy-icon svg,
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path .fns-path-open-icon svg {
+  width: 12px;
+  height: 12px;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path:hover .fns-path-copy-icon,
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path:hover .fns-path-open-icon {
+  opacity: 0.8;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path:hover .fns-path-copy-icon:hover,
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-path:hover .fns-path-open-icon:hover {
+  opacity: 1;
+  color: var(--interactive-accent);
 }
 .fns-sync-log-container .fns-sync-log-item .fns-sync-log-message {
   font-size: 11px;
@@ -3354,6 +3454,36 @@ body .suggestion-container {
   padding: 0 24px;
   border-radius: 20px;
   font-weight: 600;
+}
+
+/* 有效期选择 / Expiration select */
+.fns-share-expire-select-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.fns-share-expire-label {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.fns-share-expire-select {
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary-alt);
+  font-size: 0.85em;
+  padding: 0 8px;
+}
+
+.fns-share-expire-current {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 @keyframes fns-breathing {

@@ -1,6 +1,6 @@
 import { Plugin, Platform, addIcon } from "obsidian";
 
-import { dump, dumpError, checkAndNotifyCaseConflict, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken, loadApiUrl, saveApiUrl, loadVault, saveVault, loadAutoRedirect, saveAutoRedirect, loadWsPreProbe, saveWsPreProbe } from "./lib/utils/helpers";
+import { dump, dumpError, checkAndNotifyCaseConflict, setLogEnabled, isPathMatch, parseRules, stringifyRules, getPluginDir, showSyncNotice, loadApiToken, saveApiToken, loadApiUrl, saveApiUrl, loadVault, saveVault, loadAutoRedirect, saveAutoRedirect, loadWsPreProbe, saveWsPreProbe, obfuscateToken } from "./lib/utils/helpers";
 import { clearAllTempChunks, abortAllFileOperations, resetFileOperations } from "./lib/sync/operator_file";
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
 import { SyncLogView, SYNC_LOG_VIEW_TYPE } from "./views/sync-log-view";
@@ -22,7 +22,8 @@ import { EventManager } from "./lib/utils/events_manager";
 import { WebSocketManager } from "./lib/sync/websocket_manager";
 import { MenuManager } from "./lib/ui/menu_manager";
 import { LockManager } from "./lib/sync/lock_manager";
-import { handleSync } from "./lib/sync/operator";
+import { handleSync, cancelSync } from "./lib/sync/operator";
+import { cleanupConfigReloadTimer } from "./lib/sync/operator_config";
 import { HttpApiService } from "./lib/api/http_api_service";
 import { SyncState } from "./lib/sync/sync_state";
 import { RuntimeConfig } from "./lib/sync/runtime_config";
@@ -99,8 +100,28 @@ export default class FastSync extends Plugin {
         .trigger('fns:sync-progress', { pct, detail, phase });
     };
     this.syncState.onCompletedChange = (type) => {
-      this.progressTracker.recordCompleted(type);
+      // pageIndex 由 recordSyncCompleted() 通过 syncState 瞬时字段传入（见 sync_state.ts 注释），
+      // 读取后立即清空；裸 `xxxSyncTasks.completed++` 调用点读到的会是 undefined，天然回退旧路径
+      // pageIndex is smuggled in via the syncState transient field by recordSyncCompleted() (see
+      // sync_state.ts comment); read and clear immediately. Bare `xxxSyncTasks.completed++` call
+      // sites read undefined here, naturally falling back to the legacy path.
+      const pageIndex = this.syncState.pendingCompletionPageIndex;
+      this.syncState.pendingCompletionPageIndex = undefined;
+      this.progressTracker.recordCompleted(type, pageIndex);
     };
+  }
+
+  /**
+   * 记录一条下行同步条目完成（设计稿 §4.3 C3）。pageIndex 有值时归账到对应下载页（多页在途场景，
+   * 供 ack 水位线推进）；undefined 时走 progressTracker 的旧路径（单页全局计数），语义与改造前一致。
+   * Record completion of one downstream sync item (design §4.3, C3). When pageIndex is provided,
+   * it's attributed to that download page (multi-page-in-flight case, drives the ack watermark);
+   * undefined falls back to progressTracker's legacy path (single-page global count), unchanged.
+   */
+  recordSyncCompleted(type: "note" | "file" | "setting" | "folder", pageIndex?: number): void {
+    this.syncState.pendingCompletionPageIndex = pageIndex;
+    const tasks = type === "note" ? this.noteSyncTasks : type === "file" ? this.fileSyncTasks : type === "setting" ? this.configSyncTasks : this.folderSyncTasks;
+    tasks.completed++;
   }
 
   sendSyncPageAck(type: "note" | "file" | "setting" | "folder", pageIndex: number) {
@@ -613,10 +634,18 @@ export default class FastSync extends Plugin {
   }
 
   onunload() {
+    // 取消当前正在进行的同步，重置运行时状态
+    cancelSync(this)
     abortAllFileOperations()
     this.localStorageManager?.stopWatch()
     this.shareIndicatorManager?.unload()
     this.menuManager?.unload()
+    // 清理配置重载模块级计时器，避免插件卸载后仍触发回调
+    cleanupConfigReloadTimer()
+    // 卸载前强制落盘防抖累积的哈希/快照写入，避免丢失
+    this.fileHashManager?.flush()
+    this.configHashManager?.flush()
+    this.folderSnapshotManager?.flush()
     // 取消注册文件事件
     void this.reloadServices(false)
     this.updateStatusBar("")
@@ -628,29 +657,42 @@ export default class FastSync extends Plugin {
 
     let hasMigration = false
 
-    // 1. 处理 API Token (多级存储支持：SecretStorage > LocalStorage > data.json)
-    const apiToken = await loadApiToken(this.app, this, data?.apiToken);
-    this.settings.apiToken = apiToken;
+    // 注意加载顺序：先 vault，再 api/token。getMetadata 的历史键迁移会用到 this.settings.vault
+    // （远端库名）来回溯旧键，因此必须先把 vault 装载好，否则 token 的迁移兜底拿不到远端库名。
 
-    // 2. 处理 API URL 和 Vault (LocalStorage > data.json)
+    // 1. 处理 Vault (LocalStorage 缓存 > data.json 兜底)
+    const vault = await loadVault(this.app, this, data?.vault);
+    this.settings.vault = vault || this.app.vault.getName();
+
+    // 2. 处理 API URL (LocalStorage 缓存 > data.json 兜底)
     const api = await loadApiUrl(this.app, this, data?.api);
     this.settings.api = api;
     this.runApi = api;
     this.runWsApi = api ? api.replace(/^http/, "ws") : "";
 
-    const vault = await loadVault(this.app, this, data?.vault);
-    this.settings.vault = vault || this.app.vault.getName();
+    // 3. 处理 API Token (LocalStorage 缓存 > data.json 兜底；data.json 里为混淆形式)
+    const apiToken = await loadApiToken(this.app, this, data?.apiToken);
+    this.settings.apiToken = apiToken;
 
-    // 3. 处理自动重定向设置 (LocalStorage > data.json)
+    // 4. 处理自动重定向设置 (LocalStorage > data.json)
     const autoRedirect = await loadAutoRedirect(this.app, this, data?.autoRedirectEnabled);
     this.settings.autoRedirectEnabled = autoRedirect;
 
-    // 3.1 处理 WS 前探测设置 (LocalStorage > data.json)
+    // 4.1 处理 WS 前探测设置 (LocalStorage > data.json)
     const wsPreProbe = await loadWsPreProbe(this.app, this, data?.wsPreProbeEnabled);
     this.settings.wsPreProbeEnabled = wsPreProbe;
 
-    // 如果原始 data.json 中存有敏感信息或环境特定信息，标记迁移以触发后续的清理保存
-    if (data && (data.apiToken || data.api || data.vault || data.autoRedirectEnabled !== undefined || data.wsPreProbeEnabled !== undefined)) {
+    // 触发一次保存的场景：
+    // - data.json 仍留有需迁出的旧字段（autoRedirect/wsPreProbe 仍走 LocalStorage，不再写 data.json）
+    // - 连接配置已在内存/LocalStorage 但 data.json 尚未持久兜底（首次升级到「data.json 混淆兜底 + LocalStorage 缓存」双写）
+    const dataMissingConn =
+      (!!this.settings.apiToken && data?.apiToken !== obfuscateToken(this.app, this.settings.apiToken)) ||
+      (!!this.settings.api && data?.api !== this.settings.api) ||
+      (!!this.settings.vault && data?.vault !== this.settings.vault);
+    if (data && (data.autoRedirectEnabled !== undefined || data.wsPreProbeEnabled !== undefined)) {
+      hasMigration = true;
+    }
+    if (dataMissingConn) {
       hasMigration = true;
     }
 
@@ -787,20 +829,45 @@ export default class FastSync extends Plugin {
 
     this.localStorageManager.setInternalExcludes(internalRules);
 
-    // 从 settings 副本中移除 apiToken, api, vault, autoRedirectEnabled, wsPreProbeEnabled，确保其不被存入 data.json
+    // autoRedirectEnabled / wsPreProbeEnabled 仍只走 LocalStorage，不入 data.json
     const { apiToken, api, vault, autoRedirectEnabled, wsPreProbeEnabled, ...restSettings } = this.settings;
+
+    // --- 连接配置持久化：LocalStorage(缓存) + data.json(持久兜底) 双写 ---
+    // iOS 上 Obsidian 的 LocalStorage 是 webview 存储，系统在存储压力下会清掉；连接配置若只存这里，
+    // 被清后 api/token/vault 同时消失且无处恢复 → 手机端「配好、用一阵、同步设置全丢、无法同步」。
+    // 因此同时把连接配置写进 data.json（随库文件持久、不被 iOS 清、可跨设备），token 以混淆形式落盘（不明文）。
+    // 空值兜底：saveSettings 会被 onExternalSettingsChange 及每次无关开关触发，一旦此刻内存值因偶发读空为空，
+    // 沿用存储中已有的非空值，绝不用空覆盖好值（重置按钮走独立备份/恢复流程，不受影响）。
+    const storedTokenEnc = (this.localStorageManager.getMetadata("apiToken") as string) || "";
+    const storedApi = (this.localStorageManager.getMetadata("apiUrl") as string) || "";
+    const storedVault = (this.localStorageManager.getMetadata("vault") as string) || "";
+
+    // 1) 写 LocalStorage 缓存（内存值为空且存储已有非空值时跳过）
+    if (apiToken || !storedTokenEnc) {
+      await saveApiToken(this.app, this, apiToken || "");
+    }
+    if (api || !storedApi) {
+      await saveApiUrl(this.app, this, api || "");
+    }
+    if (vault || !storedVault) {
+      await saveVault(this.app, this, vault || "");
+    }
+    await saveAutoRedirect(this.app, this, autoRedirectEnabled || false);
+    await saveWsPreProbe(this.app, this, wsPreProbeEnabled !== false);
+
+    // 2) 计算 data.json 兜底值：优先用内存有效值，否则沿用 LocalStorage 里已有的（token 存混淆串）
+    //    三者同时为空才会写空——此时 LocalStorage 与内存皆空，说明确实无配置，不构成误删。
+    const persistTokenEnc = apiToken ? obfuscateToken(this.app, apiToken) : storedTokenEnc;
+    const persistApi = api || storedApi;
+    const persistVault = vault || storedVault;
 
     const settingsToSave = {
       ...restSettings,
-      syncExcludeFolders: stringifyRules(externalRules)
+      syncExcludeFolders: stringifyRules(externalRules),
+      apiToken: persistTokenEnc,
+      api: persistApi,
+      vault: persistVault,
     };
-
-    // 将敏感/环境特定设置存入 LocalStorage
-    await saveApiToken(this.app, this, apiToken || "");
-    await saveApiUrl(this.app, this, api || "");
-    await saveVault(this.app, this, vault || "");
-    await saveAutoRedirect(this.app, this, autoRedirectEnabled || false);
-    await saveWsPreProbe(this.app, this, wsPreProbeEnabled !== false);
 
     await this.saveData(settingsToSave)
   }
@@ -926,10 +993,18 @@ export default class FastSync extends Plugin {
 
   }
 
-  async activateLogView() {
+  async activateLogView(onlyFailed?: boolean) {
     const { workspace } = this.app;
     const rightSplit = workspace.rightSplit;
     const leaves = workspace.getLeavesOfType(SYNC_LOG_VIEW_TYPE);
+
+    if (onlyFailed) {
+      // 供尚未挂载的新日志视图在 onOpen 时消费一次；已挂载的视图则靠下方的 workspace 事件即时切换
+      // Consumed once by a freshly-mounted log view on open; an already-mounted view switches
+      // immediately via the workspace event triggered below
+      SyncLogManager.getInstance().requestOnlyFailedFilter();
+      workspace.trigger('fns:log-view-set-only-failed');
+    }
 
     if (leaves.length > 0) {
       const leaf = leaves[0];

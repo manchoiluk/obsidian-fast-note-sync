@@ -21,6 +21,30 @@ export let isPluginUnloading = false;
 // 会话 ID 到文件路径的映射，用于处理 463 会话不存在错误
 const sessionIdToPathMap = new Map<string, string>()
 
+// 大文件跳过同步通知去重：本会话内已提示过的 "path|size"，避免同一文件每轮同步重复弹 toast
+const sessionLargeFileNotified = new Set<string>()
+
+/**
+ * 大文件跳过同步的通知去重：同一 (path, size) 组合本会话或历史设置中已提示过则只 dump，不再弹 toast
+ * Dedup notice for large-file-skip: only dump (no toast) if this (path, size) pair was already notified
+ * either in this session or recorded in settings history
+ */
+function notifyLargeFileSkipped(plugin: FastSync, path: string, size: number, message: string): void {
+  const key = `${path}|${size}`
+  const shown = plugin.settings.largeFileNoticeShown ?? []
+  if (sessionLargeFileNotified.has(key) || shown.includes(key)) {
+    dump(`Large file skip notice suppressed (already shown): ${key}`)
+    return
+  }
+  showSyncNotice(message, 5000)
+  sessionLargeFileNotified.add(key)
+  // 重新赋值而非 push：settings 可能与 DEFAULT_SETTINGS 浅拷贝共享同一数组引用，原地 push 会污染默认值
+  const next = [...shown, key]
+  if (next.length > 200) next.shift()
+  plugin.settings.largeFileNoticeShown = next
+  void plugin.saveSettings()
+}
+
 /**
  * 获取临时分片目录路径
  */
@@ -71,11 +95,17 @@ const formatDownloadError = (e: unknown) => {
   return e instanceof Error ? e.message : String(e)
 }
 
-const cleanupFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession) => {
+// failed=true 表示本次会话是因下载/写盘失败而清理，需计入 fileSyncTasks.failed，
+// 与 completed（驱动完成判定/翻页 ACK，语义不变）区分开，避免失败被状态栏当作成功展示
+// failed=true means this session is being cleaned up due to a download/write failure and
+// should count toward fileSyncTasks.failed, kept separate from completed (which still drives
+// completion detection / page ACK unchanged), so failures aren't surfaced as success in the status bar
+const cleanupFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession, failed = false) => {
   releaseSessionMemory(session)
   plugin.fileDownloadSessions.delete(session.sessionId)
   if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
-  plugin.fileSyncTasks.completed++
+  if (failed) plugin.fileSyncTasks.failed++
+  plugin.recordSyncCompleted('file', session.pageIndex)
 }
 
 const failFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession, message: string, releaseSlot = true) => {
@@ -90,7 +120,7 @@ const failFileDownloadSession = async (plugin: FastSync, session: FileDownloadSe
     progress: session.totalChunks === 0 ? 0 : Math.floor((completedCount / session.totalChunks) * 100),
     message
   });
-  await cleanupFileDownloadSession(plugin, session)
+  await cleanupFileDownloadSession(plugin, session, true)
   if (releaseSlot) {
     plugin.concurrencyLimiter.releaseSlot(`download_${session.path}`)
   }
@@ -180,7 +210,7 @@ export const fileModify = async function (file: TAbstractFile, plugin: FastSync,
 
   if (isLargeBinarySyncRisk(file.stat.size, plugin)) {
     dump(`Skip file modify for large attachment (${describeBinarySyncLimit()} limit): ${file.path}`, file.stat.size)
-    showSyncNotice(`Fast Note Sync skipped large file: ${file.path}`, 5000)
+    notifyLargeFileSkipped(plugin, file.path, file.stat.size, `Fast Note Sync skipped large file: ${file.path}`)
     return
   }
 
@@ -422,11 +452,11 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
 
   if (plugin.settings.readonlySyncEnabled) {
     dump(`Read-only mode: Intercepted file upload request for ${data.path}`)
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
   }
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
   }
   dump(`Receive file need upload (queued): `, data.path, data.sessionId)
@@ -435,14 +465,23 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
   const file = plugin.app.vault.getFileByPath(normalizePath(data.path))
   if (!file) {
     dump(`File not found for upload: ${data.path} `)
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
   }
   if (isLargeBinarySyncRisk(file.stat.size, plugin)) {
     dump(`Skip file upload for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, file.stat.size)
-    showSyncNotice(`Fast Note Sync skipped large file upload: ${data.path}`, 5000)
-    plugin.fileSyncTasks.completed++
+    notifyLargeFileSkipped(plugin, data.path, file.stat.size, `Fast Note Sync skipped large file upload: ${data.path}`)
+    plugin.recordSyncCompleted('file', data.pageIndex)
     return
+  }
+
+  // NeedPush(FileUpload) 驱动的上传-回执往返：FileUploadAck 本身不带 pageIndex，按 path 记下所属页
+  // 供 Ack 到达时查表归账（见 sync_state.ts pendingFilePushPageIndex 注释）
+  // NeedPush(FileUpload)-driven upload/ack round trip: FileUploadAck carries no pageIndex; record
+  // the owning page by path for the Ack to look up on arrival (see sync_state.ts
+  // pendingFilePushPageIndex comment)
+  if (data.pageIndex !== undefined) {
+    plugin.syncState.pendingFilePushPageIndex.set(data.path, data.pageIndex)
   }
 
   const chunkSize = data.chunkSize || 1024 * 1024
@@ -473,7 +512,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       if (!content) {
         plugin.totalChunksToUpload -= actualTotalChunks
         plugin.concurrencyLimiter.releaseSlot(data.path)
-        plugin.fileSyncTasks.completed++
+        plugin.recordSyncCompleted('file', data.pageIndex)
         return;
       }
 
@@ -546,7 +585,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
         frame.set(chunk, 40)
 
         // 在 before 回调中检查是否已被取消,这样可以在数据真正进入 WebSocket 缓冲区之前拦截
-        const cancelled = await plugin.websocket.SendBinary(
+        const sendResult = await plugin.websocket.SendBinary(
           frame,
           BINARY_PREFIX_FILE_SYNC,
           () => {
@@ -590,13 +629,31 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
           }
         )
 
+        // 连接不可用：分片未真正发出，立即中断循环，保留断点续传 checkpoint（不清除、不标记完成任务数），
+        // 等重连后由后续同步轮次从 checkpoint 处续传，避免"分片假成功"（空转跑完循环但数据未真正传完）
+        // Connection unavailable: the chunk was never actually sent. Break immediately and keep the
+        // resume checkpoint intact (don't clear it, don't bump the completed counter) so the next
+        // sync round can resume from the checkpoint after reconnect.
+        if (sendResult === 'closed') {
+          dump(`Upload interrupted for ${data.path} at chunk ${i}/${actualTotalChunks} (connection closed), will resume after reconnect`);
+          SyncLogManager.getInstance().addOrUpdateLog({
+            id: data.sessionId,
+            type: 'send',
+            action: 'FileUpload',
+            path: data.path,
+            status: 'pending',
+            message: '连接已断开，等待重连后续传'
+          });
+          return;
+        }
+
         // 如果被取消,立即退出循环并释放槽位
-        if (cancelled || isPluginUnloading) {
+        if (sendResult === 'cancelled' || isPluginUnloading) {
           // 取消时清除 checkpoint，避免使用已失效的会话
           // Clear checkpoint on cancel to avoid stale session reuse
           try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
           plugin.concurrencyLimiter.releaseSlot(data.path)
-          plugin.fileSyncTasks.completed++
+          plugin.recordSyncCompleted('file', data.pageIndex)
           return;
         }
 
@@ -653,7 +710,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
       plugin.totalChunksToUpload -= actualTotalChunks
       plugin.concurrencyLimiter.releaseSlot(data.path);
-      plugin.fileSyncTasks.completed++
+      plugin.recordSyncCompleted('file', data.pageIndex)
     } finally {
       // 任务结束（完成或取消/失败），移除活跃标记
       activeUploadsMap.delete(data.path);
@@ -675,13 +732,13 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
   // Server push means path has new content; clear stale deleteAck pending to protect newly-written hash
   plugin.pendingFileDeleteAcks.delete(data.path)
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
   if (isLargeBinarySyncRisk(data.size, plugin)) {
     dump(`Skip file download for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, data.size)
-    showSyncNotice(`Fast Note Sync skipped large file download: ${data.path}`, 5000)
-    plugin.fileSyncTasks.completed++;
+    notifyLargeFileSkipped(plugin, data.path, data.size, `Fast Note Sync skipped large file download: ${data.path}`)
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -692,13 +749,13 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file download: ${data.path}`);
-        plugin.fileSyncTasks.completed++;
+        plugin.recordSyncCompleted('file', data.pageIndex);
         return;
       }
     } else {
       // 未开启类型限制：由于启用了云预览，跳过所有附件下载
       dump(`Cloud Preview: Skipping all file downloads: ${data.path}`);
-      plugin.fileSyncTasks.completed++;
+      plugin.recordSyncCompleted('file', data.pageIndex);
       return;
     }
   }
@@ -724,6 +781,8 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       sessionId: "",
       totalChunks: 0,
       size: data.size,
+      pageIndex: data.pageIndex,
+      initialSlotKey: slotKey,
       ...createDownloadStorage(plugin, `init_${data.pathHash}`, data.size),
     }
     plugin.fileDownloadSessions.set(tempKey, tempSession)
@@ -754,7 +813,7 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -763,12 +822,12 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file delete: ${data.path}`);
-        plugin.fileSyncTasks.completed++;
+        plugin.recordSyncCompleted('file', data.pageIndex);
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file deletes: ${data.path}`);
-      plugin.fileSyncTasks.completed++;
+      plugin.recordSyncCompleted('file', data.pageIndex);
       return;
     }
   }
@@ -802,9 +861,10 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
   }, { maxRetries: 5, retryInterval: 100 }).catch(e => {
     dumpError(`[FastSync] Failed to receiveFileSyncDelete: ${normalizedPath}`, e);
     SyncLogManager.getInstance().addLog('receive', 'FileDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
+    plugin.fileSyncTasks.failed++
   });
 
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', data.pageIndex)
 }
 
 /**
@@ -814,7 +874,7 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -823,12 +883,12 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file mtime update: ${data.path}`);
-        plugin.fileSyncTasks.completed++;
+        plugin.recordSyncCompleted('file', data.pageIndex);
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file mtime updates: ${data.path}`);
-      plugin.fileSyncTasks.completed++;
+      plugin.recordSyncCompleted('file', data.pageIndex);
       return;
     }
   }
@@ -868,12 +928,13 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileMtime')) {
       SyncLogManager.getInstance().addLog('receive', 'FileMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.fileSyncTasks.failed++
   });
 
   // FileSyncMtime 表示文件已在服务端存在（无需上传），释放 fileModify 中获取的并发槽位
   // FileSyncMtime indicates file already exists on server (no upload needed), release slot acquired by fileModify
   if (data.path) plugin.concurrencyLimiter.releaseSlot(data.path)
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', data.pageIndex)
 }
 
 /**
@@ -910,6 +971,8 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
       sessionId: data.sessionId,
       totalChunks: data.totalChunks,
       size: data.size,
+      pageIndex: tempSession.pageIndex,
+      initialSlotKey: tempSession.initialSlotKey,
       ...createDownloadStorage(plugin, data.sessionId, data.size),
     }
     plugin.fileDownloadSessions.set(data.sessionId, session)
@@ -924,19 +987,28 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
       sessionId: data.sessionId,
       totalChunks: data.totalChunks,
       size: data.size,
+      initialSlotKey: `download_${data.path}`,
       ...createDownloadStorage(plugin, data.sessionId, data.size),
     }
     plugin.fileDownloadSessions.set(data.sessionId, session)
   }
 
   // 确保临时目录存在 (Ensure temp directory exists)
+  // 并发下多个下载会话可能同时 mkdir 同一目录而抛错：catch 后复验是否已存在（并发创建属正常，吞掉）；
+  // 真正未创建成功则不在此处兜底，交给首个分片写入时的既有失败路径处理（handleFileChunkDownload 的内存 fallback / failFileDownloadSession）
   if (data.totalChunks > 0 && session.tempDir) {
     const baseDir = getTempChunksDir(plugin)
-    if (!(await plugin.app.vault.adapter.exists(baseDir))) {
-      await plugin.app.vault.adapter.mkdir(baseDir)
-    }
-    if (!(await plugin.app.vault.adapter.exists(session.tempDir))) {
-      await plugin.app.vault.adapter.mkdir(session.tempDir)
+    try {
+      if (!(await plugin.app.vault.adapter.exists(baseDir))) {
+        await plugin.app.vault.adapter.mkdir(baseDir)
+      }
+      if (!(await plugin.app.vault.adapter.exists(session.tempDir))) {
+        await plugin.app.vault.adapter.mkdir(session.tempDir)
+      }
+    } catch (e) {
+      if (!(await plugin.app.vault.adapter.exists(session.tempDir))) {
+        dumpError(`Temp dir creation failed for session ${session.sessionId}, will retry on first chunk`, e)
+      }
     }
   }
 
@@ -1074,10 +1146,18 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
       try {
         if (!(await plugin.app.vault.adapter.exists(session.tempDir))) {
           const baseDir = getTempChunksDir(plugin)
-          if (!(await plugin.app.vault.adapter.exists(baseDir))) {
-            await plugin.app.vault.adapter.mkdir(baseDir)
+          try {
+            if (!(await plugin.app.vault.adapter.exists(baseDir))) {
+              await plugin.app.vault.adapter.mkdir(baseDir)
+            }
+            await plugin.app.vault.adapter.mkdir(session.tempDir)
+          } catch (mkdirErr) {
+            // 并发下多个分片会话可能同时 mkdir 同一目录：复验已存在则吞掉；
+            // 仍不存在说明是真实创建失败，交给外层 catch 走既有失败路径（内存 fallback / failFileDownloadSession）
+            if (!(await plugin.app.vault.adapter.exists(session.tempDir))) {
+              throw mkdirErr
+            }
           }
-          await plugin.app.vault.adapter.mkdir(session.tempDir)
         }
         const chunkPath = normalizePath(`${session.tempDir}/${chunkIndex}.bin`)
         isNewChunk = !session.downloadedChunks?.has(chunkIndex)
@@ -1123,11 +1203,11 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
 /**
  * 接收服务端文件重命名通知
  */
-export const receiveFileSyncRename = async function (data: { oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string }, plugin: FastSync) {
+export const receiveFileSyncRename = async function (data: { oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string; pageIndex?: number }, plugin: FastSync) {
   if (plugin.settings.syncEnabled == false) return
 
     if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
-    plugin.fileSyncTasks.completed++;
+    plugin.recordSyncCompleted('file', data.pageIndex);
     return
   }
 
@@ -1135,6 +1215,28 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
 
   const normalizedOldPath = normalizePath(data.oldPath)
   const normalizedNewPath = normalizePath(data.path)
+
+  // Check if there is an active file download session for this old path
+  // 检查本地是否存在该旧路径的活跃下载会话
+  let downloadingSession: FileDownloadSession | undefined
+  for (const sess of plugin.fileDownloadSessions.values()) {
+    if (normalizePath(sess.path) === normalizedOldPath) {
+      downloadingSession = sess
+      break
+    }
+  }
+
+  if (downloadingSession) {
+    dump(`Redirecting active file download session: ${downloadingSession.path} -> ${data.path}`)
+    downloadingSession.path = data.path
+    if (data.contentHash) {
+      downloadingSession.contentHash = data.contentHash
+    }
+    // Session redirected, bypass the rename execution and skip RePush
+    // 会话已成功重定向，直接跳过重命名执行和 RePush
+    plugin.recordSyncCompleted('file', data.pageIndex)
+    return
+  }
 
   await plugin.lockManager.withLock(normalizedNewPath, async () => {
     const file = plugin.app.vault.getFileByPath(normalizedOldPath)
@@ -1188,14 +1290,14 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
         if (sizeMatch) {
           if (isLargeBinarySyncRisk(targetFile.stat.size, plugin)) {
             dump(`Skip rename target hash for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, targetFile.stat.size)
-            plugin.fileSyncTasks.completed++
+            plugin.recordSyncCompleted('file', data.pageIndex)
             return
           }
           const localContentHash = await hashFileAsync(plugin.app, targetFile.path)
           if (localContentHash === data.contentHash) {
             dump(`Target attachment already exists and matches hash, skipping rename: ${data.path}`)
             plugin.fileHashManager.setFileHash(data.path, data.contentHash, targetFile.stat.mtime, targetFile.stat.size)
-            plugin.fileSyncTasks.completed++
+            plugin.recordSyncCompleted('file', data.pageIndex)
             return
           }
         }
@@ -1218,23 +1320,28 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
     if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileRename')) {
       SyncLogManager.getInstance().addLog('receive', 'FileRename', e instanceof Error ? e.message : String(e), 'error', data.path);
     }
+    plugin.fileSyncTasks.failed++
   });
 
-  plugin.fileSyncTasks.completed++
+  plugin.recordSyncCompleted('file', data.pageIndex)
 }
 
 /**
  * 完成文件下载
  */
 const handleFileChunkDownloadComplete = async function (session: FileDownloadSession, plugin: FastSync) {
-  const slotKey = `download_${session.path}`;
+  const slotKey = session.initialSlotKey || `download_${session.path}`;
   try {
     if (isLargeBinarySyncRisk(session.size, plugin)) {
       dump(`Skip assembling large downloaded attachment (${describeBinarySyncLimit()} limit): ${session.path}`, session.size)
       await cleanupFileDownloadSession(plugin, session)
       return
     }
-    const chunks: ArrayBuffer[] = []
+    // 逐片读入后立即写入目标缓冲区并释放分片引用，避免 chunks 数组与整份 buffer 同时驻留内存 (2x 峰值)
+    // Write each chunk into the target buffer as it is read, then drop the reference immediately,
+    // instead of accumulating a chunks array alongside the full assembled buffer (avoids the 2x peak).
+    const completeFile = new Uint8Array(session.size)
+    let offset = 0
     for (let i = 0; i < session.totalChunks; i++) {
       let chunk: ArrayBuffer | undefined;
       if (session.tempDir) {
@@ -1250,19 +1357,16 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
         await failFileDownloadSession(plugin, session, `Missing downloaded chunk ${i}`, false)
         return
       }
-      chunks.push(chunk)
-    }
-
-    const totalSize = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0)
-    const completeFile = new Uint8Array(totalSize)
-    let offset = 0
-    for (const chunk of chunks) {
+      if (offset + chunk.byteLength > completeFile.byteLength) {
+        await failFileDownloadSession(plugin, session, `Downloaded file size mismatch: exceeds expected ${session.size}`, false)
+        return
+      }
       completeFile.set(new Uint8Array(chunk), offset)
       offset += chunk.byteLength
     }
 
-    if (completeFile.byteLength !== session.size) {
-      await failFileDownloadSession(plugin, session, `Downloaded file size mismatch: got ${completeFile.byteLength}, expected ${session.size}`, false)
+    if (offset !== session.size) {
+      await failFileDownloadSession(plugin, session, `Downloaded file size mismatch: got ${offset}, expected ${session.size}`, false)
       return
     }
 
@@ -1320,7 +1424,7 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
     if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
     plugin.downloadedFilesCount++
     plugin.progressTracker.recordDownloadComplete('file');
-    plugin.fileSyncTasks.completed++
+    plugin.recordSyncCompleted('file', session.pageIndex)
   } catch (e) {
     dumpError(`Error completing file download for ${session.path}`, e)
     if (!checkAndNotifyCaseConflict(e, session.path, plugin, 'FileDownload')) {
@@ -1334,7 +1438,7 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
         message: `Failed to complete download: ${formatDownloadError(e)}`
       });
     }
-    await cleanupFileDownloadSession(plugin, session)
+    await cleanupFileDownloadSession(plugin, session, true)
   } finally {
     plugin.concurrencyLimiter.releaseSlot(slotKey)
   }
@@ -1385,7 +1489,12 @@ export const receiveFileUploadAck = function (data: { lastTime?: number; path?: 
   if (data.path) {
     plugin.concurrencyLimiter.releaseSlot(data.path)
   }
-  plugin.fileSyncTasks.completed++
+  // 查表归账所属下载页（NeedPush=FileUpload 驱动）；查不到说明是本地用户自发编辑触发的上传 Ack，走旧路径
+  // Look up the owning download page (NeedPush=FileUpload-driven); a miss means a local
+  // user-initiated edit triggered this upload Ack, falls back to the legacy path
+  const pushPageIndex = data.path ? plugin.syncState.pendingFilePushPageIndex.get(data.path) : undefined;
+  if (data.path) plugin.syncState.pendingFilePushPageIndex.delete(data.path)
+  plugin.recordSyncCompleted('file', pushPageIndex)
 }
 
 // 收到 FileDeleteAck，仅当路径仍在 pending set 中时才从 hashManager 移除
@@ -1414,6 +1523,7 @@ export const receiveFileUploadSessionNotFound = function (sessionId: string, plu
       active.cancelled = true
     }
     plugin.concurrencyLimiter.releaseSlot(path)
+    plugin.fileSyncTasks.failed++
     plugin.fileSyncTasks.completed++
     dump(`FileUploadSessionNotFound: Cleaned active state and completed task for path: ${path} (${sessionId})`)
   }

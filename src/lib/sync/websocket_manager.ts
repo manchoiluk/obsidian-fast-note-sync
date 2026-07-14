@@ -3,7 +3,7 @@ import { moment, Platform } from "obsidian";
 import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue, receiveFileUploadSessionNotFound } from "./operator_file";
 import { dump, addRandomParam, showSyncNotice, safeStringify } from "../utils/helpers";
 import { enSendDTOToProtobuf, deReceivePacket } from "../../pb/protobuf_mapper";
-import { receiveOperators, startupSync, startupFullSync } from "./operator";
+import { receiveOperators, startupSync, startupFullSync, settleAllBatchSendSessionsOnClose } from "./operator";
 import { SyncLogManager } from "./sync_log_manager";
 import * as WSAction from "./websocket_action";
 import { WebSocketClient } from "./websocket_client";
@@ -36,6 +36,15 @@ export interface StructuredMessageData {
   data?: Record<string, unknown> | null;
   vault?: string;
   context?: string; // 当前同步上下文 / Current sync context
+  // WSResponse 信封 pageIndex，线上值 1-based：0/undefined=非分页消息，n>0=下载第 n-1 页（设计稿 §4.3，
+  // 用户澄清覆盖设计稿 §2.4 的旧假设）。JSON 模式下该字段随服务端顶层 JSON 天然携带；pb 模式由
+  // protobuf_mapper.ts 的 deReceivePacket 透传。1-based->0-based 转换统一在 handleStructuredMessage 做。
+  // WSResponse envelope pageIndex, wire value is 1-based: 0/undefined=non-paginated message,
+  // n>0=download page n-1 (design §4.3; this supersedes design §2.4's original assumption per
+  // user clarification). JSON mode carries it naturally as a top-level key; pb mode passes it
+  // through via protobuf_mapper.ts's deReceivePacket. The 1-based->0-based conversion happens in
+  // exactly one place: handleStructuredMessage below.
+  pageIndex?: number;
 }
 
 function normalizeNoticeValue(value: unknown): string {
@@ -70,6 +79,11 @@ export class WebSocketManager {
   public client: WebSocketClient;
   private plugin: FastSync;
   private currentStartHandleId = 0;
+  // startupDelay 按设置文案（setting.sync.startup_delay_desc）本意是只延迟"首次"检查更新，
+  // 用于错开 Obsidian 启动时其他插件并发加载造成的卡顿；不应在每次断线重连时都重复套用。
+  // startupDelay is documented as delaying only the "first" update check, to avoid contending
+  // with other plugins loading at Obsidian startup — it should not be re-applied on every reconnect.
+  private hasAppliedStartupDelay = false;
 
   // --- 轻量事件总线，用于分批发送时等待服务端 BatchAck ---
   // Lightweight event bus for awaiting server BatchAck during batch send
@@ -118,6 +132,10 @@ export class WebSocketManager {
         // Always include protocol=protobuf regardless of settings
         // 无论设置如何，始终包含 protocol=protobuf 参数
         const useProtoParam = "&protocol=protobuf";
+        // pv=2：声明客户端支持 v2 握手协商（auth 响应携带协商块、窗口流水线、pb 提前升级）
+        // pb=1/0：客户端本地 protobufEnabled 设置，供服务端判定是否提前升级 pb（设计稿 §2.2）
+        const isProtobufEnabled = this.plugin.settings.protobufEnabled !== false;
+        const negotiationParams = "&pv=2&pb=" + (isProtobufEnabled ? "1" : "0");
         return addRandomParam(
           this.plugin.runWsApi +
           "/api/user/sync?lang=" +
@@ -130,7 +148,8 @@ export class WebSocketManager {
           clientName +
           "&clientVersion=" +
           clientVersion +
-          useProtoParam
+          useProtoParam +
+          negotiationParams
         );
       },
       preConnectProbe: async () => {
@@ -151,6 +170,9 @@ export class WebSocketManager {
         }
         clearUploadQueue();
         this.plugin.concurrencyLimiter.clear();
+        // 断线：清空所有在途上行批发送窗口会话的重传 timer（设计稿 §3.2 异常路径表）；
+        // W==0/旧路径下没有会话注册，no-op
+        settleAllBatchSendSessionsOnClose();
       },
       onMessage: (client, action, data) => {
         this.handleStructuredMessage(action, data);
@@ -217,10 +239,22 @@ export class WebSocketManager {
     this.client.triggerReconnect();
   }
   public SendMessage(action: WSAction.WSSendAction, data: unknown, before?: () => boolean, after?: () => void, context?: string) {
-    return this.client.SendMessage(action, this.injectContext(data, context), before, after);
+    const injectedData = this.injectContext(data, context);
+    return this.client.SendMessage(action, injectedData, before, () => {
+      // Record the send event in sync logs
+      // 在同步日志中记录发送事件
+      SyncLogManager.getInstance().logSentMessage(action, injectedData as object | string, this.plugin.currentSyncType);
+      after?.();
+    });
   }
   public Send(action: WSAction.WSSendAction, data: unknown, after?: () => void, context?: string) {
-    this.client.Send(action, this.injectContext(data, context), after);
+    const injectedData = this.injectContext(data, context);
+    this.client.Send(action, injectedData, () => {
+      // Record the send event in sync logs
+      // 在同步日志中记录发送事件
+      SyncLogManager.getInstance().logSentMessage(action, injectedData as object | string, this.plugin.currentSyncType);
+      after?.();
+    });
   }
 
   /**
@@ -276,6 +310,44 @@ export class WebSocketManager {
           this.plugin.localStorageManager.setMetadata("serverVersion", serverVersion);
           this.plugin.localStorageManager.setMetadata("serverChangelog", serverChangelog);
         }
+
+        // 握手合并（设计稿 §5.2）：pv>=2 的服务端在 auth 响应追加协商块，此处必须在 StartHandle() 之前
+        // 写入 syncState，因为 sendSyncInBatches 的窗口大小/chunkNum 默认取 syncState 当前值。
+        // 旧服务端（无协商块）：所有协商字段保持 sync_state.ts 的默认值（negotiated=false, window=0），
+        // 即现状 stop-and-wait，行为零变化。
+        // Handshake merge (design §5.2): a pv>=2 server appends a negotiation block to the auth
+        // response. This MUST be written to syncState before StartHandle() is invoked below, since
+        // sendSyncInBatches reads window size/chunkNum defaults from syncState at call time.
+        // Old server (no negotiation block): all fields stay at sync_state.ts defaults
+        // (negotiated=false, window=0) — current stop-and-wait behavior, unchanged.
+        if (data.data) {
+          const nego = data.data;
+          let negotiated = false;
+          if (typeof nego.syncUpChunkNum === "number") {
+            this.plugin.syncState.syncUpChunkNum = nego.syncUpChunkNum;
+            negotiated = true;
+          }
+          if (typeof nego.syncDownChunkNum === "number") {
+            this.plugin.syncState.syncDownChunkNum = nego.syncDownChunkNum;
+            negotiated = true;
+          }
+          if (typeof nego.pipelineWindowUp === "number") {
+            this.plugin.syncState.pipelineWindowUp = nego.pipelineWindowUp;
+            negotiated = true;
+          }
+          if (typeof nego.pipelineWindowDown === "number") {
+            this.plugin.syncState.pipelineWindowDown = nego.pipelineWindowDown;
+            negotiated = true;
+          }
+          this.plugin.syncState.negotiated = negotiated;
+          // protobufAck===true：服务端已在 auth 响应后提前 setUseProtobuf，本连接后续下行帧即为 pb，
+          // 客户端同步跟进，无需再等 ClientInfo 响应触发升级（websocket_client.ts:259 该触发仍保留作旧服务端路径）
+          if (nego.protobufAck === true && this.plugin.settings.protobufEnabled !== false) {
+            this.client.useProtobuf = true;
+            dump("WS Client upgraded to Protobuf via auth negotiation (pv2)");
+          }
+        }
+
         dump("Service authorization success");
         this.client.notifyStatusChange(true);
 
@@ -335,9 +407,23 @@ export class WebSocketManager {
 
       const handler = receiveOperators.get(msgAction);
       if (handler) {
-        const payload = (typeof data.data === 'object' && data.data !== null && data.context)
-          ? { ...data.data, context: data.context }
-          : data.data;
+        // WSResponse 信封 pageIndex 转换（设计稿 §4.3，唯一转换点）：线上 1-based，
+        // 0/undefined = 非分页消息（不并入 payload，下游按 undefined 走旧路径）；
+        // n>0 = 下载第 n-1 页，转换为内部 0-based 值并入 payload.pageIndex
+        // WSResponse envelope pageIndex conversion (design §4.3, the single conversion point):
+        // wire value is 1-based. 0/undefined = non-paginated (not merged into payload, downstream
+        // reads undefined and takes the legacy path); n>0 = download page n-1, converted to the
+        // internal 0-based value and merged into payload.pageIndex
+        const rawPageIndex = typeof data.pageIndex === 'number' ? data.pageIndex : 0;
+        const pageIndex = rawPageIndex > 0 ? rawPageIndex - 1 : undefined;
+
+        let payload: unknown = data.data;
+        if (typeof data.data === 'object' && data.data !== null) {
+          const merged = { ...data.data };
+          if (data.context) merged.context = data.context;
+          if (pageIndex !== undefined) merged.pageIndex = pageIndex;
+          payload = merged;
+        }
         void handler(payload, this.plugin);
         this.client.notifyActivity();
       }
@@ -378,7 +464,20 @@ export class WebSocketManager {
     const handleId = ++this.currentStartHandleId;
     dump(`Service start handle, id: ${handleId}`);
 
-    if (this.plugin.settings.startupDelay > 0) {
+    // 验收断言（设计稿 §5.2 第 2 点）：协商写入必须先于 StartHandle 调用完成——
+    // 要么本连接已完成 pv2 协商（negotiated=true），要么服务端是不支持协商的 v1（协商字段维持默认值，
+    // 后续走 stop-and-wait）。这里只做非阻断式告警，禁止把 handleStructuredMessage 里的协商写入移到
+    // StartHandle() 调用之后。
+    // Acceptance assertion (design §5.2 point 2): negotiation write-back must complete before
+    // StartHandle is invoked — either this connection completed pv2 negotiation, or the server is a
+    // pre-negotiation v1 (fields stay at defaults, falls back to stop-and-wait). Non-blocking warn
+    // only; do not move the negotiation write in handleStructuredMessage to after this call.
+    if (!this.plugin.syncState.negotiated) {
+      dump(`[Negotiation] StartHandle entered without pv2 negotiation — treating server as v1 (stop-and-wait fallback)`);
+    }
+
+    if (this.plugin.settings.startupDelay > 0 && !this.hasAppliedStartupDelay) {
+      this.hasAppliedStartupDelay = true;
       dump(`Startup delay: ${this.plugin.settings.startupDelay}ms`);
       await new Promise((resolve) => window.setTimeout(resolve, this.plugin.settings.startupDelay));
     }

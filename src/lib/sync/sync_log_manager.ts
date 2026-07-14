@@ -2,6 +2,36 @@ import { moment } from "obsidian";
 
 import FastSync from "../../main";
 import { dumpError } from "../utils/helpers";
+import { $ } from "../../i18n/lang";
+
+
+// 常见错误码 -> i18n 人话文案键映射表（覆盖客户端已知的鉴权/冲突/上传会话等高频错误码，
+// 未命中的错误码回退到 ui.log.error_code.unknown，仍带上原始 code 便于排查）
+// Common error code -> i18n human-readable message key map (covers the auth/conflict/upload-session
+// codes the client already knows about; unmapped codes fall back to ui.log.error_code.unknown,
+// which still surfaces the raw code for troubleshooting)
+const ERROR_CODE_MESSAGE_KEYS: Record<number, Parameters<typeof $>[0]> = {
+    300: "ui.log.error_code.300",
+    302: "ui.log.error_code.302",
+    303: "ui.log.error_code.303",
+    305: "ui.log.error_code.305",
+    307: "ui.log.error_code.307",
+    308: "ui.log.error_code.308",
+    309: "ui.log.error_code.309",
+    310: "ui.log.error_code.310",
+    312: "ui.log.error_code.312",
+    420: "ui.log.error_code.420",
+    463: "ui.log.error_code.463",
+    530: "ui.log.error_code.530",
+};
+
+function formatErrorCodeMessage(code: number): string {
+    const key = ERROR_CODE_MESSAGE_KEYS[code];
+    if (key) {
+        return $(key, { code });
+    }
+    return $("ui.log.error_code.unknown", { code });
+}
 
 
 export type LogType = 'send' | 'receive' | 'info' | 'error';
@@ -29,13 +59,56 @@ interface SyncSummaryStats {
     config?: { upload: number; modify: number; delete: number };
 }
 
+// 高频数据流消息：大库同步时每同步一个笔记/文件/配置/文件夹就会触发一次，量级与库大小成正比。
+// notify() 已有 100ms 节流兜底（doNotify 内 getLogs() 的 O(n) 拷贝已被限流到最多 10 次/秒），
+// 但 persistToFile() 是无节流的异步磁盘 append——每条新日志只要不是 pending 状态就立即写一次盘，
+// 大库全量同步时会变成成千上万次磁盘 I/O。这些高频消息在"成功"路径下跳过磁盘持久化，
+// 仍然写入内存 Map（日志面板打开时能看到），错误/冲突/pending 状态不受影响、照常持久化。
+// High-frequency data-stream messages: fired once per synced note/file/config/folder during a
+// large-vault sync, scaling with vault size. notify() already has a 100ms throttle (doNotify's
+// O(n) getLogs() copy is capped to ~10 calls/sec), but persistToFile() is unthrottled async disk
+// I/O — every new non-pending log writes to disk immediately, which becomes thousands of writes
+// on a large full sync. These high-frequency messages skip disk persistence on the success path,
+// but are still recorded into the in-memory Map (visible if the log panel is open); error/conflict/
+// pending states are unaffected and still persist as before.
+const HIGH_FREQUENCY_RECEIVE_ACTIONS = new Set([
+    "NoteSyncModify", "NoteSyncMtime", "NoteSyncDelete", "NoteSyncRename",
+    "NoteModifyAck", "NoteRenameAck", "NoteDeleteAck",
+    "FileSyncDelete", "FileSyncMtime", "FileSyncRename",
+    "FileUploadAck", "FileRenameAck", "FileDeleteAck",
+    "SettingSyncModify", "SettingSyncMtime", "SettingSyncDelete",
+    "SettingModifyAck", "SettingDeleteAck",
+    "FolderSyncModify", "FolderSyncDelete", "FolderSyncRename",
+]);
+
 export class SyncLogManager {
     private static instance: SyncLogManager;
-    private logs: SyncLog[] = [];
+    // 底层改为 Map<id, SyncLog>，保序用 Map 天然的插入序，upsert 变为 O(1)（原 findIndex 为 O(n)）
+    private logs: Map<string, SyncLog> = new Map();
     private readonly MAX_LOGS = 5000;
+    // 失败项独立上限：淘汰只清成功项，失败项在自己的上限内单独淘汰，不会被 5000 条总量挤掉
+    // Failed entries get their own cap: eviction only reclaims success items; failed items are
+    // only trimmed once they exceed their own cap, so they are never pushed out by the 5000 total.
+    private readonly MAX_FAILED_LOGS = 1000;
+    private failedCount = 0;
+    // 未读失败计数，供状态栏红点使用；打开日志视图切到"仅看失败"后清零
+    // Unread failed count, used by the status bar red dot; cleared once the log view is opened
+    // and switched to "failed only"
+    private unreadFailedCount = 0;
+    private failedCountListeners: Set<(count: number) => void> = new Set();
+    // 状态栏点击"仅看失败"跳转到日志视图时，日志视图挂载后消费一次此标记切换筛选
+    // Set right before revealing the log view from the status bar; consumed once on mount to
+    // switch the view's filter to "failed only"
+    private pendingOnlyFailedFilter = false;
     private listeners: Set<(logs: SyncLog[]) => void> = new Set();
     private plugin: FastSync | null = null;
     private logFilePath: string = "";
+
+    // notify() 节流合并：高频同步消息每条都触发会导致大量 UI/工作区事件重渲染
+    private readonly NOTIFY_THROTTLE_MS = 100;
+    private lastNotifyTime = 0;
+    private notifyTimer: number | null = null;
+    private notifyPending = false;
 
     private constructor() { }
 
@@ -59,13 +132,12 @@ export class SyncLogManager {
         return 'other';
     }
 
-    public addOrUpdateLog(log: Partial<SyncLog> & { id: string, action: string, type: LogType }) {
-        const index = this.logs.findIndex(l => l.id === log.id);
+    public addOrUpdateLog(log: Partial<SyncLog> & { id: string, action: string, type: LogType }, opts?: { skipPersist?: boolean }) {
+        const existingLog = this.logs.get(log.id);
         const category = this.getCategory(log.action);
 
-        if (index !== -1) {
+        if (existingLog) {
             // Update existing log - PRESERVE existing timestamp
-            const existingLog = this.logs[index];
 
             // 如果旧状态已经是成功或失败，则不允许被改回 pending
             let targetStatus = log.status || existingLog.status;
@@ -92,10 +164,15 @@ export class SyncLogManager {
 
             // --- 保持原有顺序，避免分页时由于状态更新导致记录在页面间跳变 ---
             // --- Keep original order to prevent items jumping between pages during status updates ---
-            this.logs[index] = updatedLog;
+            // Map.set 更新已存在的 key 不会改变其迭代顺序位置，天然保序
+            this.logs.set(log.id, updatedLog);
+
+            if (statusChanged) {
+                this.onStatusTransition(existingLog.status, targetStatus);
+            }
 
             // 仅在状态从 pending 变为 success/error 时记录到文件，避免进度更新刷屏
-            if (statusChanged && targetStatus !== 'pending') {
+            if (statusChanged && targetStatus !== 'pending' && !opts?.skipPersist) {
                 void this.persistToFile(updatedLog);
             }
         } else {
@@ -112,20 +189,114 @@ export class SyncLogManager {
                 message: log.message,
                 vault: log.vault
             };
-            this.logs.unshift(newLog);
-            if (this.logs.length > this.MAX_LOGS) {
-                this.logs.pop();
+            this.logs.set(log.id, newLog);
+            if (newLog.status === 'error') {
+                this.onStatusTransition(undefined, 'error');
             }
 
+            if (this.logs.size > this.MAX_LOGS) {
+                // 淘汰最早插入的一条非失败记录（失败项不受总量上限淘汰，见 enforceFailedCap）
+                // Evict the oldest non-failed record (failed entries are exempt from the total
+                // cap eviction here, see enforceFailedCap)
+                this.evictOldestNonError();
+            }
+            this.enforceFailedCap();
+
             // 新增记录时持久化到文件（除非是 pending 状态的进度条开头，这种通常之后会有 success）
-            if (newLog.status !== 'pending') {
+            if (newLog.status !== 'pending' && !opts?.skipPersist) {
                 void this.persistToFile(newLog);
             }
         }
         this.notify();
     }
 
-    public addLog(type: LogType, action: string, message?: string, status: LogStatus = 'success', path?: string, vault?: string) {
+    /**
+     * 淘汰迭代序中最早的一条非失败（status !== 'error'）记录。
+     * Evict the oldest record (by insertion order) whose status is not 'error'.
+     */
+    private evictOldestNonError(): boolean {
+        for (const [key, log] of this.logs) {
+            if (log.status !== 'error') {
+                this.logs.delete(key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 失败项独立上限：超过 MAX_FAILED_LOGS 时才淘汰最早的失败记录。
+     * Failed entries have their own cap: only trim the oldest failed record once MAX_FAILED_LOGS
+     * is exceeded.
+     */
+    private enforceFailedCap(): void {
+        while (this.failedCount > this.MAX_FAILED_LOGS) {
+            let evicted = false;
+            for (const [key, log] of this.logs) {
+                if (log.status === 'error') {
+                    this.logs.delete(key);
+                    this.failedCount--;
+                    evicted = true;
+                    break;
+                }
+            }
+            if (!evicted) break;
+        }
+    }
+
+    /**
+     * 维护 failedCount / unreadFailedCount 计数器，供失败项独立淘汰上限和状态栏红点使用。
+     * Maintain the failedCount / unreadFailedCount counters used by the failed-item eviction cap
+     * and the status bar red dot.
+     */
+    private onStatusTransition(fromStatus: LogStatus | undefined, toStatus: LogStatus): void {
+        if (fromStatus === toStatus) return;
+        if (toStatus === 'error') {
+            this.failedCount++;
+            this.unreadFailedCount++;
+            this.notifyFailedCountListeners();
+        } else if (fromStatus === 'error') {
+            this.failedCount--;
+            this.notifyFailedCountListeners();
+        }
+    }
+
+    public getUnreadFailedCount(): number {
+        return this.unreadFailedCount;
+    }
+
+    public markFailedSeen(): void {
+        if (this.unreadFailedCount === 0) return;
+        this.unreadFailedCount = 0;
+        this.notifyFailedCountListeners();
+    }
+
+    public subscribeUnreadFailedCount(listener: (count: number) => void): () => void {
+        this.failedCountListeners.add(listener);
+        listener(this.unreadFailedCount);
+        return () => this.failedCountListeners.delete(listener);
+    }
+
+    private notifyFailedCountListeners(): void {
+        this.failedCountListeners.forEach(listener => listener(this.unreadFailedCount));
+    }
+
+    /**
+     * 状态栏点击"仅看失败"跳转日志视图前调用，日志视图挂载时消费一次。
+     * Called right before revealing the log view from the status bar; consumed once when the log
+     * view mounts.
+     */
+    public requestOnlyFailedFilter(): void {
+        this.pendingOnlyFailedFilter = true;
+    }
+
+    public consumePendingOnlyFailedFilter(): boolean {
+        const value = this.pendingOnlyFailedFilter;
+        this.pendingOnlyFailedFilter = false;
+        return value;
+    }
+
+    public addLog(type: LogType, action: string, message?: string, status: LogStatus = 'success', path?: string, vault?: string, opts?: { skipPersist?: boolean }) {
         this.addOrUpdateLog({
             id: Math.random().toString(36).substring(2, 11),
             type,
@@ -135,7 +306,7 @@ export class SyncLogManager {
             path,
             vault,
             timestamp: Date.now()
-        });
+        }, opts);
     }
 
     /**
@@ -194,6 +365,10 @@ export class SyncLogManager {
                 }
             }
 
+            // 高频数据流消息的成功路径跳过磁盘持久化；错误/pending 状态不受影响，仍照常持久化
+            // Success path of high-frequency data-stream messages skips disk persistence;
+            // error/pending states are unaffected and still persist as before
+            const skipPersist = HIGH_FREQUENCY_RECEIVE_ACTIONS.has(action) && targetStatus === 'success';
             this.addOrUpdateLog({
                 id: sessionId,
                 type: 'receive',
@@ -201,13 +376,14 @@ export class SyncLogManager {
                 status: targetStatus,
                 path: logPath,
                 vault: logVault,
-                message: msgData.message || (msgData.code !== undefined ? `Code: ${msgData.code}` : undefined)
-            });
+                message: msgData.message || (msgData.code !== undefined ? formatErrorCodeMessage(msgData.code) : undefined)
+            }, { skipPersist });
         } else {
             // 没有 sessionId 的消息
             const status = (msgData.code !== undefined && (msgData.code === 0 || (msgData.code) > 200)) ? 'error' : 'success';
-            const message = msgData.message || (msgData.code !== undefined ? `Code: ${msgData.code}` : undefined);
-            this.addLog('receive', logAction, message, status, logPath, logVault);
+            const message = msgData.message || (msgData.code !== undefined ? formatErrorCodeMessage(msgData.code) : undefined);
+            const skipPersist = HIGH_FREQUENCY_RECEIVE_ACTIONS.has(action) && status === 'success';
+            this.addLog('receive', logAction, message, status, logPath, logVault, { skipPersist });
         }
     }
 
@@ -267,7 +443,10 @@ export class SyncLogManager {
 
 
     public async clearLogs() {
-        this.logs = [];
+        this.logs.clear();
+        this.failedCount = 0;
+        this.unreadFailedCount = 0;
+        this.notifyFailedCountListeners();
         this.notify();
 
         // 同时清空日志文件
@@ -281,7 +460,8 @@ export class SyncLogManager {
     }
 
     public getLogs(): SyncLog[] {
-        return [...this.logs];
+        // Map 按插入序（旧→新）迭代，反转后得到与原数组实现一致的“最新在前”顺序
+        return Array.from(this.logs.values()).reverse();
     }
 
     public subscribe(listener: (logs: SyncLog[]) => void) {
@@ -290,8 +470,36 @@ export class SyncLogManager {
         return () => this.listeners.delete(listener);
     }
 
-    private notify() {
+    private doNotify() {
         this.listeners.forEach(listener => listener(this.getLogs()));
+    }
+
+    /**
+     * 节流合并通知：短时间内多次调用只会触发一次真实的监听器回调，
+     * 但保证节流窗口结束后一定会用最新状态再触发一次（trailing）
+     */
+    private notify() {
+        const now = Date.now();
+        const elapsed = now - this.lastNotifyTime;
+
+        if (elapsed >= this.NOTIFY_THROTTLE_MS) {
+            this.lastNotifyTime = now;
+            this.notifyPending = false;
+            this.doNotify();
+            return;
+        }
+
+        this.notifyPending = true;
+        if (this.notifyTimer === null) {
+            this.notifyTimer = window.setTimeout(() => {
+                this.notifyTimer = null;
+                if (this.notifyPending) {
+                    this.notifyPending = false;
+                    this.lastNotifyTime = Date.now();
+                    this.doNotify();
+                }
+            }, this.NOTIFY_THROTTLE_MS - elapsed);
+        }
     }
 
     private async persistToFile(log: SyncLog) {
