@@ -459,7 +459,9 @@ export class MenuManager {
     this.activeMenu = menu;
 
     const menuWithHide = menu as unknown as MenuWithHide;
-    const originalHide = menuWithHide.hide.bind(menuWithHide) as unknown as () => void;
+    const originalHide = () => {
+      (Object.getPrototypeOf(menuWithHide) as { hide: () => void }).hide.call(menuWithHide);
+    };
     menuWithHide.hide = () => {
       this.activeMenu = null;
       originalHide();
