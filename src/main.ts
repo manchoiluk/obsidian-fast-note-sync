@@ -221,9 +221,9 @@ export default class FastSync extends Plugin {
   set folderSyncEnd(v: boolean) { this.syncState.folderSyncEnd = v }
 
   // SyncState — pending queues
-  get pendingFileRenames() { return this.syncState.pendingFileRenames }
+  get pendingFileRenames(): SyncState["pendingFileRenames"] { return this.syncState.pendingFileRenames }
   set pendingFileRenames(v: SyncState["pendingFileRenames"]) { this.syncState.pendingFileRenames = v }
-  get pendingNoteRenames() { return this.syncState.pendingNoteRenames }
+  get pendingNoteRenames(): SyncState["pendingNoteRenames"] { return this.syncState.pendingNoteRenames }
   set pendingNoteRenames(v: SyncState["pendingNoteRenames"]) { this.syncState.pendingNoteRenames = v }
   get pendingUploadHashes() { return this.syncState.pendingUploadHashes }
   set pendingUploadHashes(v: Map<string, string>) { this.syncState.pendingUploadHashes = v }

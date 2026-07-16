@@ -2,6 +2,8 @@ import { ItemView, WorkspaceLeaf, moment, setIcon, Platform, MenuItem, Menu, TFi
 import { createRoot, Root } from "react-dom/client";
 import * as React from "react";
 
+const safeMoment = moment as unknown as (inp?: unknown) => { format(format: string): string };
+
 import { SyncLogManager, SyncLog } from "../lib/sync/sync_log_manager";
 import { MenuItemWithInternal } from "../lib/utils/types";
 import { $ } from "../i18n/lang";
@@ -124,7 +126,7 @@ const SyncSummaryCard = ({ log }: { log: SyncLog }) => {
         );
     };
 
-    const timeStr = moment(log.timestamp).format("HH:mm:ss");
+    const timeStr = safeMoment(log.timestamp).format("HH:mm:ss");
     const isCancelled = log.status === 'cancelled';
     const titleText = isCancelled
         ? (syncType === 'full' 
@@ -171,7 +173,7 @@ const VaultScanningSummaryCard = ({ log }: { log: SyncLog }) => {
     const fileCount = fileMatch ? parseInt(fileMatch[1]) : 0;
     const configCount = configMatch ? parseInt(configMatch[1]) : 0;
 
-    const timeStr = moment(log.timestamp).format("HH:mm:ss");
+    const timeStr = safeMoment(log.timestamp).format("HH:mm:ss");
     
     // 根据 action 区分全量和增量并调用新增的翻译键
     // Distinguish between full and incremental action and load new translation keys
@@ -700,7 +702,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                         return (
                             <div key={log.id} className={`fns-sync-log-item fns-sync-log-category-${log.category} fns-sync-log-status-${log.status} fns-sync-log-type-${log.type}`}>
                                 <div className="fns-sync-log-item-header">
-                                    <span className="fns-sync-log-time">{moment(log.timestamp).format("HH:mm:ss")}</span>
+                                    <span className="fns-sync-log-time">{safeMoment(log.timestamp).format("HH:mm:ss")}</span>
                                     <span className="fns-sync-log-action">{$(`ui.log.action.${log.action}` as Parameters<typeof $>[0])}</span>
                                     <span className="fns-sync-log-type-tag">
                                         {log.type === 'send' ? (

@@ -608,6 +608,17 @@ export class SettingTab extends PluginSettingTab {
       return node
     }
 
+    const safeProcess = (typeof process !== "undefined" ? process : undefined) as unknown as {
+      platform?: string;
+      arch?: string;
+      versions?: {
+        node?: string;
+        electron?: string;
+        chrome?: string;
+        v8?: string;
+      };
+    } | undefined;
+
     // debug信息，显式脱敏作为主防线
     // debugInfo, Explicit masking is the primary line
     const debugInfo = {
@@ -641,18 +652,17 @@ export class SettingTab extends PluginSettingTab {
         isDesktop: Platform.isDesktopApp,
         isMobile: Platform.isMobile,
         isTablet: Platform.isTablet,
-        platform: typeof process !== "undefined" ? (process.platform ?? "unknown") : "unknown",
-        arch: typeof process !== "undefined" ? (process.arch ?? "unknown") : "unknown",
+        platform: safeProcess?.platform ?? "unknown",
+        arch: safeProcess?.arch ?? "unknown",
         userAgent: "Obsidian/" + ((this.app as unknown as { version: string }).version || "unknown"),
-        versions:
-          typeof process !== "undefined" && process.versions
-            ? {
-              node: process.versions.node,
-              electron: process.versions.electron,
-              chrome: process.versions.chrome,
-              v8: process.versions.v8,
+        versions: safeProcess?.versions
+          ? {
+              node: safeProcess.versions.node,
+              electron: safeProcess.versions.electron,
+              chrome: safeProcess.versions.chrome,
+              v8: safeProcess.versions.v8,
             }
-            : {},
+          : {},
         capacitor: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor
           ? {
             platform: (window as unknown as { Capacitor: { getPlatform(): string; isNative: boolean } }).Capacitor.getPlatform(),
