@@ -320,6 +320,7 @@ export const configIsPathExcluded = function (relativePath: string, plugin: Fast
   if (
     normalizedPath === `${pluginSelfDir}/configHashMap.json` ||
     normalizedPath === `${pluginSelfDir}/fileHashMap.json` ||
+    normalizedPath === `${pluginSelfDir}/syncHashMap.json` ||
     normalizedPath === `${pluginSelfDir}/folderSnapshot.json` ||
     normalizedPath === `${pluginSelfDir}/conflict-notes` ||
     normalizedPath.startsWith(`${pluginSelfDir}/conflict-notes/`)

@@ -11,6 +11,7 @@ import { SyncLogManager } from "../lib/sync/sync_log_manager";
 export class ConflictListModal extends Modal {
     private root: Root | null = null;
     private plugin: FastSync;
+    public static activeInstance: ConflictListModal | null = null;
 
     constructor(app: App, plugin: FastSync) {
         super(app);
@@ -18,6 +19,14 @@ export class ConflictListModal extends Modal {
     }
 
     onOpen() {
+        // 保证全局最多只打开一个冲突列表窗口，防抖避重叠
+        if (ConflictListModal.activeInstance && ConflictListModal.activeInstance !== this) {
+            try {
+                ConflictListModal.activeInstance.close();
+            } catch (e) {}
+        }
+        ConflictListModal.activeInstance = this;
+
         const { contentEl } = this;
         this.titleEl.setText($("ui.menu.conflicts" as any) || "笔记冲突");
         this.containerEl.addClass("fns-ws-clients-modal-container"); // 复用样式，保持一致
@@ -29,6 +38,9 @@ export class ConflictListModal extends Modal {
     }
 
     onClose() {
+        if (ConflictListModal.activeInstance === this) {
+            ConflictListModal.activeInstance = null;
+        }
         this.containerEl.removeClass("fns-ws-clients-modal-container");
         if (this.root) {
             this.root.unmount();

@@ -583,7 +583,7 @@ export class WebSocketManager {
         const adapter = this.plugin.app.vault.adapter;
         const conflictDir = `${getPluginDir(this.plugin)}/conflict-notes`;
         if (!(await adapter.exists(conflictDir))) {
-          await this.plugin.app.vault.createFolder(conflictDir);
+          await adapter.mkdir(conflictDir);
         }
 
         const safeName = path.replace(/\.md$/, "").replace(/[\/\\]/g, "_");

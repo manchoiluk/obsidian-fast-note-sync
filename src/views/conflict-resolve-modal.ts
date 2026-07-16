@@ -40,6 +40,7 @@ export class ConflictResolveModal extends Modal {
 
   onOpen() {
     ConflictResolveModal.activePaths.add(this.file.path);
+    this.containerEl.addClass("note-history-modal"); // 适配为历史版本同样大的大尺寸尺寸
     this.modalEl.addClass("conflict-resolve-modal");
     
     const { contentEl, titleEl } = this;
@@ -57,9 +58,9 @@ export class ConflictResolveModal extends Modal {
     diffWrap.style.width = "100%";
     diffWrap.style.marginBottom = "16px";
 
-    // Helper to build a column for comparing content
-    // 辅助构建用于比对的文本列
-    const createReadOnlyColumn = (title: string, content: string) => {
+    // Helper to build a column for comparing/editing content
+    // 辅助构建用于比对或编辑的文本列
+    const createColumn = (title: string, content: string, readOnly: boolean) => {
       const col = diffWrap.createDiv();
       col.style.flex = "1";
       col.style.display = "flex";
@@ -82,78 +83,52 @@ export class ConflictResolveModal extends Modal {
       copyBtn.style.padding = "2px 8px";
       copyBtn.style.fontSize = "11px";
       copyBtn.onClickEvent(() => {
-        navigator.clipboard.writeText(content);
+        navigator.clipboard.writeText(textarea.value);
         copyBtn.setText($("ui.history.copied") || "已复制");
         setTimeout(() => copyBtn.setText($("ui.history.copy") || "复制"), 2000);
       });
 
-      // Textarea wrapper // 文本展示框
-      const textarea = col.createEl("textarea", { value: content });
-      textarea.readOnly = true;
+      // Textarea wrapper // 文本展示/编辑框
+      const textarea = col.createEl("textarea");
+      textarea.value = content;
+      textarea.readOnly = readOnly;
       textarea.style.width = "100%";
-      textarea.style.height = "250px";
+      textarea.style.height = "320px";
       textarea.style.resize = "none";
       textarea.style.fontFamily = "var(--font-monospace)";
       textarea.style.fontSize = "12px";
       textarea.style.background = "var(--background-primary)";
       
-      return col;
+      return { col, textarea };
     };
 
-    // Render Local Version // 渲染本地修改版本
-    createReadOnlyColumn(
-      $("ui.conflict.local_title") || "本地修改版本 (Local)",
-      this.localContent
+    // 计算本地和云端相对于共同基础版本 (Base) 的差异详情
+    const localDiff = computeDiff(this.baseContent || "", this.localContent);
+    const remoteDiff = computeDiff(this.baseContent || "", this.serverContent);
+
+    // Render Local Version (Editable) // 渲染本地与共同基础版本的差异详情（可编辑，用户在此进行冲突调整）
+    const localCol = createColumn(
+      ($("ui.conflict.local_title") || "本地修改版本 (Local)") + " [可在此处直接修改解决]",
+      localDiff,
+      false // readOnly = false
     );
+    this.editorEl = localCol.textarea;
 
-    // Render Base Common Version if available // 渲染共同基础版本（如果可用）
-    if (this.baseContent) {
-      createReadOnlyColumn(
-        $("ui.conflict.base_title") || "共同基础版本 (Base)",
-        this.baseContent
-      );
-    }
-
-    // Render Remote Version // 渲染服务端修改版本
-    createReadOnlyColumn(
+    // Render Remote Version (ReadOnly) // 渲染云端与共同基础版本的差异详情（只读，仅供对照）
+    const remoteCol = createColumn(
       $("ui.conflict.server_title") || "服务端修改版本 (Remote)",
-      this.serverContent
+      remoteDiff,
+      true // readOnly = true
     );
 
-    // Lower Editor Area // 下部最终编辑器区域
-    const editorSection = container.createDiv();
-    editorSection.createEl("h4", { text: $("ui.conflict.final_title") || "最终合并内容 (Final Content)" });
-    
-    // Action buttons // 快捷替换按钮
-    const quickActions = editorSection.createDiv();
-    quickActions.style.display = "flex";
-    quickActions.style.gap = "8px";
-    quickActions.style.marginBottom = "8px";
 
-    const useLocalBtn = quickActions.createEl("button", { text: $("ui.conflict.use_local") || "使用本地内容" });
-    useLocalBtn.onClickEvent(() => {
-      this.editorEl.value = this.localContent;
-    });
-
-    const useRemoteBtn = quickActions.createEl("button", { text: $("ui.conflict.use_remote") || "使用云端内容" });
-    useRemoteBtn.onClickEvent(() => {
-      this.editorEl.value = this.serverContent;
-    });
-
-    // Editor TextArea // 编辑文本域
-    this.editorEl = editorSection.createEl("textarea", { cls: "fns-conflict-final-textarea" });
-    this.editorEl.value = this.localContent; // Default to local content // 默认使用本地
-    this.editorEl.style.width = "100%";
-    this.editorEl.style.height = "180px";
-    this.editorEl.style.fontFamily = "var(--font-monospace)";
-    this.editorEl.style.fontSize = "12px";
 
     // Bottom Actions // 底部功能按钮行
     const actionEl = container.createDiv({ cls: "conflict-resolve-actions" });
 
     // Confirm Resolve Button // 确认解决
     const resolveBtn = actionEl.createEl("button", {
-      text: $("ui.button.confirm") || "确认解决",
+      text: "解决冲突",
       cls: "mod-cta"
     });
     resolveBtn.onClickEvent(async () => {
@@ -162,7 +137,7 @@ export class ConflictResolveModal extends Modal {
       cancelBtn.disabled = true;
 
       try {
-        const finalContent = this.editorEl.value;
+        const finalContent = cleanDiffMarkup(this.editorEl.value);
 
         // 1. Overwrite local file // 覆写本地文件
         await this.app.vault.modify(this.file, finalContent);
@@ -242,4 +217,62 @@ export class ConflictResolveModal extends Modal {
     ConflictResolveModal.activePaths.delete(this.file.path);
     this.contentEl.empty();
   }
+}
+
+/**
+ * Compute line-by-line Myers Diff between oldText and newText.
+ * 计算旧文本和新文本之间的行级差异详情 (Git 格式)
+ */
+function computeDiff(oldText: string, newText: string): string {
+  const oldLines = oldText.split(/\r?\n/);
+  const newLines = newText.split(/\r?\n/);
+  const M = oldLines.length;
+  const N = newLines.length;
+
+  const dp: number[][] = Array.from({ length: M + 1 }, () => new Array(N + 1).fill(0));
+  for (let i = 1; i <= M; i++) {
+    for (let j = 1; j <= N; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+
+  const result: string[] = [];
+  let i = M, j = N;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      result.push("  " + oldLines[i - 1]);
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.push("+ " + newLines[j - 1]);
+      j--;
+    } else {
+      result.push("- " + oldLines[i - 1]);
+      i--;
+    }
+  }
+  return result.reverse().join("\n");
+}
+
+/**
+ * Cleans the Git-style diff markup to restore clean markdown content.
+ * 清洗带 Git 差异标记的文本以还原纯净的 Markdown 笔记内容
+ */
+function cleanDiffMarkup(diffText: string): string {
+  const lines = diffText.split(/\r?\n/);
+  const cleanLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("+ ") || line.startsWith("  ")) {
+      cleanLines.push(line.substring(2));
+    } else if (line.startsWith("- ")) {
+      continue;
+    } else {
+      cleanLines.push(line);
+    }
+  }
+  return cleanLines.join("\n");
 }
