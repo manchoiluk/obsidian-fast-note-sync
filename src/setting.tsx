@@ -14,6 +14,7 @@ import { AppWithInternal } from "./lib/utils/types";
 import { RuleEditor } from "./views/rule-editor";
 import { $ } from "./i18n/lang";
 import FastSync from "./main";
+import { createVaultNameChangeHandler } from "./lib/settings/vault_name";
 
 
 export interface PluginSettings {
@@ -831,7 +832,14 @@ export class SettingTab extends PluginSettingTab {
               this.plugin.settings.networkLibrary = backup.networkLibrary
 
               // 重新初始化某些依赖库路径的动态默认值
-              const defaultExcludes = [`${getPluginDir(this.plugin)}/data.json`, `${this.app.vault.configDir}/community-plugins.json`]
+              // Reinitialize dynamic default values for certain dependency library paths
+              const defaultExcludes = [
+                `${getPluginDir(this.plugin)}/data.json`,
+                `${getPluginDir(this.plugin)}/configHashMap.json`,
+                `${getPluginDir(this.plugin)}/fileHashMap.json`,
+                `${getPluginDir(this.plugin)}/folderSnapshot.json`,
+                `${this.app.vault.configDir}/community-plugins.json`,
+              ]
               this.plugin.settings.syncExcludeFolders = JSON.stringify(defaultExcludes.map((pattern) => ({ pattern, caseSensitive: false })))
 
               // 确保客户端名称不被重置
@@ -1308,16 +1316,12 @@ export class SettingTab extends PluginSettingTab {
     )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.api_token_desc"))
 
+    const handleVaultNameChange = createVaultNameChangeHandler(this.plugin)
     new Setting(set).setName($("setting.remote.vault_name")).addText((text) =>
       text
         .setPlaceholder($("setting.remote.vault_name"))
         .setValue(this.plugin.settings.vault)
-        .onChange(async (value) => {
-          this.plugin.wsSettingChange = true
-          this.plugin.settings.vault = value
-          this.plugin.localStorageManager.clearSyncTime()
-          await this.plugin.saveAndReloadServices()
-        }),
+        .onChange(handleVaultNameChange),
     )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.vault_name_desc"))
 
@@ -1802,6 +1806,7 @@ export class SettingTab extends PluginSettingTab {
           .addOption("", $("setting.sync.strategy_default"))
           .addOption("newTimeMerge", $("setting.sync.strategy_new"))
           .addOption("ignoreTimeMerge", $("setting.sync.strategy_force"))
+          .addOption("manualMerge", $("setting.sync.strategy_manual"))
           .setValue(this.plugin.settings.offlineSyncStrategy || "")
           .onChange(async (value) => {
             this.plugin.settings.offlineSyncStrategy = value

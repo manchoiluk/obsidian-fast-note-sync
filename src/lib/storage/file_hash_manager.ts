@@ -18,7 +18,9 @@ interface HashCache {
 export class FileHashManager {
   private plugin: FastSync;
   private hashMap: Map<string, HashCache> = new Map();
+  private syncHashMap: Map<string, string> = new Map(); // path -> baseHash
   private storageKey: string;
+  private syncStorageKey: string;
   private isInitialized: boolean = false;
   // 脏标记 + 防抖落盘：高频单条写入（下载/Ack 路径）不再逐条同步整表 JSON.stringify，
   // 避免高频写 localStorage 阻塞主线程导致界面白屏
@@ -26,14 +28,17 @@ export class FileHashManager {
   private debouncedFlush: () => void;
   // 文件镜像：localStorage 被移动端系统清除后的兜底恢复
   private mirror: LocalStateFileMirror;
+  private syncMirror: LocalStateFileMirror;
 
   constructor(plugin: FastSync) {
     this.plugin = plugin;
     // 与 vault 名无关的稳定存储键：iCloud 手机端会把库文件夹改名，绑定 vault 名的旧 key 会失效
     // (与 local_storage_manager.ts getInternalKey 的修复同理)，历史键迁移见 loadFromStorage
     this.storageKey = `fns-fileHashMap`;
+    this.syncStorageKey = `fns-syncHashMap`;
     this.debouncedFlush = debounce(() => this.flush(), 500);
     this.mirror = new LocalStateFileMirror(plugin, "fileHashMap.json");
+    this.syncMirror = new LocalStateFileMirror(plugin, "syncHashMap.json");
   }
 
   /**
@@ -54,6 +59,7 @@ export class FileHashManager {
     }
     // 最后冲镜像：既包含 saveToStorage 刚安排的一份，也包含与 isDirty 无关的防抖中镜像写
     this.mirror.flush();
+    this.syncMirror.flush();
   }
 
   /**
@@ -64,27 +70,75 @@ export class FileHashManager {
   async initialize(): Promise<void> {
     dump("FileHashManager: 开始初始化");
 
-    // 尝试从 localStorage 加载
+    // 1. 尝试加载本地最新计算哈希缓存表 (hashMap)
     const loaded = this.loadFromStorage();
+    let hasRestoredMap = false;
 
     if (loaded) {
-      dump(`FileHashManager: 从 localStorage 加载成功,共 ${this.hashMap.size} 个文件`);
-      this.isInitialized = true;
-      return;
+      dump(`FileHashManager: 从 localStorage 加载本地哈希缓存成功,共 ${this.hashMap.size} 个文件`);
+      hasRestoredMap = true;
+    } else {
+      const mirrored = await this.mirror.read();
+      if (mirrored && this.parseAndLoad(mirrored)) {
+        dump("FileHashManager: 从文件镜像恢复本地哈希缓存成功");
+        this.saveToStorage();
+        hasRestoredMap = true;
+      }
     }
 
-    // localStorage 未命中：尝试从文件镜像恢复，不弹通知、不重建
-    const mirrored = await this.mirror.read();
-    if (mirrored && this.parseAndLoad(mirrored)) {
-      dump("FileHashManager: 从文件镜像恢复哈希表");
-      this.saveToStorage();
-      this.isInitialized = true;
-      return;
+    if (!hasRestoredMap) {
+      dump("FileHashManager: localStorage 与文件镜像均无本地缓存,开始构建哈希映射");
+      await this.buildFileHashMap();
     }
 
-    dump("FileHashManager: localStorage 与文件镜像均无数据,开始构建哈希映射");
-    await this.buildFileHashMap();
+    // 2. 尝试加载云端确认同步基准表 (syncHashMap)
+    const loadedSync = this.loadSyncFromStorage();
+    let hasRestoredSync = false;
+
+    if (loadedSync) {
+      dump(`FileHashManager: 从 localStorage 加载同步基准成功,共 ${this.syncHashMap.size} 个文件`);
+      hasRestoredSync = true;
+    } else {
+      const mirroredSync = await this.syncMirror.read();
+      if (mirroredSync && this.parseAndLoadSync(mirroredSync)) {
+        dump("FileHashManager: 从文件镜像恢复同步基准成功");
+        this.saveSyncToStorage();
+        hasRestoredSync = true;
+      }
+    }
+
+    // 3. 数据平滑迁移：全新用户或旧版插件升级用户 (syncHashMap 尚未创建但 hashMap 已有历史数据)
+    if (!hasRestoredSync) {
+      dump("FileHashManager: 同步基准表无数据，正在使用本地哈希缓存进行平滑继承迁移...");
+      for (const [path, cache] of this.hashMap.entries()) {
+        this.syncHashMap.set(path, cache.hash);
+      }
+      this.saveSyncToStorage();
+    }
+
     this.isInitialized = true;
+  }
+
+  private loadSyncFromStorage(): boolean {
+    try {
+      const data = this.plugin.app.loadLocalStorage(this.syncStorageKey) as string | null;
+      if (!data) return false;
+      return this.parseAndLoadSync(data);
+    } catch (error) {
+      dump("FileHashManager: 从 localStorage 加载同步基准失败", error);
+      return false;
+    }
+  }
+
+  private parseAndLoadSync(data: string): boolean {
+    try {
+      const parsed = JSON.parse(data) as Record<string, string>;
+      this.syncHashMap = new Map(Object.entries(parsed));
+      return true;
+    } catch (error) {
+      dump("FileHashManager: 解析同步基准哈希数据失败", error);
+      return false;
+    }
   }
 
   /**
@@ -203,24 +257,25 @@ export class FileHashManager {
   }
 
   /**
-   * 获取指定路径的哈希值
+   * 获取指定路径的同步基准哈希值 (提供给同步作为 baseHash 的唯一来源)
    */
   getPathHash(path: string): string | null {
-    return this.hashMap.get(path)?.hash || null;
+    return this.syncHashMap.get(path) || null;
   }
 
   /**
-   * 获取哈希表中存储的所有文件路径
+   * 获取已成功同步的所有文件路径 (用于检测离线删除与拉取缺失文件)
    */
   getAllPaths(): string[] {
-    return Array.from(this.hashMap.keys());
+    return Array.from(this.syncHashMap.keys());
   }
 
   /**
-   * 添加或更新单个文件的哈希
+   * 添加或更新单个文件的对齐基准哈希值 (在 Ack 确认或收到推送时调用)
    */
   setFileHash(path: string, hash: string, mtime: number = 0, size: number = 0): void {
     this.hashMap.set(path, { hash, mtime, size });
+    this.syncHashMap.set(path, hash);
     this.scheduleSave();
   }
 
@@ -229,6 +284,7 @@ export class FileHashManager {
     for (const [path, hash] of entries) {
       const stat = getStat?.(path);
       this.hashMap.set(path, { hash, mtime: stat?.mtime || 0, size: stat?.size || 0 });
+      this.syncHashMap.set(path, hash);
       changed = true;
     }
     if (changed) this.saveToStorage();
@@ -238,8 +294,9 @@ export class FileHashManager {
    * 删除指定路径的哈希
    */
   removeFileHash(path: string): void {
-    const deleted = this.hashMap.delete(path);
-    if (deleted) {
+    const deleted1 = this.hashMap.delete(path);
+    const deleted2 = this.syncHashMap.delete(path);
+    if (deleted1 || deleted2) {
       this.scheduleSave();
     }
   }
@@ -248,6 +305,7 @@ export class FileHashManager {
     let changed = false;
     for (const path of paths) {
       changed = this.hashMap.delete(path) || changed;
+      changed = this.syncHashMap.delete(path) || changed;
     }
     if (changed) this.scheduleSave();
   }
@@ -345,8 +403,34 @@ export class FileHashManager {
 
     // 即使 localStorage 写入失败 (如配额)，镜像写入也照常进行
     this.mirror.scheduleWrite(data);
+
+    // 同步保存基准哈希表
+    this.saveSyncToStorage();
   }
 
+  private saveSyncToStorage(): void {
+    let data: string;
+    try {
+      const obj = Object.fromEntries(this.syncHashMap);
+      data = JSON.stringify(obj);
+    } catch (error) {
+      dump("FileHashManager: 序列化同步基准哈希表失败", error);
+      return;
+    }
+
+    try {
+      this.plugin.app.saveLocalStorage(this.syncStorageKey, data);
+    } catch (error) {
+      dump("FileHashManager: 保存同步基准哈希表到 localStorage 失败", error);
+    }
+
+    this.syncMirror.scheduleWrite(data);
+  }
+
+  /**
+   * 手动重建哈希表
+   * 用于命令面板
+   */
   /**
    * 手动重建哈希表
    * 用于命令面板
@@ -355,13 +439,19 @@ export class FileHashManager {
     dump("FileHashManager: 手动重建哈希映射");
     this.clearAll();
     await this.buildFileHashMap();
+    // 重新扫描完成后，将本地最新计算的哈希复制写入同步基准，作为当前最新的同步对齐基准
+    for (const [path, cache] of this.hashMap.entries()) {
+      this.syncHashMap.set(path, cache.hash);
+    }
+    this.saveSyncToStorage();
   }
 
   /**
-   * 清理哈希表内容
+   * 清理所有哈希表内容
    */
   clearAll(): void {
     this.hashMap.clear();
+    this.syncHashMap.clear();
     this.saveToStorage();
   }
 
@@ -369,6 +459,9 @@ export class FileHashManager {
    * Bulk-set hashes from a scanned hash map and persist once.
    * Used to eagerly commit computed hashes during scan, breaking the
    * Catch-22 where hashes are never persisted because SyncEnd is never received.
+   */
+  /**
+   * 批量更新扫描得出的哈希值 (仅写入本地缓存以优化性能，绝不更新同步基准表)
    */
   bulkSetFromScanned(scanned: Map<string, { hash: string; mtime: number; size: number }>): void {
     if (scanned.size === 0) return;
@@ -380,7 +473,20 @@ export class FileHashManager {
         changed = true;
       }
     }
-    if (changed) this.saveToStorage();
+    if (changed) {
+      // 仅触发本地缓存表的 localStorage 和文件镜像保存
+      let data: string;
+      try {
+        const obj = Object.fromEntries(this.hashMap);
+        data = JSON.stringify(obj);
+      } catch (error) {
+        return;
+      }
+      try {
+        this.plugin.app.saveLocalStorage(this.storageKey, data);
+      } catch (error) {}
+      this.mirror.scheduleWrite(data);
+    }
   }
 
   /**
@@ -392,6 +498,7 @@ export class FileHashManager {
     for (const path of this.hashMap.keys()) {
       if (isPathExcluded(path, this.plugin)) {
         this.hashMap.delete(path);
+        this.syncHashMap.delete(path);
         deletedCount++;
       }
     }

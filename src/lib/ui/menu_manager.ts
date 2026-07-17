@@ -1,15 +1,16 @@
-import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
+import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf, SuggestModal, App } from 'obsidian';
 
 import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes, cancelSync } from '../sync/operator';
 import { AppWithInternal, MenuItemWithDom, MenuWithHide, MenuItemWithInternal } from "../utils/types";
 import { NoteHistoryModal } from '../../views/note-history/history-modal';
 import { RecycleBinModal } from '../../views/recycle-bin-modal';
-import { showSyncNotice } from '../utils/helpers';
+import { showSyncNotice, getPluginDir, hashContent } from '../utils/helpers';
 import { ShareModal } from '../../views/share-modal';
 import { AboutModal } from '../../views/about-modal';
 import { $ } from "../../i18n/lang";
 import FastSync from "../../main";
 import { StatusBarManager } from './status_bar_manager';
+import { SyncLogManager } from '../sync/sync_log_manager';
 
 
 
@@ -631,6 +632,22 @@ export class MenuManager {
       }
     });
 
+    // 冲突笔记选项
+    const conflictedCount = this.plugin.syncState.conflictedPaths.size;
+    if (this.plugin.websocket.isAuth && conflictedCount > 0) {
+      menu.addSeparator();
+      menu.addItem((item: MenuItem) => {
+        item
+          .setIcon("alert-triangle")
+          .setTitle((($("ui.menu.conflicts" as any) || "笔记冲突") as string) + ` (${conflictedCount})`)
+          .onClick(async () => {
+            const { ConflictListModal } = await import("../../views/conflict-list-modal");
+            new ConflictListModal(this.plugin.app, this.plugin).open();
+          });
+        (item as unknown as MenuItemWithDom).dom.setAttribute("aria-label", "解决发生同步冲突的笔记");
+      });
+    }
+
     menu.addSeparator();
     menu.addItem((item: MenuItem) => {
       item
@@ -743,4 +760,46 @@ export class MenuManager {
       svg.toggleClass("fns-success-text", !!isShared);
     }
   }
+
+  async openConflictResolverForPath(path: string) {
+    const file = this.plugin.app.vault.getFileByPath(path);
+    if (!file) return;
+
+    try {
+      const adapter = this.plugin.app.vault.adapter;
+      const safeName = path.replace(/\.md$/, "").replace(/[\/\\]/g, "_");
+      const pathHash = hashContent(path);
+      const conflictDir = `${getPluginDir(this.plugin)}/conflict-notes`;
+      const baseBackupPath = `${conflictDir}/${safeName}_${pathHash}.base.md`;
+      const remoteBackupPath = `${conflictDir}/${safeName}_${pathHash}.remote.md`;
+
+      let baseContent = "";
+      let serverContent = "";
+      if (await adapter.exists(baseBackupPath)) {
+        baseContent = await adapter.read(baseBackupPath);
+      }
+      if (await adapter.exists(remoteBackupPath)) {
+        serverContent = await adapter.read(remoteBackupPath);
+      }
+
+      const localContent = await this.plugin.app.vault.read(file);
+
+      const logs = SyncLogManager.getInstance().getLogs();
+      const targetLog = logs.find((l: any) => l.path === path && l.action === "NoteManualMergeConflict");
+      let serverHash = "";
+      if (targetLog && targetLog.message) {
+        try {
+          const conflictData = JSON.parse(targetLog.message);
+          serverHash = conflictData.serverHash || "";
+        } catch {}
+      }
+
+      const { ConflictResolveModal } = await import("../../views/conflict-resolve-modal");
+      new ConflictResolveModal(this.plugin.app, this.plugin, file, localContent, serverContent, baseContent, serverHash).open();
+    } catch (e) {
+      console.error("Failed to open conflict resolver for path:", e);
+    }
+  }
 }
+
+

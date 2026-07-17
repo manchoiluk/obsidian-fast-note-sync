@@ -630,6 +630,9 @@ export default class FastSync extends Plugin {
 
       // 应用移动端 toast 高度 CSS 变量 / Apply mobile toast top CSS variable on startup
       this.applyMobileToastTop()
+
+      // 从本地存储还原当前处于手动合并冲突锁定状态的文件路径
+      this.syncState.conflictedPaths = this.localStorageManager.getConflictedPaths()
     })
   }
 
@@ -732,9 +735,13 @@ export default class FastSync extends Plugin {
     }
 
     // 仅在首次安装（无旧数据）时自动添加插件自身目录及核心配置排除
+    // Automatically add this plugin's own directory and core config exclusions only during clean install (no legacy data)
     if (!data) {
       const defaultExcludes = [
         `${pluginSelfDir}/data.json`,
+        `${pluginSelfDir}/configHashMap.json`,
+        `${pluginSelfDir}/fileHashMap.json`,
+        `${pluginSelfDir}/folderSnapshot.json`,
         `${this.app.vault.configDir}/community-plugins.json`,
       ];
       defaultExcludes.forEach(pattern => {

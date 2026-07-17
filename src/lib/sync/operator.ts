@@ -1,7 +1,7 @@
 import { TFolder, TFile, normalizePath } from "obsidian";
 
 import { receiveFileUpload, receiveFileSyncUpdate, receiveFileSyncDelete, receiveFileSyncMtime, receiveFileSyncChunkDownload, receiveFileSyncEnd, checkAndUploadAttachments, receiveFileSyncRename, receiveFileRenameAck, receiveFileUploadAck, receiveFileDeleteAck, isPluginUnloading } from "./operator_file";
-import { hashContent, hashContentAsync, dump, isPathExcluded, isFolderSyncPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize, yieldToMain } from "../utils/helpers";
+import { hashContent, hashContentAsync, dump, isPathExcluded, isFolderSyncPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize, yieldToMain, getPluginDir } from "../utils/helpers";
 import { receiveConfigSyncModify, receiveConfigUpload, receiveConfigSyncMtime, receiveConfigSyncDelete, receiveConfigSyncEnd, configAllPaths, receiveConfigSyncClear, receiveConfigModifyAck, receiveConfigDeleteAck } from "./operator_config";
 import { receiveNoteSyncModify, receiveNoteUpload, receiveNoteSyncMtime, receiveNoteSyncDelete, receiveNoteSyncEnd, receiveNoteSyncRename, receiveNoteModifyAck, receiveNoteRenameAck, receiveNoteDeleteAck } from "./operator_note";
 import { SyncMode, SnapFile, SnapFolder, SyncEndData, PathHashFile, NoteSyncData, FileSyncData, ConfigSyncData, FolderSyncData } from "../utils/types";
@@ -230,6 +230,14 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
       showSyncNotice(completionText);
     }
     plugin.updateStatusBar(completionText);
+
+    // 同步成功完成后，如果在此次同步中捕获到了需要手动合并解决的冲突，则在此时一并弹出冲突文件列表视图
+    if (plugin.syncState.conflictedPaths.size > 0) {
+      void (async () => {
+        const { ConflictListModal } = await import("../../views/conflict-list-modal");
+        new ConflictListModal(plugin.app, plugin).open();
+      })();
+    }
 
     if (plugin.expectedSyncCount > 0 && !plugin.localStorageManager.getMetadata("isInitSync")) {
       plugin.localStorageManager.setMetadata("isInitSync", true);
@@ -549,6 +557,24 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     return;
   }
   plugin.isSyncing = true;
+
+  // 同步开始前，全局清空上一轮残留的 conflict-notes 物理冲突临时目录中的文件（位于插件目录下，避免 Windows 锁定目录报错）
+  const adapter = plugin.app.vault.adapter;
+  const conflictDir = `${getPluginDir(plugin)}/conflict-notes`;
+  try {
+    if (await adapter.exists(conflictDir)) {
+      const files = await adapter.list(conflictDir);
+      const deletePromises: Promise<void>[] = [];
+      if (files && files.files) {
+        for (const f of files.files) {
+          deletePromises.push(adapter.remove(f));
+        }
+      }
+      await Promise.all(deletePromises);
+    }
+  } catch (e) {
+    dump("Failed to clear conflict-notes folder:", e);
+  }
   // 提到 try 外部，使 catch/finally 也能引用本次会话的 context 做归属判断
   // Hoisted outside try so catch/finally can reference this session's context for ownership checks
   let context = "";
@@ -748,7 +774,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
               if (isLoadLastTime
                 && file.stat.mtime < Number(plugin.localStorageManager.getMetadata("lastNoteSyncTime"))
                 && plugin.fileHashManager.getPathHash(file.path) !== null
-                && !plugin.pendingNoteModifies.has(file.path)) continue;
+                && !plugin.pendingNoteModifies.has(file.path)
+                && !plugin.syncState.conflictedPaths.has(file.path)) continue;
 
               // Skip excessively large .md files (>noteSyncLimit MB)
               const noteLimit = (plugin.settings.noteSyncLimit ?? 20) * 1024 * 1024;
