@@ -51,15 +51,21 @@ export class ConflictListModal extends Modal {
 }
 
 const ConflictListView = ({ plugin, modal }: { plugin: FastSync, modal: ConflictListModal }) => {
-    // 监听 conflictedPaths
-    const [conflicts, setConflicts] = React.useState<string[]>([]);
+    // 动态同步 conflictedPaths 列表，检测到发生解决或新增时刷新
+    const [conflicts, setConflicts] = React.useState<string[]>(Array.from(plugin.syncState.conflictedPaths));
 
     React.useEffect(() => {
-        setConflicts(Array.from(plugin.syncState.conflictedPaths));
-    }, [plugin.syncState.conflictedPaths.size]);
+        const timer = window.setInterval(() => {
+            const current = Array.from(plugin.syncState.conflictedPaths);
+            if (current.length !== conflicts.length || current.some((val, idx) => val !== conflicts[idx])) {
+                setConflicts(current);
+            }
+        }, 300);
+        return () => window.clearInterval(timer);
+    }, [conflicts]);
 
     const handleResolve = async (path: string) => {
-        modal.close();
+        // 在去解决冲突时不再提前强制关闭列表页，以便用户回到列表页时能继续解决其他文件的冲突
         await plugin.menuManager.openConflictResolverForPath(path);
     };
 

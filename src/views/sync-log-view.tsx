@@ -288,8 +288,14 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
 
     const handleConflictLogClick = async (log: SyncLog) => {
         try {
+            const filePath = normalizePath(log.path || "");
+            if (filePath && !plugin.syncState.conflictedPaths.has(filePath)) {
+                new Notice($("ui.conflict.resolved_notice") || "冲突已解决");
+                return;
+            }
+
             const data = JSON.parse(log.message || '{}');
-            const file = plugin.app.vault.getFileByPath(normalizePath(log.path || ""));
+            const file = plugin.app.vault.getFileByPath(filePath);
             if (file) {
                 const localContent = await plugin.app.vault.read(file);
                 new ConflictResolveModal(
