@@ -79,7 +79,7 @@
   "setting.cloud.type_limit": "89185e1569abad23ee5e82604106b725",
   "setting.cloud.type_limit_desc": "f812d199c1f83075c82dcfcb0522798a",
   "setting.cloud.remote_source": "2304ad72f335b46f63b55250a33b6a64",
-  "setting.cloud.remote_source_desc": "d3e1caed5cdbd88603708ddd7a8e2512",
+  "setting.cloud.remote_source_desc": "ea91f07eb302e595da3ad03b77e1e7c0",
   "setting.cloud.delete_after_upload": "e8910f16690e2d20277167684886e1d8",
   "setting.cloud.delete_after_upload_desc": "c2379685731ae90b8a66cb4800aaf74c",
   "setting.support.title": "fefa0370fbd77f9ec9c293960a98570c",
@@ -520,5 +520,7 @@
   "ui.conflict.use_local": "36f8f437c1ee2dd3312766f63fb240df",
   "ui.conflict.use_remote": "4e9d9371166a9f9197f9e9f605584871",
   "ui.log.action.NoteManualMergeConflict": "104dbf5046aa7849d304c0936fa29ebb",
-  "ui.conflict.resolved_notice": "fd949e2f34efd5b5d76dd3b08c34badc"
+  "ui.conflict.resolved_notice": "fd949e2f34efd5b5d76dd3b08c34badc",
+  "setting.cloud.dynamic_attachment": "4c4118121b480d9bf210a235f2b1539a",
+  "setting.cloud.dynamic_attachment_desc": "811d6bf026add48bf7bb907e2dce7b53"
 }

@@ -743,13 +743,13 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding: 0 24px 24px 24px !important;
+    padding: 0 24px 24px;
   }
 
   .modal-title {
     display: flex;
     align-items: center;
-    padding: 24px 24px 12px 24px !important;
+    padding: 24px 24px 12px;
 
     .title-prefix {
       color: var(--text-faint);
@@ -947,15 +947,15 @@
       transition: background-color 0.8s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 
       &.fns-editor-flash {
-        background-color: var(--background-modifier-success) !important;
-        box-shadow: 0 0 14px var(--interactive-accent) !important;
-        transition: none !important;
+        background-color: var(--background-modifier-success);
+        box-shadow: 0 0 14px var(--interactive-accent);
+        transition: none;
 
         // Force child elements (line numbers & textarea) to be transparent to reveal the parent container's flash color
         .conflict-editor-line-numbers,
         textarea.conflict-editor-textarea {
-          background: transparent !important;
-          transition: none !important;
+          background: transparent;
+          transition: none;
         }
       }
     }
@@ -996,10 +996,7 @@
       position: absolute;
       visibility: hidden;
       pointer-events: none;
-      top: 0;
-      left: 40px; /* offset matching line numbers column width */
-      right: 0;
-      bottom: 0;
+      inset: 0 0 0 40px; /* offset matching line numbers column width */
       overflow-y: scroll; /* Force scrollbar to align available text width with textarea */
       font-family: var(--font-monospace);
       font-size: 12px;

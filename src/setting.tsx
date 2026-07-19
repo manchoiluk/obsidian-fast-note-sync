@@ -50,6 +50,8 @@ export interface PluginSettings {
   cloudPreviewRemoteUrl: string
   /** 云端预览上传后是否自动删除本地文件 */
   cloudPreviewAutoDeleteLocal: boolean
+  /** 是否启用动态附件目录拼接（将 Ob 默认附件路径拼接到请求 path 中） */
+  cloudPreviewDynamicAttachment: boolean
   /** 是否启用离线删除同步（本地删除后同步到服务端） */
   offlineDeleteSyncEnabled: boolean
   /** 同步更新延迟（毫秒），用于防抖处理 */
@@ -144,6 +146,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   cloudPreviewTypeRestricted: true,
   cloudPreviewRemoteUrl: "",
   cloudPreviewAutoDeleteLocal: false,
+  cloudPreviewDynamicAttachment: false,
   offlineDeleteSyncEnabled: false,
   syncUpdateDelay: 0,
   isShowNotice: true,
@@ -1865,6 +1868,16 @@ export class SettingTab extends PluginSettingTab {
         }),
       )
       this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.cloud.delete_after_upload_desc"))
+
+      new Setting(set).setName($("setting.cloud.dynamic_attachment")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.cloudPreviewDynamicAttachment).onChange(async (value) => {
+          if (value != this.plugin.settings.cloudPreviewDynamicAttachment) {
+            this.plugin.settings.cloudPreviewDynamicAttachment = value
+            await this.plugin.saveAndReloadServices()
+          }
+        }),
+      )
+      this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.cloud.dynamic_attachment_desc"))
     }
   }
 

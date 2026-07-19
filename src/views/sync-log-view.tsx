@@ -294,7 +294,12 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                 return;
             }
 
-            const data = JSON.parse(log.message || '{}');
+            interface ConflictLogData {
+                serverContent?: string;
+                baseContent?: string;
+                serverHash?: string;
+            }
+            const data = JSON.parse(log.message || '{}') as ConflictLogData;
             const file = plugin.app.vault.getFileByPath(filePath);
             if (file) {
                 const localContent = await plugin.app.vault.read(file);
@@ -303,9 +308,9 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                     plugin,
                     file,
                     localContent,
-                    data.serverContent,
+                    data.serverContent || "",
                     data.baseContent || "",
-                    data.serverHash
+                    data.serverHash || ""
                 ).open();
             } else {
                 new Notice($("ui.log.file_not_found") || "文件未找到");
@@ -731,12 +736,17 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
 
                         // 如果是 NoteManualMergeConflict 类型的日志，显示特别样式并支持点击解决
                         if (log.action === 'NoteManualMergeConflict') {
-                            let data: any = {};
-                            try {
-                                data = JSON.parse(log.message || '{}');
-                            } catch {}
-                            
-                            const displayMessage = data.message || $("ui.log.error_code.530") || "检测到同步冲突，需要手动处理";
+                            let displayMessage = $("ui.log.error_code.530") || "检测到同步冲突，需要手动处理";
+                            if (log.message) {
+                                try {
+                                    const data = JSON.parse(log.message) as Record<string, unknown>;
+                                    if (typeof data.message === 'string') {
+                                        displayMessage = data.message;
+                                    }
+                                } catch {
+                                    // Ignore JSON parse error // 忽略 JSON 解析错误
+                                }
+                            }
                             
                             return (
                                 <div key={log.id} className="fns-sync-log-item fns-sync-log-category-note fns-sync-log-status-error fns-sync-log-type-receive">
@@ -760,7 +770,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                                     fontSize: '10px',
                                                     cursor: 'pointer'
                                                 }}
-                                                onClick={() => handleConflictLogClick(log)}
+                                                onClick={() => { void handleConflictLogClick(log); }}
                                             >
                                                 {$("ui.conflict.menu_item") || "解决冲突"}
                                             </span>
@@ -769,7 +779,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                     {log.path && (
                                         <div 
                                             className="fns-sync-log-path is-clickable"
-                                            onClick={() => handleConflictLogClick(log)}
+                                            onClick={() => { void handleConflictLogClick(log); }}
                                         >
                                             <span style={{ wordBreak: 'break-all', flex: 1, fontWeight: 'bold' }}>{log.path}</span>
                                             <ObsidianIcon icon="external-link" className="fns-path-open-icon" />

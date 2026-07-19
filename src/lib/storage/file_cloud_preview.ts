@@ -561,7 +561,20 @@ export class FileCloudPreview {
     // typically discard the directory and return just "X.mp3" (or worse,
     // produce a path under the note's folder), causing the resulting cloud
     // URL to 404 on the server.
-    const vaultPath = filePath;
+    let vaultPath = filePath;
+    interface VaultWithConfig {
+      // Define getConfig method to avoid 'any' // 定义 getConfig 方法以避免 any
+      getConfig?(key: string): unknown;
+    }
+    const rawConfig = ((this.plugin.app.vault as unknown) as VaultWithConfig).getConfig?.("attachmentFolderPath");
+    const attachmentFolderPath = typeof rawConfig === "string" ? rawConfig : "";
+    if (this.plugin.settings.cloudPreviewDynamicAttachment) {
+      if (attachmentFolderPath) {
+        const prefix = attachmentFolderPath.endsWith("/") ? attachmentFolderPath : attachmentFolderPath + "/";
+        const suffix = vaultPath.startsWith("/") ? vaultPath.substring(1) : vaultPath;
+        vaultPath = prefix + suffix;
+      }
+    }
     const ext = this.getFileExtension(vaultPath);
     if (!ext) return null;
 
@@ -621,7 +634,9 @@ export class FileCloudPreview {
         .replace(/{vaultPath}/g, vaultPath)
         .replace(/{subpath}/g, subpath)
         .replace(/{vault}/g, vault)
-        .replace(/{type}/g, type);
+        .replace(/{type}/g, type)
+        .replace(/{notePath}/g, sourcePath)
+        .replace(/{attachmentFolderPath}/g, attachmentFolderPath);
     }
 
     const params = new URLSearchParams({

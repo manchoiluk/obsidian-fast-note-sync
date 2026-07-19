@@ -1,5 +1,4 @@
-import { moment, Platform, normalizePath } from "obsidian";
-import { ConflictResolveModal } from "../../views/conflict-resolve-modal";
+import { moment, Platform } from "obsidian";
 
 import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue, receiveFileUploadSessionNotFound } from "./operator_file";
 import { dump, addRandomParam, showSyncNotice, safeStringify, getPluginDir, hashContent } from "../utils/helpers";
@@ -373,7 +372,11 @@ export class WebSocketManager {
       // 处理冲突相关错误码
       if (data.code === ERROR_SYNC_CONFLICT) {
         void this.handleConflictError(data);
-        const path = data.data?.path || data.data?.Path || (data.data as any)?.Path;
+        const payloadData = data.data;
+        let path: unknown = null;
+        if (payloadData && typeof payloadData === "object") {
+          path = payloadData.path ?? payloadData.Path;
+        }
         if (typeof path === "string") {
           this.plugin.concurrencyLimiter.releaseSlot(path);
           const pageIndex = this.plugin.syncState.pendingNotePushPageIndex.get(path);
@@ -548,11 +551,32 @@ export class WebSocketManager {
   }
 
   private async handleConflictError(data: StructuredMessageData) {
-    const path = data.data?.path || data.data?.Path || (data.data as any)?.Path;
-    const serverContent = (data.data as any)?.serverContent || (data.data as any)?.ServerContent;
-    const baseContent = (data.data as any)?.baseContent || (data.data as any)?.BaseContent;
-    const rawHash = (data.data as any)?.serverHash ?? (data.data as any)?.ServerHash;
-    const serverHash = rawHash != null ? String(rawHash) : "";
+    const payloadData = data.data;
+    let path = "";
+    let serverContent = "";
+    let baseContent = "";
+    let serverHash = "";
+
+    if (payloadData && typeof payloadData === "object") {
+      const rawPath = payloadData.path ?? payloadData.Path;
+      if (typeof rawPath === "string") {
+        path = rawPath;
+      }
+      const rawServerContent = payloadData.serverContent ?? payloadData.ServerContent;
+      if (typeof rawServerContent === "string") {
+        serverContent = rawServerContent;
+      }
+      const rawBaseContent = payloadData.baseContent ?? payloadData.BaseContent;
+      if (typeof rawBaseContent === "string") {
+        baseContent = rawBaseContent;
+      }
+      const rawServerHash = payloadData.serverHash ?? payloadData.ServerHash;
+      if (typeof rawServerHash === "string") {
+        serverHash = rawServerHash;
+      } else if (typeof rawServerHash === "number") {
+        serverHash = String(rawServerHash);
+      }
+    }
 
     dump("[ConflictDebug] handleConflictError triggered. Path:", path, 
          "serverContent length:", serverContent ? serverContent.length : "undefined/null",
@@ -560,7 +584,7 @@ export class WebSocketManager {
          "strategy:", this.plugin.settings.offlineSyncStrategy);
 
     if (this.plugin.settings.offlineSyncStrategy === "manualMerge" &&
-        typeof path === "string" && typeof serverContent === "string" && serverHash !== "") {
+        path !== "" && serverContent !== "" && serverHash !== "") {
       
       const conflictData = {
         serverContent,
@@ -586,12 +610,12 @@ export class WebSocketManager {
           await adapter.mkdir(conflictDir);
         }
 
-        const safeName = path.replace(/\.md$/, "").replace(/[\/\\]/g, "_");
+        const safeName = path.replace(/\.md$/, "").replace(/[/\\]/g, "_");
         const pathHash = hashContent(path);
         const baseBackupPath = `${conflictDir}/${safeName}_${pathHash}.base.md`;
         const remoteBackupPath = `${conflictDir}/${safeName}_${pathHash}.remote.md`;
 
-        await adapter.write(baseBackupPath, baseContent || "");
+        await adapter.write(baseBackupPath, baseContent);
         await adapter.write(remoteBackupPath, serverContent);
       } catch (e) {
         dump("Failed to create conflict-notes backup files:", e);

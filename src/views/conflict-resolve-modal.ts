@@ -1,4 +1,4 @@
-import { App, Modal, normalizePath, setIcon } from "obsidian";
+import { App, Modal, setIcon, TFile } from "obsidian";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
 import { hashContent, hashContentAsync, getPluginDir } from "../lib/utils/helpers";
@@ -19,7 +19,7 @@ import { hashContent, hashContentAsync, getPluginDir } from "../lib/utils/helper
  */
 export class ConflictResolveModal extends Modal {
   private plugin: FastSync;
-  private file: any;
+  private file: TFile;
   private localContent: string;
   private serverContent: string;
   private baseContent: string;
@@ -34,7 +34,7 @@ export class ConflictResolveModal extends Modal {
   constructor(
     app: App,
     plugin: FastSync,
-    file: any,
+    file: TFile,
     localContent: string,
     serverContent: string,
     baseContent: string,
@@ -335,7 +335,7 @@ export class ConflictResolveModal extends Modal {
         // 清理本地 conflict-notes 中的备份文件 (位于插件目录下，文件名附加路径哈希以防碰撞)
         try {
           const adapter = this.app.vault.adapter;
-          const safeName = this.file.path.replace(/\.md$/, "").replace(/[\/\\]/g, "_");
+          const safeName = this.file.path.replace(/\.md$/, "").replace(/[/\\]/g, "_");
           const pathHash = hashContent(this.file.path);
           const conflictDir = `${getPluginDir(this.plugin)}/conflict-notes`;
           const baseBackupPath = `${conflictDir}/${safeName}_${pathHash}.base.md`;
@@ -356,8 +356,8 @@ export class ConflictResolveModal extends Modal {
             if (files && files.files.length === 0 && files.folders.length === 0) {
               try {
                 await adapter.rmdir(conflictDir, true);
-              } catch (folderErr) {
-                // Ignore EBUSY/locked folder error, keeping empty folder is harmless
+              } catch {
+                // Ignore EBUSY/locked folder error, keeping empty folder is harmless // 忽略文件夹繁忙/锁定错误，保留空文件夹无害
               }
             }
           }
@@ -418,7 +418,7 @@ export class ConflictResolveModal extends Modal {
     copyBtn.onClickEvent(() => {
       void navigator.clipboard.writeText(fullContent).then(() => {
         copyBtn.setText($("ui.history.copied") || "已复制");
-        setTimeout(() => copyBtn.setText($("ui.history.copy") || "复制"), 2000);
+        window.setTimeout(() => copyBtn.setText($("ui.history.copy") || "复制"), 2000);
       });
     });
 
@@ -476,7 +476,7 @@ export class ConflictResolveModal extends Modal {
     copyBtn.onClickEvent(() => {
       void navigator.clipboard.writeText(textarea.value).then(() => {
         copyBtn.setText($("ui.history.copied") || "已复制");
-        setTimeout(() => copyBtn.setText($("ui.history.copy") || "复制"), 2000);
+        window.setTimeout(() => copyBtn.setText($("ui.history.copy") || "复制"), 2000);
       });
     });
 
@@ -532,10 +532,10 @@ export class ConflictResolveModal extends Modal {
       observer.observe(textarea);
 
       // Clean up observer on close
-      const originalOnClose = this.onClose;
+      const originalOnClose = () => this.onClose();
       this.onClose = () => {
         observer.disconnect();
-        if (originalOnClose) originalOnClose.call(this);
+        originalOnClose();
       };
     }
 
@@ -554,7 +554,7 @@ export class ConflictResolveModal extends Modal {
     
     this.editorContainerEl.addClass("fns-editor-flash");
     
-    setTimeout(() => {
+    window.setTimeout(() => {
       if (this.editorContainerEl) {
         this.editorContainerEl.removeClass("fns-editor-flash");
       }
@@ -592,7 +592,7 @@ function computeDiffLines(oldText: string, newText: string): DiffLine[] {
   const N = newLines.length;
 
   // Build LCS dynamic-programming table // 构建 LCS 动态规划表
-  const dp: number[][] = Array.from({ length: M + 1 }, () => new Array(N + 1).fill(0));
+  const dp: number[][] = Array.from({ length: M + 1 }, () => new Array<number>(N + 1).fill(0));
   for (let i = 1; i <= M; i++) {
     for (let j = 1; j <= N; j++) {
       if (oldLines[i - 1] === newLines[j - 1]) {

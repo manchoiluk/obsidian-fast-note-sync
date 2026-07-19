@@ -2,7 +2,6 @@
 
 import { setIcon } from 'obsidian';
 import type FastSync from '../../main';
-import { SyncLogManager } from '../sync/sync_log_manager';
 import { $ } from '../../i18n/lang';
 
 /**

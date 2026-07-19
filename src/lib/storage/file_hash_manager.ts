@@ -482,12 +482,14 @@ export class FileHashManager {
       try {
         const obj = Object.fromEntries(this.hashMap);
         data = JSON.stringify(obj);
-      } catch (error) {
+      } catch {
         return;
       }
       try {
         this.plugin.app.saveLocalStorage(this.storageKey, data);
-      } catch (error) {}
+      } catch {
+        // Ignore storage saving error // 忽略本地存储保存错误
+      }
       this.mirror.scheduleWrite(data);
     }
   }

@@ -145,9 +145,11 @@ export default {
   "setting.cloud.type_limit": "첨부 파일 클라우드 미리보기 유형 제한",
   "setting.cloud.type_limit_desc": "활성화되면 이미지/오디오/비디오/PDF에만 클라우드 미리보기 기능이 적용되며, 기타 첨부 파일은 정상적으로 동기화됩니다.\n주의: 이 항목을 비활성화할 때는 신중하게 하세요. 첨부 파일 관련 플러그인이 작동하지 않을 수 있습니다.",
   "setting.cloud.remote_source": "첨부 파일 클라우드 미리보기 - 접두사/접미사 매핑 원격 소스",
-  "setting.cloud.remote_source_desc": "이 설정은 접두사/접미사와 일치하는 첨부 파일에 대해 원격 소스를 지정하는 데 사용됩니다. 여러 줄의 규칙을 지원합니다.\n형식: <b>접두사@접미사#원격 소스</b>,\n<b>접두사</b>는 생략할 수 있으며, 여러 <b>접미사</b>는 <b>$</b>로 구분할 수 있습니다. 접두사와 접미사 모두 일치하지 않으면 기본 FNS 소스를 사용하며, 원격 소스는 변수 대체를 지원합니다.\n\n| 변수 | 설명 |\n| --- | --- |\n| {path} | 노트 내 첨부 파일 경로 |\n| {vaultPath} | 첨부 파일에 해당하는 저장소의 상대 경로 |\n| {vault} | 저장소 이름 |\n| {type} | 첨부 파일 유형 (image/video/audio/pdf/other) |\n예: <b>prefix@.jpg$.png#http://domain.com/{path}</b>\n주의: 사용자 정의 원격 소스를 사용하는 경우 해당 소스가 CORS(크로스 오리진 리소스 공유) 미리보기 및 필요한 인증을 지원하도록 하세요.",
+  "setting.cloud.remote_source_desc": "이 설정 항목은 접두사/접미사와 일치하는 첨부 파일에 대한 원격 소스를 지정하는 데 사용되며, 여러 줄 규칙을 지원합니다.\n형식: <b>접두사명@접미사명#원격 소스</b>,\n<b>접두사</b>는 생략할 수 있으며, 여러 <b>접미사명</b>은 <b>$</b>로 구분할 수 있습니다. 접두사와 접미사 모두 일치하지 않으면 기본 FNS 소스가 사용되며, 원격 소스는 변수 대체를 지원합니다.\n\n| 변수 | 설명 |\n| --- | --- |\n| {path} | 노트 내 첨부 파일 경로 |\n| {vaultPath} | 첨부 파일이 속한 저장소의 상대 경로 |\n| {notePath} | 해당 첨부 파일을 포함하는 노트 경로 |\n| {attachmentFolderPath} | Obsidian의 기본 첨부 파일 저장 폴더 경로 |\n| {vault} | 저장소 이름 |\n| {type} | 첨부 파일 유형 (image/video/audio/pdf/other) |\n예시: <b>prefix@.jpg$.png#http://domain.com/{path}</b>\n주의: 사용자 정의 원격 소스를 사용하는 경우, 해당 소스가 크로스 도메인 미리보기(CORS) 및 필요한 인증(필요한 경우)을 지원하는지 확인하십시오.",
   "setting.cloud.delete_after_upload": "첨부 파일 클라우드 미리보기 - 업로드 후 삭제",
   "setting.cloud.delete_after_upload_desc": "첨부 파일이 성공적으로 업로드되면 공간을 절약하기 위해 로컬 파일이 자동으로 삭제됩니다.\n(이 설정을 사용하려면 첨부 파일 클라우드 미리보기를 활성화해야 합니다)\n주의: 이 항목을 비활성화할 때는 신중하게 하세요. 첨부 파일 관련 플러그인이 작동하지 않을 수 있습니다.",
+  "setting.cloud.dynamic_attachment": "동적 첨부 파일 디렉토리",
+  "setting.cloud.dynamic_attachment_desc": "이 기능을 활성화하면 클라우드 미리보기 파일을 가져올 때 Obsidian의 기본 첨부 파일 저장 폴더 경로(${attachmentFolderPath})를 요청 경로에 추가하여 서버로 전송합니다.\n예시: 기본 첨부 파일 경로가 'testfujian/'이고, 첨부 파일이 'GfZfD9-aYAAwwbd.jpg'인 경우, 최종 요청 경로는 'testfujian/GfZfD9-aYAAwwbd.jpg'가 됩니다.",
 
   // --- setting.shortcut ---
   "setting.shortcut.title": "단축키 설정",

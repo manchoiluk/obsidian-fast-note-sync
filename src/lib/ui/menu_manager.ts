@@ -1,4 +1,4 @@
-import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf, SuggestModal, App } from 'obsidian';
+import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
 
 import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes, cancelSync } from '../sync/operator';
 import { AppWithInternal, MenuItemWithDom, MenuWithHide, MenuItemWithInternal } from "../utils/types";
@@ -642,7 +642,7 @@ export class MenuManager {
       menu.addItem((item: MenuItem) => {
         item
           .setIcon("alert-triangle")
-          .setTitle((($("ui.menu.conflicts" as any) || "笔记冲突") as string) + ` (${conflictedCount})`)
+          .setTitle($("ui.menu.conflicts") + ` (${conflictedCount})`)
           .onClick(async () => {
             const { ConflictListModal } = await import("../../views/conflict-list-modal");
             new ConflictListModal(this.plugin.app, this.plugin).open();
@@ -770,7 +770,7 @@ export class MenuManager {
 
     try {
       const adapter = this.plugin.app.vault.adapter;
-      const safeName = path.replace(/\.md$/, "").replace(/[\/\\]/g, "_");
+      const safeName = path.replace(/\.md$/, "").replace(/[/\\]/g, "_");
       const pathHash = hashContent(path);
       const conflictDir = `${getPluginDir(this.plugin)}/conflict-notes`;
       const baseBackupPath = `${conflictDir}/${safeName}_${pathHash}.base.md`;
@@ -787,14 +787,21 @@ export class MenuManager {
 
       const localContent = await this.plugin.app.vault.read(file);
 
+      interface SyncLogItem {
+        path?: string;
+        action?: string;
+        message?: string;
+      }
       const logs = SyncLogManager.getInstance().getLogs();
-      const targetLog = logs.find((l: any) => l.path === path && l.action === "NoteManualMergeConflict");
+      const targetLog = (logs as SyncLogItem[]).find((l) => l.path === path && l.action === "NoteManualMergeConflict");
       let serverHash = "";
       if (targetLog && targetLog.message) {
         try {
-          const conflictData = JSON.parse(targetLog.message);
-          serverHash = conflictData.serverHash || "";
-        } catch {}
+          const conflictData = JSON.parse(targetLog.message) as Record<string, unknown>;
+          serverHash = typeof conflictData.serverHash === "string" ? conflictData.serverHash : "";
+        } catch {
+          // Ignore JSON parse error // 忽略 JSON 解析错误
+        }
       }
 
       const { ConflictResolveModal } = await import("../../views/conflict-resolve-modal");

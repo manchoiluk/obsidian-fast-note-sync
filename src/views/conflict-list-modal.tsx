@@ -5,8 +5,6 @@ import * as React from "react";
 import type FastSync from "../main";
 import { $ } from "../i18n/lang";
 import { LucideIcon } from "./note-history/lucide-icon";
-import { getPluginDir, hashContent } from "../lib/utils/helpers";
-import { SyncLogManager } from "../lib/sync/sync_log_manager";
 
 export class ConflictListModal extends Modal {
     private root: Root | null = null;
@@ -23,12 +21,14 @@ export class ConflictListModal extends Modal {
         if (ConflictListModal.activeInstance && ConflictListModal.activeInstance !== this) {
             try {
                 ConflictListModal.activeInstance.close();
-            } catch (e) {}
+            } catch {
+                // Ignore error on close // 忽略关闭时的异常
+            }
         }
         ConflictListModal.activeInstance = this;
 
         const { contentEl } = this;
-        this.titleEl.setText($("ui.menu.conflicts" as any) || "笔记冲突");
+        this.titleEl.setText($("ui.menu.conflicts") || "笔记冲突");
         this.containerEl.addClass("fns-ws-clients-modal-container"); // 复用样式，保持一致
 
         this.root = createRoot(contentEl);
@@ -74,7 +74,7 @@ const ConflictListView = ({ plugin, modal }: { plugin: FastSync, modal: Conflict
             <div className="fns-ws-clients-header">
                 <div className="fns-ws-clients-title-group">
                     <LucideIcon icon="alert-triangle" size={20} style={{ color: 'var(--text-warning)' }} />
-                    {$("ui.menu.conflicts" as any) || "笔记冲突"}
+                    {$("ui.menu.conflicts") || "笔记冲突"}
                 </div>
                 <div className="fns-ws-clients-stats-group">
                     {conflicts.length > 0 && (
@@ -104,7 +104,7 @@ const ConflictListView = ({ plugin, modal }: { plugin: FastSync, modal: Conflict
                             <div 
                                 key={path} 
                                 className="fns-ws-clients-item mod-clickable"
-                                onClick={() => handleResolve(path)}
+                                onClick={() => { void handleResolve(path); }}
                                 style={{ cursor: 'pointer' }}
                             >
                                 <div className="fns-ws-clients-item-top">
