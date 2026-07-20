@@ -522,5 +522,8 @@
   "ui.log.action.NoteManualMergeConflict": "104dbf5046aa7849d304c0936fa29ebb",
   "ui.conflict.resolved_notice": "fd949e2f34efd5b5d76dd3b08c34badc",
   "setting.cloud.dynamic_attachment": "4c4118121b480d9bf210a235f2b1539a",
-  "setting.cloud.dynamic_attachment_desc": "811d6bf026add48bf7bb907e2dce7b53"
+  "setting.cloud.dynamic_attachment_desc": "811d6bf026add48bf7bb907e2dce7b53",
+  "setting.remote.vault_name_confirm_title": "ca8561adbf7b0124a95c74d9e04b7fd8",
+  "setting.remote.vault_name_confirm_desc": "534877c6e182d6a4a3ba93aed29a3d7f",
+  "setting.remote.vault_name_empty": "82cd18653068a98270434958c020a764"
 }

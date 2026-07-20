@@ -14,7 +14,7 @@ import { AppWithInternal } from "./lib/utils/types";
 import { RuleEditor } from "./views/rule-editor";
 import { $ } from "./i18n/lang";
 import FastSync from "./main";
-import { createVaultNameChangeHandler } from "./lib/settings/vault_name";
+import { updateVaultName } from "./lib/settings/vault_name";
 
 
 export interface PluginSettings {
@@ -1284,19 +1284,22 @@ export class SettingTab extends PluginSettingTab {
       root.render(<SettingsView plugin={this.plugin} />)
     }, 50)
 
-    new Setting(set).setName($("setting.remote.api_url")).addText((text) =>
-      text
-        .setPlaceholder($("setting.remote.api_url_placeholder"))
-        .setValue(this.plugin.settings.api)
-        .onChange(async (value) => {
-          if (value != this.plugin.settings.api) {
-            this.plugin.wsSettingChange = true
-            this.plugin.settings.api = value
-            this.plugin.localStorageManager.clearSyncTime()
-            await this.plugin.saveAndReloadServices()
-          }
-        }),
-    )
+    new Setting(set)
+      .setClass("fns-setting-item-vertical")
+      .setName($("setting.remote.api_url"))
+      .addText((text) =>
+        text
+          .setPlaceholder($("setting.remote.api_url_placeholder"))
+          .setValue(this.plugin.settings.api)
+          .onChange(async (value) => {
+            if (value != this.plugin.settings.api) {
+              this.plugin.wsSettingChange = true
+              this.plugin.settings.api = value
+              this.plugin.localStorageManager.clearSyncTime()
+              await this.plugin.saveAndReloadServices()
+            }
+          }),
+      )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.api_url_desc"))
 
     if (this.plugin.settings.api && this.plugin.settings.api.toLowerCase().startsWith("http://")) {
@@ -1304,28 +1307,46 @@ export class SettingTab extends PluginSettingTab {
       warningEl.setText($("setting.remote.http_warning"));
     }
 
-    new Setting(set).setName($("setting.remote.api_token")).addText((text) =>
-      text
-        .setPlaceholder($("setting.remote.api_token_placeholder"))
-        .setValue(this.plugin.settings.apiToken)
-        .onChange(async (value) => {
-          if (value != this.plugin.settings.apiToken) {
-            this.plugin.wsSettingChange = true
-            this.plugin.settings.apiToken = value
-            this.plugin.localStorageManager.clearSyncTime()
-            await this.plugin.saveAndReloadServices()
-          }
-        }),
-    )
+    new Setting(set)
+      .setClass("fns-setting-item-vertical")
+      .setName($("setting.remote.api_token"))
+      .addText((text) =>
+        text
+          .setPlaceholder($("setting.remote.api_token_placeholder"))
+          .setValue(this.plugin.settings.apiToken)
+          .onChange(async (value) => {
+            if (value != this.plugin.settings.apiToken) {
+              this.plugin.wsSettingChange = true
+              this.plugin.settings.apiToken = value
+              this.plugin.localStorageManager.clearSyncTime()
+              await this.plugin.saveAndReloadServices()
+            }
+          }),
+      )
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.api_token_desc"))
 
-    const handleVaultNameChange = createVaultNameChangeHandler(this.plugin)
-    new Setting(set).setName($("setting.remote.vault_name")).addText((text) =>
-      text
-        .setPlaceholder($("setting.remote.vault_name"))
-        .setValue(this.plugin.settings.vault)
-        .onChange(handleVaultNameChange),
-    )
+    new Setting(set)
+      .setName($("setting.remote.vault_name"))
+      .addText((text) => {
+        text
+          .setPlaceholder($("setting.remote.vault_name"))
+          .setValue(this.plugin.settings.vault);
+        
+        text.inputEl.readOnly = true;
+        text.inputEl.style.cursor = "pointer";
+
+        text.inputEl.addEventListener("focus", () => {
+          text.inputEl.blur();
+        });
+
+        text.inputEl.onclick = () => {
+          new VaultNameModal(this.app, this.plugin.settings.vault, async (newValue) => {
+            await updateVaultName(this.plugin, newValue);
+            text.setValue(newValue);
+            showSyncNotice($("setting.debug.clear_cache_success") || "Sync cache cleared successfully");
+          }).open();
+        };
+      });
     this.setDescWithBreaks(set.lastElementChild as HTMLElement, $("setting.remote.vault_name_desc"))
 
     new Setting(set).setName($("setting.remote.auto_redirect")).setClass("fns-setting-item-checkbox").addToggle((toggle) =>
@@ -1996,4 +2017,83 @@ export class InputModal extends Modal {
     this.contentEl.empty();
   }
 }
+
+/**
+ * 优雅的原生库名输入模态框，用于点击库名输入框时弹出进行修改
+ */
+export class VaultNameModal extends Modal {
+  private onSubmit: (value: string) => Promise<void> | void;
+  private currentValue: string;
+  private inputEl: HTMLInputElement;
+
+  constructor(
+    app: App,
+    currentValue: string,
+    onSubmit: (value: string) => Promise<void> | void
+  ) {
+    super(app);
+    this.currentValue = currentValue;
+    this.onSubmit = onSubmit;
+  }
+
+  onOpen() {
+    const { contentEl, titleEl } = this;
+    titleEl.setText($("setting.remote.vault_name_confirm_title") || "确认修改远端笔记库名");
+
+    contentEl.createEl("p", {
+      text: $("setting.remote.vault_name_confirm_desc") || "修改远端笔记库名将会清空本地同步时间缓存，并在下一次同步时重新同步所有笔记。确定要修改吗？",
+      cls: "fns-modal-desc"
+    });
+
+    const inputContainer = contentEl.createDiv("fns-modal-input-container");
+    this.inputEl = inputContainer.createEl("input", {
+      type: "text",
+      placeholder: $("setting.remote.vault_name")
+    });
+    this.inputEl.addClass("fns-modal-input");
+    this.inputEl.value = this.currentValue;
+    this.inputEl.focus();
+
+    // 选中全部文本
+    this.inputEl.select();
+
+    this.inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.submit();
+      }
+    });
+
+    const buttonContainer = contentEl.createDiv("fns-modal-button-container");
+
+    const confirmBtn = buttonContainer.createEl("button", {
+      text: $("ui.button.confirm") || "确认"
+    });
+    confirmBtn.addClass("mod-cta");
+    confirmBtn.onclick = () => this.submit();
+
+    const cancelBtn = buttonContainer.createEl("button", {
+      text: $("ui.button.cancel") || "取消"
+    });
+    cancelBtn.onclick = () => this.close();
+  }
+
+  private async submit() {
+    const val = this.inputEl.value.trim();
+    if (!val) {
+      showSyncNotice($("setting.remote.vault_name_empty") || "库名不能为空！");
+      return;
+    }
+    this.close();
+    if (val !== this.currentValue) {
+      await this.onSubmit(val);
+    }
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
+
 

@@ -15,13 +15,6 @@ const transpiled = ts.transpileModule(source, {
 }).outputText;
 
 const module = { exports: {} };
-const debounce = (func, wait) => {
-  let timeout;
-  return (...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-};
 
 vm.runInNewContext(
   transpiled,
@@ -29,15 +22,14 @@ vm.runInNewContext(
     module,
     exports: module.exports,
     require: (id) => {
-      if (id === "../utils/helpers") return { debounce };
       throw new Error(`Unexpected import: ${id}`);
     },
   },
   { filename: sourcePath },
 );
 
-const { createVaultNameChangeHandler } = module.exports;
-assert.equal(typeof createVaultNameChangeHandler, "function");
+const { updateVaultName } = module.exports;
+assert.equal(typeof updateVaultName, "function");
 
 let clearCount = 0;
 let saveCount = 0;
@@ -54,24 +46,15 @@ const plugin = {
   },
 };
 
-const handleVaultNameChange = createVaultNameChangeHandler(plugin, 20);
-handleVaultNameChange("N");
-handleVaultNameChange("Ne");
-handleVaultNameChange("New Vault");
-
-assert.equal(plugin.settings.vault, "Original");
-assert.equal(clearCount, 0);
-assert.equal(saveCount, 0);
-
-await new Promise((resolve) => setTimeout(resolve, 40));
+await updateVaultName(plugin, "New Vault");
 
 assert.equal(plugin.settings.vault, "New Vault");
 assert.equal(plugin.wsSettingChange, true);
 assert.equal(clearCount, 1);
 assert.equal(saveCount, 1);
 
-handleVaultNameChange("New Vault");
-await new Promise((resolve) => setTimeout(resolve, 40));
+// Test that calling it with the same value does not trigger reload/clear
+await updateVaultName(plugin, "New Vault");
 
 assert.equal(clearCount, 1);
 assert.equal(saveCount, 1);
