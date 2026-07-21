@@ -1,5 +1,4 @@
 import { ItemView, WorkspaceLeaf, moment, setIcon, Platform, MenuItem, Menu, TFile, Notice, FileView, normalizePath } from "obsidian";
-import { ConflictResolveModal } from "./conflict-resolve-modal";
 import { createRoot, Root } from "react-dom/client";
 import * as React from "react";
 
@@ -289,32 +288,8 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     const handleConflictLogClick = async (log: SyncLog) => {
         try {
             const filePath = normalizePath(log.path || "");
-            if (filePath && !plugin.syncState.conflictedPaths.has(filePath)) {
-                new Notice($("ui.conflict.resolved_notice") || "冲突已解决");
-                return;
-            }
-
-            interface ConflictLogData {
-                serverContent?: string;
-                baseContent?: string;
-                serverHash?: string;
-            }
-            const data = JSON.parse(log.message || '{}') as ConflictLogData;
-            const file = plugin.app.vault.getFileByPath(filePath);
-            if (file) {
-                const localContent = await plugin.app.vault.read(file);
-                new ConflictResolveModal(
-                    plugin.app,
-                    plugin,
-                    file,
-                    localContent,
-                    data.serverContent || "",
-                    data.baseContent || "",
-                    data.serverHash || ""
-                ).open();
-            } else {
-                new Notice($("ui.log.file_not_found") || "文件未找到");
-            }
+            if (!filePath) return;
+            await plugin.menuManager.openConflictResolverForPath(filePath);
         } catch (e) {
             console.error("Failed to open ConflictResolveModal from log click:", e);
         }

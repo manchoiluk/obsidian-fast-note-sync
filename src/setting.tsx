@@ -1333,7 +1333,7 @@ export class SettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.vault);
         
         text.inputEl.readOnly = true;
-        text.inputEl.style.cursor = "pointer";
+        text.inputEl.addClass("fns-clickable");
 
         text.inputEl.addEventListener("focus", () => {
           text.inputEl.blur();
@@ -2061,7 +2061,7 @@ export class VaultNameModal extends Modal {
       if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();
-        this.submit();
+        void this.submit();
       }
     });
 

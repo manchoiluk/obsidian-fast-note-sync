@@ -1,4 +1,4 @@
-import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf } from 'obsidian';
+import { Menu, MenuItem, setIcon, Platform, WorkspaceLeaf, normalizePath, Notice } from 'obsidian';
 
 import { startupSync, startupFullSync, resetSettingSyncTime, rebuildAllHashes, clearAllHashes, cancelSync } from '../sync/operator';
 import { AppWithInternal, MenuItemWithDom, MenuWithHide, MenuItemWithInternal } from "../utils/types";
@@ -765,13 +765,18 @@ export class MenuManager {
   }
 
   async openConflictResolverForPath(path: string) {
-    const file = this.plugin.app.vault.getFileByPath(path);
+    const normalizedPath = normalizePath(path);
+    if (!this.plugin.syncState.conflictedPaths.has(normalizedPath)) {
+      new Notice($("ui.conflict.resolved_notice") || "冲突已解决");
+      return;
+    }
+    const file = this.plugin.app.vault.getFileByPath(normalizedPath);
     if (!file) return;
 
     try {
       const adapter = this.plugin.app.vault.adapter;
-      const safeName = path.replace(/\.md$/, "").replace(/[/\\]/g, "_");
-      const pathHash = hashContent(path);
+      const safeName = normalizedPath.replace(/\.md$/, "").replace(/[/\\]/g, "_");
+      const pathHash = hashContent(normalizedPath);
       const conflictDir = `${getPluginDir(this.plugin)}/conflict-notes`;
       const baseBackupPath = `${conflictDir}/${safeName}_${pathHash}.base.md`;
       const remoteBackupPath = `${conflictDir}/${safeName}_${pathHash}.remote.md`;
@@ -793,12 +798,18 @@ export class MenuManager {
         message?: string;
       }
       const logs = SyncLogManager.getInstance().getLogs();
-      const targetLog = (logs as SyncLogItem[]).find((l) => l.path === path && l.action === "NoteManualMergeConflict");
+      const targetLog = (logs as SyncLogItem[]).find((l) => l.path && normalizePath(l.path) === normalizedPath && l.action === "NoteManualMergeConflict");
       let serverHash = "";
       if (targetLog && targetLog.message) {
         try {
           const conflictData = JSON.parse(targetLog.message) as Record<string, unknown>;
           serverHash = typeof conflictData.serverHash === "string" ? conflictData.serverHash : "";
+          if (!serverContent && typeof conflictData.serverContent === "string") {
+            serverContent = conflictData.serverContent;
+          }
+          if (!baseContent && typeof conflictData.baseContent === "string") {
+            baseContent = conflictData.baseContent;
+          }
         } catch {
           // Ignore JSON parse error // 忽略 JSON 解析错误
         }

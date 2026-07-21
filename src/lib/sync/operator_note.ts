@@ -1,7 +1,7 @@
 import { TFile, TAbstractFile, normalizePath } from "obsidian";
 
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "../utils/types";
-import { hashContent, hashContentAsync, dump, dumpError, isPathExcluded, getSafeCtime, vaultDelete, checkAndNotifyCaseConflict } from "../utils/helpers";
+import { hashContent, hashContentAsync, dump, dumpError, isPathExcluded, getSafeCtime, vaultDelete, checkAndNotifyCaseConflict, getPluginDir } from "../utils/helpers";
 import { SyncLogManager } from "./sync_log_manager";
 import type FastSync from "../../main";
 
@@ -254,8 +254,43 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
             }
           }
 
-          if (hasPendingLocalEdit || hasDivergedSinceLastSync) {
+          if (hasPendingLocalEdit || hasDivergedSinceLastSync || plugin.syncState.conflictedPaths.has(normalizedPath)) {
             dump(`[FastSync] Skip overwrite, local unsynced edit detected: ${normalizedPath}`)
+
+            // 如果存在未同步的本地修改或已在冲突列表中，将服务端最新推送的内容写入/更新到远端备份文件 xxx.remote.md
+            // If local unsynced edit exists or path is in conflict state, write/update the server's latest content into xxx.remote.md
+            try {
+              const adapter = plugin.app.vault.adapter;
+              const conflictDir = `${getPluginDir(plugin)}/conflict-notes`;
+              const safeName = normalizedPath.replace(/\.md$/, "").replace(/[/\\]/g, "_");
+              const pathHash = hashContent(normalizedPath);
+              const baseBackupPath = `${conflictDir}/${safeName}_${pathHash}.base.md`;
+              const remoteBackupPath = `${conflictDir}/${safeName}_${pathHash}.remote.md`;
+
+              if (!(await adapter.exists(conflictDir))) {
+                await adapter.mkdir(conflictDir);
+              }
+
+              // 写入服务端最新推送的内容至 remote 备份文件
+              await adapter.write(remoteBackupPath, data.content || "");
+
+              // 若 base 备份不存在，使用当前本地内容建立初始 base 备份
+              if (!(await adapter.exists(baseBackupPath))) {
+                const localContent = await plugin.app.vault.read(file);
+                await adapter.write(baseBackupPath, localContent);
+              }
+
+              dump(`[FastSync] Updated remote backup file for conflict: ${remoteBackupPath}`);
+            } catch (err) {
+              dumpError(`[FastSync] Failed to update remote backup file: ${normalizedPath}`, err);
+            }
+
+            // 保持在冲突列表中并刷新状态栏
+            plugin.syncState.conflictedPaths.add(normalizedPath);
+            plugin.syncState.newConflictedPathsThisRound.add(normalizedPath);
+            plugin.localStorageManager.setConflictedPaths(plugin.syncState.conflictedPaths);
+            plugin.statusBarManager.updateConflictBadge();
+
             SyncLogManager.getInstance().addLog('receive', 'NoteModifyConflict', `本地存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${normalizedPath}`, 'cancelled', data.path)
             return
           }

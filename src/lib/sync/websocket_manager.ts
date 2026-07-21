@@ -1,4 +1,4 @@
-import { moment, Platform } from "obsidian";
+import { moment, Platform, normalizePath } from "obsidian";
 
 import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue, receiveFileUploadSessionNotFound } from "./operator_file";
 import { dump, addRandomParam, showSyncNotice, safeStringify, getPluginDir, hashContent } from "../utils/helpers";
@@ -560,7 +560,7 @@ export class WebSocketManager {
     if (payloadData && typeof payloadData === "object") {
       const rawPath = payloadData.path ?? payloadData.Path;
       if (typeof rawPath === "string") {
-        path = rawPath;
+        path = normalizePath(rawPath);
       }
       const rawServerContent = payloadData.serverContent ?? payloadData.ServerContent;
       if (typeof rawServerContent === "string") {
